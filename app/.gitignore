@@ -1,0 +1,7 @@
+node_modules/
+data/*
+!data/.gitkeep
+public/app.js
+public/app.css
+.env
+dist/

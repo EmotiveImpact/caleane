@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-01",
+  "source": "Local app demo inspected in app/; isolated sample database, no production data",
+  "screens": [
+    {
+      "file": "web/assets/platform-app-overview.jpg",
+      "screen": "Overview",
+      "dimensions": [
+        1018,
+        756
+      ]
+    },
+    {
+      "file": "web/assets/platform-app-projects.jpg",
+      "screen": "Projects",
+      "dimensions": [
+        1018,
+        756
+      ]
+    },
+    {
+      "file": "web/assets/platform-app-brief.jpg",
+      "screen": "The brief",
+      "dimensions": [
+        1018,
+        756
+      ]
+    },
+    {
+      "file": "web/assets/platform-app-versions.jpg",
+      "screen": "Versions",
+      "dimensions": [
+        1018,
+        756
+      ]
+    },
+    {
+      "file": "web/assets/platform-app-client.jpg",
+      "screen": "Client view",
+      "dimensions": [
+        1018,
+        756
+      ]
+    }
+  ],
+  "app_palette": {
+    "sidebar": "#101113",
+    "workspace": "#ffffff",
+    "ink": "#202326"
+  },
+  "photography_fix": {
+    "asset": "web/assets/story-brand-handover-v2.webp",
+    "tool": "built-in image_gen",
+    "source": "web/assets/story-brand-handover-v1.png",
+    "change": "Both characters look at the precise navy artwork edge touched by Sofia\u2019s fingertip."
+  }
+}

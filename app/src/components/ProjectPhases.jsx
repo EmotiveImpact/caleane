@@ -1,0 +1,15 @@
+import React,{useEffect,useState} from 'react';
+import {Check} from 'lucide-react';
+import {workflowFor} from '../lib/workflows';
+import {phaseSummary} from '../lib/phase-summary';
+import '../project-phases.css';
+
+const readable=value=>new Date(value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+export function ProjectPhases({p,studio,owner,request,onNavigate}){
+ const [state,setState]=useState({loading:true}),[retry,setRetry]=useState(0);
+ useEffect(()=>{let active=true;setState({loading:true});request(`/api/projects/${p.id}/operations?studio=${studio.id}`).then(result=>{if(active)setState({operations:result.operations});}).catch(error=>{if(active)setState({error:error.message||'Delivery steps could not be loaded.'});});return()=>{active=false;};},[p.id,p.updatedAt,studio.id,request,retry]);
+ const workflow=workflowFor(studio,p),{steps,completed,total,current}=phaseSummary(state.operations?.milestones);
+ return <section className="project-phases" aria-labelledby="project-phases-title"><header><div><p>{workflow.name}</p><h2 id="project-phases-title">Project phases</h2></div><button className="text-button" onClick={()=>onNavigate('Delivery')}>{owner?'Manage delivery':'View delivery'}</button></header>
+ {state.loading?<p role="status">Loading delivery steps…</p>:state.error?<div role="alert"><p>{state.error}</p><button className="text-button" onClick={()=>setRetry(value=>value+1)}>Try again</button></div>:total?<><div className="phase-summary"><div><strong>{completed}<span> / {total}</span></strong><p>{owner?'Recorded milestones complete':'Shared milestones complete'}</p><progress value={completed} max={total} aria-label={`${completed} of ${total} ${owner?'recorded':'shared'} milestones complete`}/></div><div><small>{current?current.status==='In progress'?'IN PROGRESS':'NEXT IN THE PLAN':'DELIVERY STEPS'}</small><h3>{current?.title||'Every recorded step is complete'}</h3><p>{current?.dueDate?`Due ${readable(current.dueDate)}`:current?'Date not set':'Review the delivery record for the full history.'}</p></div></div><ol className="phase-timeline">{steps.map((step,index)=><li key={step.id} className={step.status==='Complete'?'complete':step.status==='In progress'?'in-progress':''}><span className="phase-marker">{step.status==='Complete'?<Check size={15}/>:index+1}</span><div><strong>{step.title}</strong><small>{step.status}{step.dueDate?` · ${readable(step.dueDate)}`:''}{owner&&step.visibleToClient===false?' · Studio only':''}</small></div></li>)}</ol><p className="phase-footnote">{owner?'Progress follows saved delivery milestones.':'Only milestones shared with you appear here.'} Decisions and payments keep their own records.</p></>:<div className="phase-empty"><h3>{owner?'Shape the path for this project':'Your delivery plan is taking shape'}</h3><p>{owner?`Start with the ${workflow.name.toLowerCase()} steps in Delivery, then tailor them to this project.`:'Your studio will share the delivery steps here when they are ready.'}</p>{owner&&<button className="button secondary" onClick={()=>onNavigate('Delivery')}>Set up delivery steps</button>}</div>}
+ </section>;
+}

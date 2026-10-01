@@ -1,0 +1,94 @@
+/* One field treatment for shared controls, older screens and Radix portals.
+   Keep this after screen styles. The scoped important declarations retire
+   legacy form borders without affecting document paper or selection markers. */
+body:has(.folio-workspace) :is(
+  input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=hidden],[type=button],[type=submit],[type=reset]),
+  textarea, select, .ws-select
+){
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background-color:var(--ws-field-surface,var(--studio-surface))!important;
+  color:var(--studio-ink);
+  caret-color:var(--studio-accent);
+}
+
+body:has(.folio-workspace) :is(
+  input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=hidden],[type=button],[type=submit],[type=reset]),
+  textarea, select, .ws-select
+):focus{
+  outline:0!important;
+  background-color:var(--ws-field-focus,var(--studio-accent-soft))!important;
+}
+
+/* Search and message composers are one surface, including their text area. */
+body:has(.folio-workspace) :is(
+  .ws-search, .studio-search, .folio-search, .crm-search, .crm-filter,
+  .inbox-search, .relationship-search, .folio-work-index .search,
+  .project-talk-search, .workspace-search-input,
+  .project-talk-composer, .discussion-composer, .relationship-direct-composer,
+  .chat-composer, .folio-reply
+){
+  --ws-field-surface:transparent;
+  --ws-field-focus:transparent;
+  --ws-field-outline:none;
+  background-color:var(--studio-surface)!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+
+body:has(.folio-workspace) :is(
+  .ws-search, .studio-search, .folio-search, .crm-search, .crm-filter,
+  .inbox-search, .relationship-search, .folio-work-index .search,
+  .project-talk-search, .workspace-search-input,
+  .project-talk-composer, .discussion-composer, .relationship-direct-composer,
+  .chat-composer, .folio-reply
+):has(:is(input,textarea,select):focus){
+  background-color:var(--studio-accent-soft)!important;
+}
+
+/* Invalid fields keep their message and a quiet error surface, not a frame. */
+body:has(.folio-workspace) :is(input,textarea,select,.ws-select)[aria-invalid=true]{
+  background-color:#f9eceb!important;
+}
+
+/* Keyboard focus stays visible, including in portalled dialogs and search.
+   Compound fields draw one cue around the whole control, never two boxes. */
+html[data-ws-keyboard=true] body:has(.folio-workspace) :is(
+  input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=hidden],[type=button],[type=submit],[type=reset]),
+  textarea, select, .ws-select
+):focus-visible{
+  outline:var(--ws-field-outline,2px solid var(--studio-accent))!important;
+  outline-offset:3px;
+}
+
+html[data-ws-keyboard=true] body:has(.folio-workspace) :is(
+  .ws-search, .studio-search, .folio-search, .crm-search, .crm-filter,
+  .inbox-search, .relationship-search, .folio-work-index .search,
+  .project-talk-search, .workspace-search-input,
+  .project-talk-composer, .discussion-composer, .relationship-direct-composer,
+  .chat-composer, .folio-reply
+):has(:is(input,textarea,select):focus-visible){
+  outline:2px solid var(--studio-accent)!important;
+  outline-offset:3px;
+}
+
+/* The command search fills its header; keep the keyboard cue inside it. */
+html[data-ws-keyboard=true] body:has(.folio-workspace) .workspace-search-input:has(input:focus-visible){outline-offset:-3px}
+
+/* Native form selectors share the inset chevron until they move to Radix.
+   Leave multi-selects and Radix's hidden form controls to their native layout. */
+body:has(.folio-workspace) select:not([multiple]):not([size]):not([aria-hidden=true]){
+  appearance:none;
+  -webkit-appearance:none;
+  box-sizing:border-box;
+  min-width:0;
+  max-width:100%;
+  padding-inline:12px 36px!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e7274' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")!important;
+  background-repeat:no-repeat!important;
+  background-position:right 12px center!important;
+  background-size:16px 16px!important;
+  text-overflow:ellipsis;
+}

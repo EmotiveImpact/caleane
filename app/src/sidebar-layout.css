@@ -1,0 +1,29 @@
+/* One width token moves the rail and the workspace together. Mobile uses
+   a modal drawer and never inherits the saved desktop compact layout. */
+@media(min-width:761px){
+  .app:has(>.folio-rail[data-collapsed=true]){--folio-rail-width:72px}
+  .folio-rail,.workspace.folio-workspace{transition:width .18s ease,margin-left .18s ease}
+  .folio-rail[data-collapsed=true]{padding-inline:10px}
+  .folio-rail[data-collapsed=true] .folio-rail-brand{justify-content:center;padding-inline:0;gap:0}
+  .folio-rail[data-collapsed=true] :is(.folio-brand-name,.folio-nav-label,.studio-account-label){display:none}
+  .folio-rail[data-collapsed=true] :is(nav button,.folio-settings){justify-content:center;padding-inline:0;gap:0}
+  .folio-rail[data-collapsed=true] .folio-account-toggle{justify-content:center;padding-inline:0;gap:0}
+  .folio-rail[data-collapsed=true] .folio-account-toggle>span:first-child{width:32px;height:32px}
+}
+.folio-rail{height:100dvh;max-height:100dvh}
+.folio-rail nav{overflow-x:hidden;overscroll-behavior:contain}
+body:has(.folio-workspace) .folio-rail :is(button,a):focus-visible{outline-offset:-3px}
+.folio-rail .folio-rail-collapse{color:#aeb8bb}
+.folio-rail .folio-rail-collapse:hover{color:#fff}
+.folio-mobile-close{display:none}
+@media(max-width:760px){
+  .folio-rail.is-open{max-width:calc(100vw - 48px)}
+  .folio-mobile-close{position:absolute;top:22px;right:8px;display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:4px;background:transparent;color:#fff}
+  .folio-rail.is-open .folio-rail-brand{padding-right:24px;padding-left:10px;gap:9px}
+  .folio-rail.is-open .folio-brand-name{font-size:22px}
+  .folio-menu-toggle[aria-expanded=true]{visibility:hidden}
+  .folio-nav-scrim{touch-action:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .folio-rail,.workspace.folio-workspace{transition:none}
+}

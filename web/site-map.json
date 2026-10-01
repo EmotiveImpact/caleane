@@ -1,0 +1,114 @@
+{
+  "navigation": [
+    [
+      "Platform",
+      "platform.html"
+    ],
+    [
+      "For studios",
+      "studios.html"
+    ],
+    [
+      "How it works",
+      "how-it-works.html"
+    ],
+    [
+      "Stories",
+      "stories.html"
+    ],
+    [
+      "Pricing",
+      "pricing.html"
+    ]
+  ],
+  "footer": {
+    "Platform": [
+      [
+        "Workspace overview",
+        "platform.html"
+      ],
+      [
+        "Client relationships",
+        "client-relationships.html"
+      ],
+      [
+        "Shared briefs",
+        "shared-briefs.html"
+      ],
+      [
+        "Design reviews",
+        "design-reviews.html"
+      ],
+      [
+        "Approvals & decisions",
+        "approvals.html"
+      ],
+      [
+        "Studio operations",
+        "studio-operations.html"
+      ]
+    ],
+    "For studios": [
+      [
+        "Explore the studios",
+        "studios.html"
+      ],
+      [
+        "Events & experiences",
+        "event-story.html"
+      ],
+      [
+        "Interiors & spaces",
+        "interior-story.html"
+      ],
+      [
+        "Brands & campaigns",
+        "brand-story.html"
+      ],
+      [
+        "All studio stories",
+        "stories.html"
+      ]
+    ],
+    "Explore": [
+      [
+        "How it works",
+        "how-it-works.html"
+      ],
+      [
+        "Pricing",
+        "pricing.html"
+      ],
+      [
+        "Guides & examples",
+        "learn.html"
+      ],
+      [
+        "Try a sample project",
+        "get-started.html"
+      ],
+      [
+        "Pricing rationale",
+        "pricing-research.html"
+      ]
+    ],
+    "Caleane": [
+      [
+        "Why Caleane",
+        "about.html"
+      ],
+      [
+        "Trust & access",
+        "trust.html"
+      ],
+      [
+        "Contact",
+        "contact.html"
+      ],
+      [
+        "Design reference",
+        "design-reference.html"
+      ]
+    ]
+  }
+}

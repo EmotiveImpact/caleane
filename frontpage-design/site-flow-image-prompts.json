@@ -1,0 +1,72 @@
+{
+  "tool": "image_gen.imagegen",
+  "generated": "2026-10-01",
+  "nativeSize": "1672 × 941",
+  "delivery": "Native size WEBP quality 94; PNG source preserved",
+  "assets": [
+    {
+      "key": "event-review",
+      "refs": [
+        "/Users/augustusedem/Calenne/web/assets/event-creative-client.webp"
+      ],
+      "prompt": "Use case: identity-preserve. Asset: new editorial photograph extending an existing fictional studio-client story for Caleane. Input image 1 is a character identity and photographic grade reference, not a scene to copy. Preserve EXACTLY the two women: Nadia is the Black woman with curly hair gathered high, black tailored outfit, subtle gold earrings; Amelia is the woman with long dark wavy hair, cream knit jumper and beige trousers. Create the NEXT scene: a quiet daytime event-design studio, these same women seated together at a walnut worktable reviewing a reception layout on an open laptop. Nadia operates the trackpad with her right hand, Amelia leans in looking at the screen; both have natural anatomically correct hands and exactly two arms. The screen faces the women and is oblique to the camera, showing a believable ivory project review surface with small image thumbnails and a charcoal sidebar, no readable gibberish. Low flower samples, an ivory linen swatch and a floor plan on the table connect it to their reception. Camera at table height, candid three-quarter side view, both faces clearly visible, people centrally framed for flexible crops. Warm late-afternoon window light, rich green-black shadows, natural skin texture, quiet cinematic luxury matching the original reference grade, not sepia, not exaggerated HDR. Different location and camera angle from original. Landscape 16:9, highest native detail, target 2560x1440 or larger. No overlaid UI, no advertising text, no watermark, no logos. This is an actual believable working moment, not people posing.",
+      "png": "web/assets/story-event-review-v1.png",
+      "webp": "web/assets/story-event-review-v1.webp",
+      "status": "used"
+    },
+    {
+      "key": "interior-review",
+      "refs": [
+        "/Users/augustusedem/Calenne/web/assets/interior-designer-client.webp"
+      ],
+      "prompt": "Use case: identity-preserve. Asset: new editorial photograph extending Caleane's interior design story. Input image 1 is the exact character identity and grade reference. Preserve EXACTLY these two women: Lena the East Asian interior designer with long black hair wearing a black collared blouse, Maya the Black homeowner with short loose natural curls wearing a cream knit top. New scene in the SAME project at an earlier stage: a bright but quietly moody unfinished living room with bare warm plaster wall, tall window, a low oak sample table. Lena and Maya sit side by side at the table, comparing a warm textured fabric swatch against a limestone tile while Lena uses a tablet in a low stand to review the room plan. Both women's faces visible in a candid medium-wide three-quarter view, their attention on work. Tablet screen at oblique angle with an ivory room-plan review and small charcoal navigation rail, no readable text. A few carefully chosen material samples, rolled floorplan, pencil, no clutter. Real daylight falling from side, original reference's rich green-black shadow and warm neutral highlight grade, natural skin and fabric texture, crisp photographic detail, subtle cinematic contrast. Preserve facial identity faithfully; do not change either woman's ethnicity, face, hair, age or clothing identity. Natural hands, exactly two arms each. Flexible centered composition, 16:9 landscape, highest native quality target 2560x1440 or larger. No overlaid UI, no text, no logos, no watermark.",
+      "png": "web/assets/story-interior-review-v1.png",
+      "webp": "web/assets/story-interior-review-v1.webp",
+      "status": "used"
+    },
+    {
+      "key": "brand-review",
+      "refs": [
+        "/Users/augustusedem/Calenne/web/assets/brand-first-meeting.png",
+        "/Users/augustusedem/Calenne/web/assets/concept-brand.png"
+      ],
+      "prompt": "Use case: identity-preserve. Asset: new editorial photo extending Sofia and Daniel's Caleane packaging story. Input images 1 and 2 are exact face, clothing, studio and original grade references. Preserve EXACTLY Sofia: woman with dark brown messy bun, loose strands, navy cotton collared shirt, fine gold necklace; Daniel: middle-aged white man with wavy salt-and-pepper hair, short grey beard, charcoal knit sweater. Create next scene after the physical proof conversation: same design studio, a new angle from behind and to the side of an open laptop, both characters' faces still visible, Sofia seated left using the trackpad while Daniel points with one hand to a larger product-name proof on the screen. Camera slightly above table height; display shows believable ivory packaging image review with charcoal sidebar and comment column, viewed at a slight oblique angle, no readable text or gibberish. A navy and ivory packaging prototype beside the laptop, two printed hierarchy versions on table. Medium-wide photo, both people central and well framed, focused natural expressions. Grounded sophisticated documentary moment, rich green-black shadows, warm soft directional window light identical to reference grade, detailed natural skin, textile and wood. Exactly two arms per person, anatomically correct hands, no extra fingers, no duplicate limbs. Landscape 16:9, highest native quality target 2560x1440 or larger. No graphics superimposed, no advertising text, no watermark.",
+      "png": "web/assets/story-brand-review-v1.png",
+      "webp": "web/assets/story-brand-review-v1.webp",
+      "status": "superseded by v2"
+    },
+    {
+      "key": "brand-handover",
+      "refs": [
+        "/Users/augustusedem/Calenne/web/assets/brand-first-meeting.png",
+        "/Users/augustusedem/Calenne/web/assets/story-brand-review-v1.png"
+      ],
+      "prompt": "Use case: identity-preserve. New editorial photo for the next chapter of Sofia and Daniel's Caleane project story. Input images identify the SAME EXACT people and photographic grade: Sofia, woman with dark brown messy bun, navy cotton blouse, fine gold necklace; Daniel, man with wavy salt-and-pepper hair, grey short beard, charcoal knitted sweater. Move the scene to a small professional print workshop with stacks of untrimmed print sheets, a press softly blurred in background, warm daylight through tall windows. Sofia and Daniel STAND together checking a finished navy-and-ivory box prototype and a large printed proof on a waist-height workbench. Daniel holds the box naturally in one hand; Sofia checks a crop mark on a printed sheet with one finger, her other hand resting on a closed dark laptop containing their project record. Both faces clearly visible, recognizably identical to refs, quietly pleased focused expressions, not posing at camera. The same simple navy circular/semicircular graphic on ivory packaging in reference, no invented readable text. Medium-wide landscape with both people in middle 65 percent for flexible crops; convincing print-workshop setting, not same studio from refs. Natural crisp texture, rich green-black shadows, warm restrained highlights, reference colour grade, no sepia or overdone HDR. Highest native quality 16:9 landscape target 2560x1440 or larger. Exactly two arms per person, natural fingers, no duplicates. No overlaid graphics, no logos, no watermark.",
+      "png": "web/assets/story-brand-handover-v1.png",
+      "webp": "web/assets/story-brand-handover-v1.webp",
+      "status": "used"
+    },
+    {
+      "key": "event-handover",
+      "refs": [
+        "/Users/augustusedem/Calenne/web/assets/event-creative-client.webp",
+        "/Users/augustusedem/Calenne/web/assets/story-event-review-v1.png"
+      ],
+      "prompt": "Use case: identity-preserve. New editorial photo for Caleane's next project-story chapter. Reference images identify Nadia (Black woman with curly hair in high bun, black tailored suit, fine gold earrings) and Amelia (woman with long dark wavy hair, cream knit jumper and beige trousers); preserve their EXACT faces, age, hairstyle and clothing identity. A NEW scene: final venue walkthrough before any guests arrive. A restrained converted industrial event room with tall warehouse windows, long table being set with natural linen, low white floral centrepieces and simple candles. Same two women standing at one end of the table in soft late-afternoon side light, Nadia holds a tablet low in one hand with screen away from camera, points out a seating detail with her other hand; Amelia looks across the table approvingly, one hand lightly on the chair back, other at her side. They are conversing naturally, clear view of both faces; exactly two arms and natural hands. Medium-wide landscape, people positioned center-left and finished table extends to right for crop flexibility. Strong tactile wood, linen and flowers, rich green-black shadows and warm highlights exactly matching original reference, cinematic editorial photography, natural skin texture, highest native detail target 2560x1440 or larger 16:9. No guests or extra people, no floating or duplicated limbs, no text, no logos, no overlaid UI, no watermark. Clearly a different setting and phase from the desk scene.",
+      "png": "web/assets/story-event-handover-v1.png",
+      "webp": "web/assets/story-event-handover-v1.webp",
+      "status": "used"
+    },
+    {
+      "key": "brand-review-v2",
+      "refs": [
+        "/Users/augustusedem/Calenne/web/assets/brand-first-meeting.png",
+        "/Users/augustusedem/Calenne/web/assets/concept-brand.png"
+      ],
+      "prompt": "Use case: identity-preserve. New cinematic editorial photograph extending Sofia and Daniel's Caleane packaging story. Reference images are exact face, clothing and original colour-grade references. Preserve EXACTLY Sofia: woman with dark brown messy bun, loose strands, navy cotton collared shirt and fine gold necklace. Preserve EXACTLY Daniel: middle-aged white man, wavy salt-and-pepper hair, short grey beard, charcoal knit sweater. They sit side by side on the far side of a walnut worktable in the same warmly lit design studio, reviewing the current packaging version on one open laptop. PHYSICAL ORIENTATION IS CRITICAL: the laptop display faces Sofia and Daniel and its dark unbranded BACK faces the camera; the camera must see only the back of the lid and a slim edge of keyboard, never the display contents. Both people look downward toward the display in front of them; Sofia's hand operates the trackpad at her side of the laptop, Daniel holds a small printed ivory-and-navy packaging proof, not pointing to the back of the screen. A larger ivory carton with a navy semicircle, a small navy box and two printed layout versions sit on the near side of the table. A candid medium-wide three-quarter front view captures both recognizable faces, natural focused expressions and the work together. People centrally framed within the middle 65 percent of a landscape 16:9 photograph. Natural window light, original rich green-black shadows and warm restrained highlights, detailed natural skin and fabric, no sepia, no HDR. Exactly two arms each, anatomically correct hands and fingers. Highest native quality; crisp realistic editorial photograph. No readable text, no brand logos, no superimposed UI, no watermark.",
+      "png": "web/assets/story-brand-review-v2.png",
+      "webp": "web/assets/story-brand-review-v2.webp",
+      "status": "used"
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+/* Project workflow surfaces share the Studio Folio document language. */
+.folio-workspace .project-heading{padding:6px 0 27px}
+.folio-workspace .back-link{margin-bottom:27px;font-size:12px;color:#737680}
+.folio-workspace .project-title{align-items:flex-start}
+.folio-workspace .project-title h1{color:#1b1c24;font-weight:550;letter-spacing:-.035em;margin-bottom:11px}
+.folio-workspace .project-title .eyebrow{font-size:10px;letter-spacing:.07em;color:#81838d}
+.folio-workspace .project-title>div>p:last-child{font-size:13px;color:#737680;line-height:1.7}
+.folio-workspace .project-actions{padding-top:8px;flex-wrap:wrap;justify-content:flex-end}
+.folio-workspace .project-tabs{gap:32px;border-color:#e0e1e5;overflow-x:auto}
+.folio-workspace .project-tabs button{padding:17px 0;color:#6c6e79;border-bottom-width:3px;white-space:nowrap}
+.folio-workspace .project-tabs button.active{color:#191a22;border-color:#191a22;font-weight:550}
+.folio-workspace .project-tabs small{border-radius:3px;background:#f0f0f2;padding:2px 5px}
+.folio-workspace .project-body{padding-top:28px;color:#23252d}
+.folio-workspace .project-body .section-title{margin-bottom:24px}
+.folio-workspace .project-body .section-title h2{font-size:25px;font-weight:550;color:#20222a;letter-spacing:-.03em}
+.folio-workspace .project-body .eyebrow{font-size:10px;letter-spacing:.065em;color:#7d808b;margin-bottom:10px}
+.folio-workspace .project-body .button,.folio-workspace .project-actions .button{border-radius:5px;box-shadow:none;font-size:13px;min-height:42px;padding:10px 16px;background:#191b1e;color:white;border-color:#191b1e}
+.folio-workspace .project-body .button.secondary{background:white;color:#242630;border-color:#d9dbe1}
+.folio-workspace .project-body .text-button{font-size:12px;color:#535762}
+.folio-workspace .project-body .button:hover{background:#34373b}
+.folio-workspace .project-body .button.secondary:hover{background:#f5f5f6}
+.folio-workspace .project-body .field>span{font-size:12px;color:#626671}
+.folio-workspace .project-body .field input,.folio-workspace .project-body .field textarea,.folio-workspace .project-body .field select{border-radius:4px;background:white;font-size:14px;border-color:#dfe1e6}
+.folio-workspace .project-body .inline-form{border-radius:4px;background:#fafafb;padding:24px;border-color:#e0e2e7}
+.folio-workspace .project-body .context-note{border-radius:4px;background:#f3f4f5;color:#5f6370;border:1px solid #e5e6e9}
+.folio-workspace .project-body .badge{border-radius:4px;font-size:11px;padding:6px 9px}
+.folio-workspace .project-body .empty{background:white;border:1px dashed #dcdfe4;border-radius:4px;padding:65px 24px}
+.folio-workspace .project-body .empty h3{color:#30333b;font-size:20px}
+.folio-workspace .project-body .detail-layout{grid-template-columns:minmax(0,1fr) 290px;gap:30px}
+.folio-workspace .project-body .brief-idea{background:#fff;border:1px solid #e0e2e7;border-radius:4px;padding:26px}
+.folio-workspace .project-body .brief-idea h3{font-size:12px;color:#747783;font-weight:500}
+.folio-workspace .project-body .brief-idea p{font-size:16px;line-height:1.8;color:#383c47}
+.folio-workspace .project-body .brief-details>div{padding:19px 0}
+.folio-workspace .project-body .brief-details dt{font-size:12px}
+.folio-workspace .project-body .brief-details dd{font-size:13px;color:#3e424c}
+.folio-workspace .project-aside{background:white;border-radius:4px;border-color:#e0e2e7;padding:25px}
+.folio-workspace .project-aside h3{font-size:22px;font-weight:500;color:#30333c;letter-spacing:-.03em}
+.folio-workspace .project-aside dl>div{padding:15px 0;border-color:#eaebee}
+.folio-workspace .project-aside dt,.folio-workspace .project-aside dd{font-size:11px}
+.folio-workspace .project-body .inspiration-grid article{border-radius:4px;border-color:#e0e2e7}
+.folio-workspace .project-body .inspiration-grid h3{font-weight:550;color:#282b34}
+.folio-workspace .project-body .timeline{margin-top:25px;background:#fff;border:1px solid #e0e2e7;border-radius:4px;padding:27px}
+.folio-workspace .project-body .timeline strong{font-size:14px;color:#3c404b}
+.folio-workspace .project-body .timeline p{font-size:11px;color:#838691;line-height:1.7}
+.folio-workspace .folio-project-plan .plan-progress{border-radius:4px;border-color:#e0e2e7;margin:0 0 29px;padding:24px;background:#fff}
+.folio-workspace .folio-project-plan .plan-progress strong{font-size:14px;font-weight:550}
+.folio-workspace .folio-project-plan progress{height:3px;margin-top:22px;accent-color:#24262a}
+.folio-task-heading{display:flex;justify-content:space-between;border-bottom:1px solid #dfe1e6;padding:0 20px 13px;color:#7c808b;font-size:11px}
+.folio-workspace .folio-project-plan .task-list{border:1px solid #e0e2e7;border-top:0;border-radius:0 0 4px 4px;background:white}
+.folio-workspace .folio-project-plan .task-list:empty{display:none}
+.folio-workspace .folio-project-plan .task-list article{border:0;border-bottom:1px solid #eaebef;border-radius:0;margin:0;padding:23px 20px;gap:17px}
+.folio-workspace .folio-project-plan .task-list article:last-child{border-bottom:0}
+.folio-workspace .folio-project-plan .task-check{border-radius:4px;width:23px;height:23px}
+.folio-workspace .folio-project-plan .task-list h3{font-size:14px;font-weight:500;color:#30333d;margin-bottom:9px}
+.folio-workspace .folio-project-plan .task-list p{font-size:11px;gap:8px;color:#858995;line-height:1.6}
+.folio-workspace .folio-project-plan .task-list article.is-complete h3{color:#999ca5}
+.folio-workspace .project-body .version-strip{border-bottom:1px solid #e0e2e7;gap:0;padding:0;margin:0 0 26px}
+.folio-workspace .project-body .version-strip button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:13px 22px 15px 0;margin-right:25px;color:#858893;font-size:13px}
+.folio-workspace .project-body .version-strip button.active{background:none;border-color:#282a32;color:#20222a}
+.folio-workspace .project-body .version-strip small{font-size:10px;font-weight:400;margin-top:7px;color:#92959f}
+.folio-workspace .folio-design-review .design-review-layout{grid-template-columns:minmax(0,1fr) 310px;gap:25px}
+.folio-workspace .folio-design-canvas{min-width:0;border:1px solid #e0e2e7;border-radius:4px;overflow:hidden;background:#fff}
+.folio-workspace .folio-design-review .design-image-wrap{border-radius:0;background:#f4f4f5}
+.folio-workspace .folio-design-review .media-caption{margin:0;padding:16px 18px;border-top:1px solid #e8e9ed;font-size:10px;gap:12px;flex-wrap:wrap}
+.folio-workspace .folio-design-review .media-caption .text-button{font-size:11px}
+.folio-workspace .folio-design-review .design-decision{border-radius:4px;padding:25px;border-color:#e0e2e7}
+.folio-workspace .folio-design-review .design-decision h2{font-size:25px;line-height:1.25;font-weight:550;letter-spacing:-.035em;margin:23px 0 17px}
+.folio-workspace .folio-design-review .design-decision p{font-size:13px;line-height:1.8;color:#717580}
+.folio-workspace .folio-design-review .approval-record{border-radius:4px;background:#f3f5f3;padding:18px;border:1px solid #e1e7e1}
+.folio-workspace .folio-design-review .design-no-image{border-radius:0;background:#f4f4f5;padding:35px;color:#42464f}
+.folio-workspace .folio-design-review .design-pin{background:#262930;border-radius:50%;width:28px;height:28px}
+.folio-workspace .folio-design-review .design-pin.resolved{background:#7d877f}
+.folio-workspace .folio-design-review .design-feedback{border-radius:4px;margin-top:25px;padding:25px;border-color:#e0e2e7}
+.folio-workspace .folio-design-review .design-feedback>h3{font-size:17px;font-weight:550;margin:0 0 24px;letter-spacing:-.02em}
+.folio-workspace .folio-design-review .count-pill{background:#f0f1f3;border-radius:4px;color:#858994;font-size:10px;padding:4px 7px;font-weight:400}
+.folio-workspace .folio-design-review .feedback-grid{gap:32px}
+.folio-workspace .folio-design-review .feedback-comment:first-child{padding-top:0}
+.folio-workspace .folio-design-review .feedback-comment p{font-size:13px;line-height:1.75;color:#555a65;overflow-wrap:anywhere}
+.folio-workspace .folio-design-review .feedback-comment header strong{font-weight:550}
+.folio-workspace .folio-design-review .feedback-comment header small{font-size:10px;color:#9699a3}
+.folio-workspace .folio-design-review .comparison>article{border-radius:4px;padding:22px;border-color:#e0e2e7;min-width:0}
+.folio-workspace .folio-design-review .comparison h3{font-weight:550}
+.folio-workspace .folio-estimates>p.muted{font-size:12px;max-width:660px;line-height:1.8;margin:0 0 22px;color:#858994}
+.folio-workspace .folio-estimates .estimate-document{border-radius:4px;padding:36px 38px;border-color:#e0e2e7;box-shadow:0 3px 12px #10182003}
+.folio-workspace .folio-estimates .estimate-document header h2{font-size:29px;font-weight:550;letter-spacing:-.035em;color:#252831;margin:17px 0 12px}
+.folio-workspace .folio-estimates .estimate-document header p{font-size:12px;color:#878b95}
+.folio-workspace .folio-estimates .estimate-document header .eyebrow{color:#505561}
+.folio-workspace .folio-estimates .estimate-table>div{padding:22px 0;border-color:#eceef1;font-size:13px;gap:18px}
+.folio-workspace .folio-estimates .estimate-table-head{font-size:10px!important;color:#90949e;text-transform:uppercase;letter-spacing:.05em}
+.folio-workspace .folio-estimates .estimate-table strong{font-weight:500;overflow-wrap:anywhere;line-height:1.6}
+.folio-workspace .folio-estimates .estimate-table>div>span{font-variant-numeric:tabular-nums;color:#676c77;overflow-wrap:anywhere}
+.folio-workspace .folio-estimates .estimate-totals{margin-top:26px;color:#676c77}
+.folio-workspace .folio-estimates .estimate-totals>div:last-child{color:#20242c;font-size:20px;letter-spacing:-.02em}
+.folio-workspace .folio-estimates .estimate-note{border-radius:3px;background:#f8f8f9;padding:19px;font-size:12px;color:#7b808b;line-height:1.8}
+.folio-workspace .folio-estimates .estimate-document>footer{border-top:1px solid #eceef1;padding-top:20px;font-size:10px;color:#9498a2}
+.folio-workspace .project-body :is(button,a,input,textarea,select):focus-visible{outline:2px solid #727887;outline-offset:3px}
+@media(max-width:1100px){.folio-workspace .folio-design-review .design-review-layout{grid-template-columns:minmax(0,1fr) 270px;gap:20px}.folio-workspace .project-body .detail-layout{grid-template-columns:minmax(0,1fr) 250px;gap:24px}}
+@media(max-width:900px){.folio-workspace .folio-design-review .design-review-layout,.folio-workspace .project-body .detail-layout{grid-template-columns:1fr}.folio-workspace .folio-design-review .design-decision{max-width:none}}
+@media(max-width:760px){.folio-workspace .project-heading{padding-top:0;padding-bottom:22px}.folio-workspace .project-title{flex-direction:column;gap:17px}.folio-workspace .project-actions{justify-content:flex-start;padding-top:0}.folio-workspace .project-title>div>p:last-child{font-size:12px}.folio-workspace .project-title>div>p:last-child span{margin:0 5px}.folio-workspace .project-tabs{gap:25px}.folio-workspace .project-tabs button{font-size:12px}.folio-workspace .project-body .section-title h2{font-size:23px}.folio-workspace .project-body .section-title .actions{gap:9px;flex-wrap:wrap}.folio-workspace .project-body .button{font-size:12px;padding:10px 13px}.folio-workspace .project-body .field input,.folio-workspace .project-body .field textarea,.folio-workspace .project-body .field select{font-size:16px}.folio-workspace .project-body .inline-form{padding:19px}.folio-workspace .folio-project-plan .plan-progress{padding:19px}.folio-workspace .folio-project-plan .task-list article{padding:20px 15px;gap:12px}.folio-workspace .folio-design-review .design-feedback,.folio-workspace .folio-design-review .design-decision{padding:20px}.folio-workspace .folio-design-review .feedback-grid,.folio-workspace .folio-design-review .comparison{grid-template-columns:1fr}.folio-workspace .project-body .version-strip button{padding-right:10px;margin-right:20px}.folio-workspace .folio-estimates .estimate-document{padding:22px 17px}.folio-workspace .folio-estimates .estimate-document header h2{font-size:25px}.folio-workspace .folio-estimates .estimate-table>div{grid-template-columns:minmax(0,1fr) 23px 61px 69px;gap:8px;font-size:11px;padding:18px 0}.folio-workspace .folio-estimates .estimate-table-head{font-size:8px!important}.folio-workspace .folio-estimates .estimate-line{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 30px;gap:10px;border-bottom:1px solid #e5e7eb;margin-bottom:20px;padding-bottom:10px}.folio-workspace .folio-estimates .estimate-line>.field:first-child{grid-column:1/-1}.folio-workspace .folio-estimates .estimate-line .field input{width:100%;min-width:0}.folio-workspace .folio-estimates .estimate-totals{width:100%;max-width:300px}.folio-workspace .project-body .timeline{padding:22px 18px}}
+@media print{.folio-workspace .folio-estimates .estimate-document{padding:0;border:0;box-shadow:none}.folio-workspace .folio-estimates .version-strip{display:none}.folio-workspace .folio-estimates .estimate-table>div{grid-template-columns:minmax(0,1fr) 45px 100px 110px;font-size:12px}.folio-workspace .folio-estimates .estimate-document>header{display:flex}}

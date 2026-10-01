@@ -1,0 +1,11 @@
+# Calenne preview deployment
+
+The gated fictional-data preview is at <https://calenne-web-production.up.railway.app>. It runs in the `calenne-preview` project under the signed-in Railway `No Spoilers` workspace. Project ID: `e03e3300-0137-40a5-8f88-d819d821cc42`; service ID: `34329b07-b814-41dd-9dd9-b43beee5076a` (`calenne-web`). This deployment is a local-source upload from this directory, not a GitHub-connected deployment. Local changes do not reach the preview until a new upload.
+
+The service builds with `Dockerfile` and runs one Node process with a persistent volume mounted at `/data`. Its variables are `APP_ORIGIN=https://calenne-web-production.up.railway.app`, `HOST=0.0.0.0`, `PORT=4320`, `DATABASE_PATH=/data/workspace.sqlite`, `WORKSPACE_DEMO=1`, `PREVIEW_ACCESS_USER`, and `PREVIEW_ACCESS_PASS`. Keep the access password in Railway's secret variables; do not commit it or include it in this document. The deployed demo data is independent of the local `data/workspace.sqlite` file.
+
+The preview was verified on 29 September 2026: the latest deployment succeeded, anonymous `/` returned 401, authenticated `/` and its assets returned 200, `/api/health` returned 200, and the seeded fictional invoice remained after redeployment. The sample deposit invoice `INV-2026-0001` has a fictional £400 owner-recorded payment and £600 outstanding. No real payment took place. The screen uses the earlier `Calenne.` wordmark and the narrow dark sidebar with an inset line on the selected item.
+
+For a later update, install a current official Railway CLI, check `railway status` from this directory, run `npm test` and `npm run build`, then `railway up --ci`. The locally installed `/usr/local/bin/railway` was v4.5.3 on 29 September 2026 and too old to create a project in this account; the preview was deployed with official Railway CLI v5.62.1. Keep `data/` excluded from uploads. If `railway status` does not show `calenne-preview`, link the project ID above, its `production` environment and the `calenne-web` service before deploying, and inspect its variables and volume first.
+
+This is a demo preview. No live Stripe or PayPal collection, provider reconciliation, outbound email, account recovery or operational backup/restore check has been completed. Do not route real clients to it yet.

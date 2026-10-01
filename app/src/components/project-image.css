@@ -1,0 +1,51 @@
+/* The page owns the frame dimensions. The shared component owns its contents,
+   so image classes such as display:block cannot undo placeholder alignment. */
+.studio-image-placeholder{
+  position:relative;
+  display:block;
+  width:100%;
+  height:auto;
+  aspect-ratio:1.65;
+  box-sizing:border-box;
+  overflow:hidden;
+  container-type:inline-size;
+  background:var(--studio-surface);
+  color:var(--studio-muted);
+}
+.studio-image-placeholder>.studio-image-placeholder-content{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-width:0;
+  padding:16px;
+  box-sizing:border-box;
+  text-align:center;
+}
+.studio-image-placeholder-content>svg{width:28px;height:28px;flex:none}
+.studio-image-placeholder-content>.studio-image-placeholder-label{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+  max-width:100%;
+  margin:0;
+  font-size:13px;
+  font-weight:400;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+.studio-image-placeholder[data-compact]>.studio-image-placeholder-content{padding:6px;gap:0}
+.studio-image-placeholder[data-compact]>.studio-image-placeholder-content>svg{width:22px;height:22px}
+/* Protect small frames even if a future caller omits the compact variant. */
+@container (max-width:120px){
+  .studio-image-placeholder>.studio-image-placeholder-content{padding:6px;gap:0}
+  .studio-image-placeholder-content>.studio-image-placeholder-label{display:none}
+  .studio-image-placeholder-content>svg{width:22px;height:22px}
+}
+.studio-project-photo>.studio-image-placeholder,
+.studio-day-photo>.studio-image-placeholder{height:100%;aspect-ratio:auto}
+.studio-receipt-layout>div>.studio-image-placeholder{max-height:400px}

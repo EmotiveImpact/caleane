@@ -1,0 +1,73 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {createWorkspace} from '../server.mjs';
+import {validateIntakeQuestions,captureIntakeAnswers} from '../intake-questions.mjs';
+
+test('published forms preserve versions, private drafts, tenant boundaries and connected enquiry records',async()=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-forms-'));
+ const origin='http://127.0.0.1:4320',app=await createWorkspace({dbFile:path.join(dir,'db.sqlite'),origin,demo:true});
+ await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${app.server.address().port}`,cookies={};
+ async function call(route,method='GET',body,actor='owner',extra={}){const r=await fetch(base+route,{method,headers:{Origin:origin,...(body?{'Content-Type':'application/json'}:{}),...(cookies[actor]?{Cookie:cookies[actor]}:{}),...extra},body:body?JSON.stringify(body):undefined});if(r.headers.get('set-cookie')&&actor)cookies[actor]=r.headers.get('set-cookie').split(';')[0];return {status:r.status,data:r.headers.get('content-type')?.includes('application/json')?await r.json():await r.text(),headers:r.headers};}
+ try{
+  await call('/api/login','POST',{email:'studio@example.test',password:'StudioDemo2026!'});
+  await call('/api/login','POST',{email:'amelia@example.test',password:'StudioDemo2026!'},'client');
+  const studio=(await call('/api/me')).data.studios[0],q='?studio='+studio.id;
+  assert.equal((await call('/api/forms'+q,'GET',null,'client')).status,403);
+  assert.equal((await call('/api/forms'+q,'GET',null,'')).status,401);
+  const originalEnquiry={name:'Before builder',email:'before-builder@example.test',occasion:'A custom website project'};
+  assert.equal((await call('/api/public/nay-decor/enquiries','POST',originalEnquiry,'',{'Idempotency-Key':'pre-builder'})).status,201);
+  const imported=(await call('/api/forms'+q)).data.forms[0];assert.equal(imported.slug,'enquiry');assert.equal(imported.status,'published');
+  assert.equal((await call('/api/public/nay-decor/enquiries','POST',originalEnquiry,'',{'Idempotency-Key':'pre-builder'})).status,200);
+  assert.equal((await call('/api/public/nay-decor/enquiries','POST',{...originalEnquiry,name:'Changed'},'',{'Idempotency-Key':'pre-builder'})).status,409);
+  assert.equal((await call('/api/public/nay-decor/enquiries','POST',{...originalEnquiry,email:'legacy-after-builder@example.test'},'',{'Idempotency-Key':'legacy-after-builder'})).status,201);
+  const definition={...imported.definition,name:'Wedding enquiry',title:'Tell us about your wedding',consentText:'I understand this is an enquiry.',fields:{...imported.definition.fields,budget:false},questions:[{id:'q-setting',label:'What setting?',type:'choice',required:true,options:['Inside','Outside']},{id:'q-weather',label:'Weather arrangements?',type:'long',required:true,options:[],showWhen:{questionId:'q-setting',equals:'Outside'}},{id:'q-support',label:'What support?',type:'multi',required:true,options:['Flowers','Tables','Lighting']},{id:'q-guests',label:'How many guests?',type:'number',required:false,options:[]}]};
+  let form=(await call('/api/forms'+q,'POST',{slug:'wedding-enquiry',definition})).data.form;
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry','GET',null,'')).status,410);
+  assert.equal((await call('/api/forms'+q,'POST',{slug:'wedding-enquiry',definition})).status,409);
+  assert.equal((await call('/api/forms/'+form.id+q,'POST',{action:'publish',revision:0})).status,409);
+  form=(await call('/api/forms/'+form.id+q,'POST',{action:'publish',revision:form.revision})).data.form;
+  const live=(await call('/api/public/nay-decor/forms/wedding-enquiry','GET',null,'')).data.form;assert.equal(live.version,1);
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry','GET',null,'',{Origin:'https://unconnected.test'})).status,403);
+  const preflight=await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','OPTIONS',null,'');assert.equal(preflight.status,204);assert.equal(preflight.headers.get('access-control-allow-origin'),origin);
+  const page=await call('/intake/nay-decor/wedding-enquiry','GET',null,'');assert.equal(page.status,200);assert.match(page.headers.get('content-security-policy'),/frame-ancestors 'self'/);
+  const changed={...form.definition,title:'A private draft title',questions:form.definition.questions.map(v=>v.id==='q-guests'?{...v,label:'Guest count'}:v)};
+  form=(await call('/api/forms/'+form.id+q,'POST',{action:'save',revision:form.revision,definition:changed})).data.form;assert.equal(form.hasUnpublishedChanges,true);
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry','GET',null,'')).data.form.definition.title,definition.title);
+  const body={formVersion:1,name:'=QA Client',email:'forms-qa@example.test',occasion:definition.projectTypes[0],vision:'An intimate day',budget:'Should be cleared',consent:true,intakeAnswers:{'q-setting':'Inside','q-weather':'Hidden stale value','q-support':['Tables','Flowers'],'q-guests':'75'}},headers={'Idempotency-Key':'forms-test-1'};
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,consent:false},'',headers)).status,400);
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,formVersion:0},'',headers)).status,409);
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,intakeAnswers:{...body.intakeAnswers,'q-setting':'Outside','q-weather':''}},'',headers)).status,400);
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,intakeAnswers:{...body.intakeAnswers,'q-support':['Invalid']}},'',headers)).status,400);
+  const submitted=await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',body,'',headers);assert.equal(submitted.status,201);
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',body,'',headers)).status,200);
+  const response=(await call('/api/forms/'+form.id+'/responses'+q)).data.responses[0];assert.equal(response.snapshot.brief.budget,'');assert.equal(response.snapshot.brief.intakeAnswers[1].applicable,false);assert.deepEqual(response.snapshot.brief.intakeAnswers[2].value,['Flowers','Tables']);
+  const project=(await call('/api/projects'+q)).data.projects.find(p=>p.id===response.projectId);assert.ok(project);assert.equal(project.intakeSource.version,1);
+  assert.ok(app.db.prepare('SELECT id FROM clients WHERE id=? AND studio_id=?').get(response.clientId,studio.id));assert.equal(app.db.prepare('SELECT source FROM crm_opportunities WHERE studio_id=? AND project_id=?').get(studio.id,project.id).source,'Form: Wedding enquiry');
+  const edited=await call('/api/projects/'+project.id+'/brief'+q,'POST',{revision:project.briefRevision,brief:{...project.brief,intakeAnswers:project.brief.intakeAnswers.map(a=>({id:a.id,value:a.id==='q-support'?['Lighting']:a.value}))}});assert.equal(edited.status,200);assert.deepEqual(edited.data.project.brief.intakeAnswers[2].value,['Lighting']);
+  assert.deepEqual((await call('/api/forms/'+form.id+'/responses'+q)).data.responses[0].snapshot.brief.intakeAnswers[2].value,['Flowers','Tables']);
+  form=(await call('/api/forms/'+form.id+q,'POST',{action:'publish',revision:form.revision})).data.form;assert.equal(form.publishedVersion,2);
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',body,'',{'Idempotency-Key':'new-stale'})).status,409);
+  form=(await call('/api/forms/'+form.id+q,'POST',{action:'pause',revision:form.revision})).data.form;
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',body,'',headers)).status,200);
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,name:'Changed'},'',headers)).status,409);
+  assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,formVersion:2},'',{'Idempotency-Key':'paused-new'})).status,410);
+  const csv=await call('/api/forms/'+form.id+'/export'+q);assert.equal(csv.status,200);assert.match(csv.data,/"'=QA Client"/);assert.match(csv.data,/How many guests/);assert.doesNotMatch(csv.data,/Guest count/);
+  assert.equal((await call('/api/forms/'+form.id+'/responses'+q,'GET',null,'client')).status,403);
+  const exported=(await call('/api/studio-export'+q)).data;assert.equal(exported.records.enquiry_form_responses.length,2);
+  await call('/api/signup','POST',{name:'Other Owner',studio:'Other Studio',slug:'other-forms',email:'other-forms@example.test',password:'OtherStudio2026!'},'other');
+  const other=(await call('/api/me','GET',null,'other')).data.studios[0];assert.equal((await call('/api/forms/'+form.id+'/responses?studio='+other.id,'GET',null,'other')).status,404);
+  assert.equal((await call('/api/forms/'+form.id+'?studio='+other.id,'POST',{action:'pause',revision:form.revision},'other')).status,404);
+  form=(await call('/api/forms/'+form.id+q,'POST',{action:'archive',revision:form.revision})).data.form;assert.equal(form.status,'archived');assert.equal((await call('/api/forms/'+form.id+'/responses'+q)).data.responses.length,1);
+  form=(await call('/api/forms/'+form.id+q,'POST',{action:'restore',revision:form.revision})).data.form;assert.equal(form.status,'paused');assert.equal((await call('/api/forms/'+form.id+q,'POST',{action:'resume',revision:form.revision})).status,200);
+ }finally{await new Promise(resolve=>app.server.close(resolve));app.db.close();await rm(dir,{recursive:true,force:true});}
+});
+test('typed custom answers validate values and clear a hidden multi-choice answer',()=>{
+ const questions=validateIntakeQuestions([{id:'q-first',label:'Is this relevant?',type:'choice',required:true,options:['Yes','No']},{id:'q-multi',label:'Choose two details',type:'multi',required:true,options:['First','Second'],showWhen:{questionId:'q-first',equals:'Yes'}},{id:'q-date',label:'What is the date?',type:'date',required:false,options:[]},{id:'q-email',label:'Another contact email',type:'email',required:false,options:[]},{id:'q-link',label:'Your website link',type:'url',required:false,options:[]}]);
+ const answers=captureIntakeAnswers({'q-first':'No','q-multi':['First']},questions);assert.deepEqual(answers[1].value,[]);assert.equal(answers[1].applicable,false);
+ for(const [field,value] of [['q-date','2026-02-30'],['q-email','bad'],['q-link','javascript:alert(1)']])assert.throws(()=>captureIntakeAnswers({'q-first':'No',[field]:value},questions));
+ assert.throws(()=>captureIntakeAnswers({'q-first':'Yes','q-multi':['First','First']},questions));
+ assert.throws(()=>captureIntakeAnswers({'q-first':'No','q-unknown':''},questions));
+});

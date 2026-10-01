@@ -1,0 +1,2082 @@
+{
+  "inputs": {
+    "node_modules/react/cjs/react.production.js": {
+      "bytes": 18040,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/react/index.js": {
+      "bytes": 186,
+      "imports": [
+        {
+          "path": "node_modules/react/cjs/react.production.js",
+          "kind": "require-call",
+          "original": "./cjs/react.production.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/react-dom/cjs/react-dom.production.js": {
+      "bytes": 7326,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "require-call",
+          "original": "react"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/react-dom/index.js": {
+      "bytes": 1359,
+      "imports": [
+        {
+          "path": "node_modules/react-dom/cjs/react-dom.production.js",
+          "kind": "require-call",
+          "original": "./cjs/react-dom.production.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/@radix-ui/primitive/dist/index.mjs": {
+      "bytes": 1997,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/react/cjs/react-jsx-runtime.production.js": {
+      "bytes": 976,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/react/jsx-runtime.js": {
+      "bytes": 210,
+      "imports": [
+        {
+          "path": "node_modules/react/cjs/react-jsx-runtime.production.js",
+          "kind": "require-call",
+          "original": "./cjs/react-jsx-runtime.production.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/@radix-ui/react-context/dist/index.mjs": {
+      "bytes": 4295,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-compose-refs/dist/index.mjs": {
+      "bytes": 1218,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-slot/dist/index.mjs": {
+      "bytes": 6208,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-collection/dist/index.mjs": {
+      "bytes": 18151,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-slot/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-slot"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-slot/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-slot"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        },
+        {
+          "path": "<runtime>",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs": {
+      "bytes": 227,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-id/dist/index.mjs": {
+      "bytes": 678,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-primitive/dist/index.mjs": {
+      "bytes": 1317,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-dom/index.js",
+          "kind": "import-statement",
+          "original": "react-dom"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-slot/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-slot"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs": {
+      "bytes": 529,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/primitive/dist/internal/is-development.false.mjs": {
+      "bytes": 147,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-use-effect-event/dist/index.mjs": {
+      "bytes": 1044,
+      "imports": [
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs": {
+      "bytes": 5355,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/internal/is-development.false.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive/is-development"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/internal/is-development.false.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive/is-development"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-effect-event/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-effect-event"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-direction/dist/index.mjs": {
+      "bytes": 793,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-use-is-hydrated/dist/index.mjs": {
+      "bytes": 1112,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-roving-focus/dist/index.mjs": {
+      "bytes": 10304,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-collection/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-collection"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-id/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-id"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-callback-ref"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-controllable-state"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-direction/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-direction"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-is-hydrated/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-is-hydrated"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-presence/dist/index.mjs": {
+      "bytes": 6624,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-tabs/dist/index.mjs": {
+      "bytes": 6977,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-roving-focus/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-roving-focus"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-presence/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-presence"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-roving-focus/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-roving-focus"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-direction/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-direction"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-controllable-state"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-id/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-id"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs": {
+      "bytes": 14955,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-callback-ref"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-focus-scope/dist/index.mjs": {
+      "bytes": 9372,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-callback-ref"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-portal/dist/index.mjs": {
+      "bytes": 998,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-dom/index.js",
+          "kind": "import-statement",
+          "original": "react-dom"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-focus-guards/dist/index.mjs": {
+      "bytes": 1488,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/tslib/tslib.es6.mjs": {
+      "bytes": 17648,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll-bar/dist/es2015/constants.js": {
+      "bytes": 375,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/use-callback-ref/dist/es2015/assignRef.js": {
+      "bytes": 556,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/use-callback-ref/dist/es2015/useRef.js": {
+      "bytes": 1211,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-callback-ref/dist/es2015/createRef.js": {
+      "bytes": 549,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/use-callback-ref/dist/es2015/mergeRef.js": {
+      "bytes": 735,
+      "imports": [
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/assignRef.js",
+          "kind": "import-statement",
+          "original": "./assignRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/createRef.js",
+          "kind": "import-statement",
+          "original": "./createRef"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-callback-ref/dist/es2015/useMergeRef.js": {
+      "bytes": 1782,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/assignRef.js",
+          "kind": "import-statement",
+          "original": "./assignRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/useRef.js",
+          "kind": "import-statement",
+          "original": "./useRef"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-callback-ref/dist/es2015/useTransformRef.js": {
+      "bytes": 725,
+      "imports": [
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/assignRef.js",
+          "kind": "import-statement",
+          "original": "./assignRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/useRef.js",
+          "kind": "import-statement",
+          "original": "./useRef"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-callback-ref/dist/es2015/transformRef.js": {
+      "bytes": 449,
+      "imports": [
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/assignRef.js",
+          "kind": "import-statement",
+          "original": "./assignRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/createRef.js",
+          "kind": "import-statement",
+          "original": "./createRef"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-callback-ref/dist/es2015/refToCallback.js": {
+      "bytes": 1233,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/use-callback-ref/dist/es2015/index.js": {
+      "bytes": 449,
+      "imports": [
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/assignRef.js",
+          "kind": "import-statement",
+          "original": "./assignRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/useRef.js",
+          "kind": "import-statement",
+          "original": "./useRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/createRef.js",
+          "kind": "import-statement",
+          "original": "./createRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/mergeRef.js",
+          "kind": "import-statement",
+          "original": "./mergeRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/useMergeRef.js",
+          "kind": "import-statement",
+          "original": "./useMergeRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/useTransformRef.js",
+          "kind": "import-statement",
+          "original": "./useTransformRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/transformRef.js",
+          "kind": "import-statement",
+          "original": "./transformRef"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/refToCallback.js",
+          "kind": "import-statement",
+          "original": "./refToCallback"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/detect-node-es/esm/browser.js": {
+      "bytes": 30,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/use-sidecar/dist/es2015/env.js": {
+      "bytes": 106,
+      "imports": [
+        {
+          "path": "node_modules/detect-node-es/esm/browser.js",
+          "kind": "import-statement",
+          "original": "detect-node-es"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-sidecar/dist/es2015/hook.js": {
+      "bytes": 1790,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/env.js",
+          "kind": "import-statement",
+          "original": "./env"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-sidecar/dist/es2015/hoc.js": {
+      "bytes": 599,
+      "imports": [
+        {
+          "path": "node_modules/tslib/tslib.es6.mjs",
+          "kind": "import-statement",
+          "original": "tslib"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/hook.js",
+          "kind": "import-statement",
+          "original": "./hook"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-sidecar/dist/es2015/config.js": {
+      "bytes": 158,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/use-sidecar/dist/es2015/medium.js": {
+      "bytes": 2579,
+      "imports": [
+        {
+          "path": "node_modules/tslib/tslib.es6.mjs",
+          "kind": "import-statement",
+          "original": "tslib"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-sidecar/dist/es2015/renderProp.js": {
+      "bytes": 1592,
+      "imports": [
+        {
+          "path": "node_modules/tslib/tslib.es6.mjs",
+          "kind": "import-statement",
+          "original": "tslib"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-sidecar/dist/es2015/exports.js": {
+      "bytes": 597,
+      "imports": [
+        {
+          "path": "node_modules/tslib/tslib.es6.mjs",
+          "kind": "import-statement",
+          "original": "tslib"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/use-sidecar/dist/es2015/index.js": {
+      "bytes": 255,
+      "imports": [
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/hoc.js",
+          "kind": "import-statement",
+          "original": "./hoc"
+        },
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/hook.js",
+          "kind": "import-statement",
+          "original": "./hook"
+        },
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/config.js",
+          "kind": "import-statement",
+          "original": "./config"
+        },
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/medium.js",
+          "kind": "import-statement",
+          "original": "./medium"
+        },
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/renderProp.js",
+          "kind": "import-statement",
+          "original": "./renderProp"
+        },
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/exports.js",
+          "kind": "import-statement",
+          "original": "./exports"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll/dist/es2015/medium.js": {
+      "bytes": 97,
+      "imports": [
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "use-sidecar"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll/dist/es2015/UI.js": {
+      "bytes": 2240,
+      "imports": [
+        {
+          "path": "node_modules/tslib/tslib.es6.mjs",
+          "kind": "import-statement",
+          "original": "tslib"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-remove-scroll-bar/dist/es2015/constants.js",
+          "kind": "import-statement",
+          "original": "react-remove-scroll-bar/constants"
+        },
+        {
+          "path": "node_modules/use-callback-ref/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "use-callback-ref"
+        },
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/medium.js",
+          "kind": "import-statement",
+          "original": "./medium"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/get-nonce/dist/es2015/index.js": {
+      "bytes": 300,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/react-style-singleton/dist/es2015/singleton.js": {
+      "bytes": 1286,
+      "imports": [
+        {
+          "path": "node_modules/get-nonce/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "get-nonce"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-style-singleton/dist/es2015/hook.js": {
+      "bytes": 630,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-style-singleton/dist/es2015/singleton.js",
+          "kind": "import-statement",
+          "original": "./singleton"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-style-singleton/dist/es2015/component.js": {
+      "bytes": 602,
+      "imports": [
+        {
+          "path": "node_modules/react-style-singleton/dist/es2015/hook.js",
+          "kind": "import-statement",
+          "original": "./hook"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-style-singleton/dist/es2015/index.js": {
+      "bytes": 142,
+      "imports": [
+        {
+          "path": "node_modules/react-style-singleton/dist/es2015/component.js",
+          "kind": "import-statement",
+          "original": "./component"
+        },
+        {
+          "path": "node_modules/react-style-singleton/dist/es2015/singleton.js",
+          "kind": "import-statement",
+          "original": "./singleton"
+        },
+        {
+          "path": "node_modules/react-style-singleton/dist/es2015/hook.js",
+          "kind": "import-statement",
+          "original": "./hook"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll-bar/dist/es2015/utils.js": {
+      "bytes": 998,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll-bar/dist/es2015/component.js": {
+      "bytes": 3395,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-style-singleton/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "react-style-singleton"
+        },
+        {
+          "path": "node_modules/react-remove-scroll-bar/dist/es2015/constants.js",
+          "kind": "import-statement",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/react-remove-scroll-bar/dist/es2015/utils.js",
+          "kind": "import-statement",
+          "original": "./utils"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll-bar/dist/es2015/index.js": {
+      "bytes": 332,
+      "imports": [
+        {
+          "path": "node_modules/react-remove-scroll-bar/dist/es2015/component.js",
+          "kind": "import-statement",
+          "original": "./component"
+        },
+        {
+          "path": "node_modules/react-remove-scroll-bar/dist/es2015/constants.js",
+          "kind": "import-statement",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/react-remove-scroll-bar/dist/es2015/utils.js",
+          "kind": "import-statement",
+          "original": "./utils"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js": {
+      "bytes": 568,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll/dist/es2015/handleScroll.js": {
+      "bytes": 4519,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll/dist/es2015/SideEffect.js": {
+      "bytes": 8000,
+      "imports": [
+        {
+          "path": "node_modules/tslib/tslib.es6.mjs",
+          "kind": "import-statement",
+          "original": "tslib"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-remove-scroll-bar/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "react-remove-scroll-bar"
+        },
+        {
+          "path": "node_modules/react-style-singleton/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "react-style-singleton"
+        },
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js",
+          "kind": "import-statement",
+          "original": "./aggresiveCapture"
+        },
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/handleScroll.js",
+          "kind": "import-statement",
+          "original": "./handleScroll"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll/dist/es2015/sidecar.js": {
+      "bytes": 197,
+      "imports": [
+        {
+          "path": "node_modules/use-sidecar/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "use-sidecar"
+        },
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/SideEffect.js",
+          "kind": "import-statement",
+          "original": "./SideEffect"
+        },
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/medium.js",
+          "kind": "import-statement",
+          "original": "./medium"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll/dist/es2015/Combination.js": {
+      "bytes": 392,
+      "imports": [
+        {
+          "path": "node_modules/tslib/tslib.es6.mjs",
+          "kind": "import-statement",
+          "original": "tslib"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/UI.js",
+          "kind": "import-statement",
+          "original": "./UI"
+        },
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/sidecar.js",
+          "kind": "import-statement",
+          "original": "./sidecar"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/react-remove-scroll/dist/es2015/index.js": {
+      "bytes": 67,
+      "imports": [
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/Combination.js",
+          "kind": "import-statement",
+          "original": "./Combination"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/aria-hidden/dist/es2015/index.js": {
+      "bytes": 6871,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-dialog/dist/index.mjs": {
+      "bytes": 12961,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-id/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-id"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-controllable-state"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-dismissable-layer"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-focus-scope/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-focus-scope"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-portal/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-portal"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-presence/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-presence"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-focus-guards/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-focus-guards"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        },
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "react-remove-scroll"
+        },
+        {
+          "path": "node_modules/aria-hidden/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "aria-hidden"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-slot/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-slot"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs": {
+      "bytes": 4435,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/@floating-ui/core/dist/floating-ui.core.mjs": {
+      "bytes": 36290,
+      "imports": [
+        {
+          "path": "node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs",
+          "kind": "import-statement",
+          "original": "@floating-ui/utils"
+        },
+        {
+          "path": "node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs",
+          "kind": "import-statement",
+          "original": "@floating-ui/utils"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs": {
+      "bytes": 5818,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs": {
+      "bytes": 27950,
+      "imports": [
+        {
+          "path": "node_modules/@floating-ui/core/dist/floating-ui.core.mjs",
+          "kind": "import-statement",
+          "original": "@floating-ui/core"
+        },
+        {
+          "path": "node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs",
+          "kind": "import-statement",
+          "original": "@floating-ui/utils"
+        },
+        {
+          "path": "node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs",
+          "kind": "import-statement",
+          "original": "@floating-ui/utils/dom"
+        },
+        {
+          "path": "node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs",
+          "kind": "import-statement",
+          "original": "@floating-ui/utils/dom"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs": {
+      "bytes": 11185,
+      "imports": [
+        {
+          "path": "node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs",
+          "kind": "import-statement",
+          "original": "@floating-ui/dom"
+        },
+        {
+          "path": "node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs",
+          "kind": "import-statement",
+          "original": "@floating-ui/dom"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-dom/index.js",
+          "kind": "import-statement",
+          "original": "react-dom"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-arrow/dist/index.mjs": {
+      "bytes": 884,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-use-size/dist/index.mjs": {
+      "bytes": 1429,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-popper/dist/index.mjs": {
+      "bytes": 13825,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs",
+          "kind": "import-statement",
+          "original": "@floating-ui/react-dom"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-arrow/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-arrow"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-callback-ref"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-size/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-size"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-popover/dist/index.mjs": {
+      "bytes": 12766,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-dismissable-layer"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-focus-guards/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-focus-guards"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-focus-scope/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-focus-scope"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-id/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-id"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-popper/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-popper"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-popper/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-popper"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-portal/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-portal"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-presence/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-presence"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-slot/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-slot"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-controllable-state"
+        },
+        {
+          "path": "node_modules/aria-hidden/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "aria-hidden"
+        },
+        {
+          "path": "node_modules/react-remove-scroll/dist/es2015/index.js",
+          "kind": "import-statement",
+          "original": "react-remove-scroll"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-toggle/dist/index.mjs": {
+      "bytes": 1381,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-controllable-state"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-toggle-group/dist/index.mjs": {
+      "bytes": 7060,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-roving-focus/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-roving-focus"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-roving-focus/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-roving-focus"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-toggle/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-toggle"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-controllable-state"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-direction/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-direction"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-collapsible/dist/index.mjs": {
+      "bytes": 5958,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-controllable-state"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-layout-effect"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-presence/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-presence"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-id/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-id"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/number/dist/index.mjs": {
+      "bytes": 310,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-use-previous/dist/index.mjs": {
+      "bytes": 576,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/@radix-ui/react-slider/dist/index.mjs": {
+      "bytes": 25883,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/@radix-ui/number/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/number"
+        },
+        {
+          "path": "node_modules/@radix-ui/primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-compose-refs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-compose-refs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-context/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-context"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-controllable-state"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-direction/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-direction"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-previous/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-previous"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-use-size/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-use-size"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-primitive/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-primitive"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-collection/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-collection"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/scheduler/cjs/scheduler.production.js": {
+      "bytes": 10181,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/scheduler/index.js": {
+      "bytes": 194,
+      "imports": [
+        {
+          "path": "node_modules/scheduler/cjs/scheduler.production.js",
+          "kind": "require-call",
+          "original": "./cjs/scheduler.production.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/react-dom/cjs/react-dom-client.production.js": {
+      "bytes": 625168,
+      "imports": [
+        {
+          "path": "node_modules/scheduler/index.js",
+          "kind": "require-call",
+          "original": "scheduler"
+        },
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "require-call",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-dom/index.js",
+          "kind": "require-call",
+          "original": "react-dom"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/react-dom/client.js": {
+      "bytes": 1373,
+      "imports": [
+        {
+          "path": "node_modules/react-dom/cjs/react-dom-client.production.js",
+          "kind": "require-call",
+          "original": "./cjs/react-dom-client.production.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "ui/markup.jsx": {
+      "bytes": 2503,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-dom/client.js",
+          "kind": "import-statement",
+          "original": "react-dom/client"
+        },
+        {
+          "path": "node_modules/react-dom/index.js",
+          "kind": "import-statement",
+          "original": "react-dom"
+        }
+      ],
+      "format": "esm"
+    },
+    "ui/website-ui.jsx": {
+      "bytes": 12001,
+      "imports": [
+        {
+          "path": "node_modules/react/index.js",
+          "kind": "import-statement",
+          "original": "react"
+        },
+        {
+          "path": "node_modules/react-dom/index.js",
+          "kind": "import-statement",
+          "original": "react-dom"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-tabs/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-tabs"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-dialog/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-dialog"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-popover/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-popover"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-toggle-group/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-toggle-group"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-collapsible/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-collapsible"
+        },
+        {
+          "path": "node_modules/@radix-ui/react-slider/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "@radix-ui/react-slider"
+        },
+        {
+          "path": "ui/markup.jsx",
+          "kind": "import-statement",
+          "original": "./markup.jsx"
+        },
+        {
+          "path": "node_modules/react/jsx-runtime.js",
+          "kind": "import-statement",
+          "original": "react/jsx-runtime"
+        }
+      ],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    "assets/website-ui.js.LEGAL.txt": {
+      "imports": [],
+      "exports": [],
+      "inputs": {},
+      "bytes": 1528
+    },
+    "assets/website-ui.js": {
+      "imports": [],
+      "exports": [],
+      "entryPoint": "ui/website-ui.jsx",
+      "inputs": {
+        "node_modules/react/cjs/react.production.js": {
+          "bytesInOutput": 7969
+        },
+        "node_modules/react/index.js": {
+          "bytesInOutput": 50
+        },
+        "node_modules/react-dom/cjs/react-dom.production.js": {
+          "bytesInOutput": 3665
+        },
+        "node_modules/react-dom/index.js": {
+          "bytesInOutput": 253
+        },
+        "node_modules/react/cjs/react-jsx-runtime.production.js": {
+          "bytesInOutput": 364
+        },
+        "node_modules/react/jsx-runtime.js": {
+          "bytesInOutput": 51
+        },
+        "node_modules/scheduler/cjs/scheduler.production.js": {
+          "bytesInOutput": 3662
+        },
+        "node_modules/scheduler/index.js": {
+          "bytesInOutput": 51
+        },
+        "node_modules/react-dom/cjs/react-dom-client.production.js": {
+          "bytesInOutput": 205309
+        },
+        "node_modules/react-dom/client.js": {
+          "bytesInOutput": 253
+        },
+        "ui/website-ui.jsx": {
+          "bytesInOutput": 7367
+        },
+        "node_modules/@radix-ui/react-tabs/dist/index.mjs": {
+          "bytesInOutput": 2347
+        },
+        "node_modules/@radix-ui/primitive/dist/index.mjs": {
+          "bytesInOutput": 955
+        },
+        "node_modules/@radix-ui/react-context/dist/index.mjs": {
+          "bytesInOutput": 1735
+        },
+        "node_modules/@radix-ui/react-roving-focus/dist/index.mjs": {
+          "bytesInOutput": 3700
+        },
+        "node_modules/@radix-ui/react-collection/dist/index.mjs": {
+          "bytesInOutput": 7234
+        },
+        "node_modules/@radix-ui/react-compose-refs/dist/index.mjs": {
+          "bytesInOutput": 482
+        },
+        "node_modules/@radix-ui/react-slot/dist/index.mjs": {
+          "bytesInOutput": 2429
+        },
+        "node_modules/@radix-ui/react-id/dist/index.mjs": {
+          "bytesInOutput": 270
+        },
+        "node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs": {
+          "bytesInOutput": 66
+        },
+        "node_modules/@radix-ui/react-primitive/dist/index.mjs": {
+          "bytesInOutput": 572
+        },
+        "node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs": {
+          "bytesInOutput": 234
+        },
+        "node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs": {
+          "bytesInOutput": 2065
+        },
+        "node_modules/@radix-ui/primitive/dist/internal/is-development.false.mjs": {
+          "bytesInOutput": 10
+        },
+        "node_modules/@radix-ui/react-use-effect-event/dist/index.mjs": {
+          "bytesInOutput": 467
+        },
+        "node_modules/@radix-ui/react-direction/dist/index.mjs": {
+          "bytesInOutput": 211
+        },
+        "node_modules/@radix-ui/react-use-is-hydrated/dist/index.mjs": {
+          "bytesInOutput": 426
+        },
+        "node_modules/@radix-ui/react-presence/dist/index.mjs": {
+          "bytesInOutput": 2706
+        },
+        "node_modules/@radix-ui/react-dialog/dist/index.mjs": {
+          "bytesInOutput": 4391
+        },
+        "node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs": {
+          "bytesInOutput": 5313
+        },
+        "node_modules/@radix-ui/react-focus-scope/dist/index.mjs": {
+          "bytesInOutput": 3688
+        },
+        "node_modules/@radix-ui/react-portal/dist/index.mjs": {
+          "bytesInOutput": 332
+        },
+        "node_modules/@radix-ui/react-focus-guards/dist/index.mjs": {
+          "bytesInOutput": 784
+        },
+        "node_modules/tslib/tslib.es6.mjs": {
+          "bytesInOutput": 747
+        },
+        "node_modules/react-remove-scroll/dist/es2015/Combination.js": {
+          "bytesInOutput": 145
+        },
+        "node_modules/react-remove-scroll/dist/es2015/UI.js": {
+          "bytesInOutput": 977
+        },
+        "node_modules/react-remove-scroll-bar/dist/es2015/constants.js": {
+          "bytesInOutput": 129
+        },
+        "node_modules/use-callback-ref/dist/es2015/assignRef.js": {
+          "bytesInOutput": 69
+        },
+        "node_modules/use-callback-ref/dist/es2015/useRef.js": {
+          "bytesInOutput": 229
+        },
+        "node_modules/use-callback-ref/dist/es2015/useMergeRef.js": {
+          "bytesInOutput": 372
+        },
+        "node_modules/use-callback-ref/dist/es2015/index.js": {
+          "bytesInOutput": 0
+        },
+        "node_modules/use-sidecar/dist/es2015/medium.js": {
+          "bytesInOutput": 847
+        },
+        "node_modules/use-sidecar/dist/es2015/index.js": {
+          "bytesInOutput": 0
+        },
+        "node_modules/use-sidecar/dist/es2015/exports.js": {
+          "bytesInOutput": 323
+        },
+        "node_modules/react-remove-scroll/dist/es2015/medium.js": {
+          "bytesInOutput": 12
+        },
+        "node_modules/react-remove-scroll/dist/es2015/SideEffect.js": {
+          "bytesInOutput": 3330
+        },
+        "node_modules/react-remove-scroll-bar/dist/es2015/component.js": {
+          "bytesInOutput": 1583
+        },
+        "node_modules/react-style-singleton/dist/es2015/hook.js": {
+          "bytesInOutput": 138
+        },
+        "node_modules/get-nonce/dist/es2015/index.js": {
+          "bytesInOutput": 99
+        },
+        "node_modules/react-style-singleton/dist/es2015/singleton.js": {
+          "bytesInOutput": 509
+        },
+        "node_modules/react-style-singleton/dist/es2015/component.js": {
+          "bytesInOutput": 100
+        },
+        "node_modules/react-style-singleton/dist/es2015/index.js": {
+          "bytesInOutput": 0
+        },
+        "node_modules/react-remove-scroll-bar/dist/es2015/utils.js": {
+          "bytesInOutput": 517
+        },
+        "node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js": {
+          "bytesInOutput": 228
+        },
+        "node_modules/react-remove-scroll/dist/es2015/handleScroll.js": {
+          "bytesInOutput": 1242
+        },
+        "node_modules/react-remove-scroll/dist/es2015/sidecar.js": {
+          "bytesInOutput": 17
+        },
+        "node_modules/aria-hidden/dist/es2015/index.js": {
+          "bytesInOutput": 1490
+        },
+        "node_modules/@radix-ui/react-popover/dist/index.mjs": {
+          "bytesInOutput": 4173
+        },
+        "node_modules/@radix-ui/react-popper/dist/index.mjs": {
+          "bytesInOutput": 3905
+        },
+        "node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs": {
+          "bytesInOutput": 1582
+        },
+        "node_modules/@floating-ui/core/dist/floating-ui.core.mjs": {
+          "bytesInOutput": 7952
+        },
+        "node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs": {
+          "bytesInOutput": 2306
+        },
+        "node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs": {
+          "bytesInOutput": 7152
+        },
+        "node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs": {
+          "bytesInOutput": 3229
+        },
+        "node_modules/@radix-ui/react-use-size/dist/index.mjs": {
+          "bytesInOutput": 550
+        },
+        "node_modules/@radix-ui/react-toggle-group/dist/index.mjs": {
+          "bytesInOutput": 2394
+        },
+        "node_modules/@radix-ui/react-toggle/dist/index.mjs": {
+          "bytesInOutput": 459
+        },
+        "node_modules/@radix-ui/react-collapsible/dist/index.mjs": {
+          "bytesInOutput": 2270
+        },
+        "node_modules/@radix-ui/react-slider/dist/index.mjs": {
+          "bytesInOutput": 9544
+        },
+        "node_modules/@radix-ui/number/dist/index.mjs": {
+          "bytesInOutput": 147
+        },
+        "node_modules/@radix-ui/react-use-previous/dist/index.mjs": {
+          "bytesInOutput": 288
+        },
+        "ui/markup.jsx": {
+          "bytesInOutput": 1457
+        }
+      },
+      "bytes": 330910
+    }
+  }
+}

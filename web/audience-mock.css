@@ -1,0 +1,7 @@
+.concept-bar{position:fixed;z-index:200;bottom:18px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:24px;padding:13px 18px;background:#f7f8f2;color:#202326;border:1px solid #b7bebb;box-shadow:0 4px 24px #0003;font:400 12px var(--cal-font);white-space:nowrap}
+.concept-bar a{text-decoration:underline;text-underline-offset:4px;color:inherit}
+.relationship-media img{object-position:65% center}
+.decision-stage img{object-position:65% center}
+.studios .studio-grid #brands img{object-position:68% center}
+.closing-image{object-position:65% center}
+@media(max-width:600px){.concept-bar{bottom:10px;gap:16px;font-size:10px;padding:11px 13px}.relationship-media img,.decision-stage img{object-position:68% center}.closing-image{object-position:67% center}}

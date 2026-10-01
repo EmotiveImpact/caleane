@@ -1,0 +1,178 @@
+[
+  {
+    "page": "index.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 2
+  },
+  {
+    "page": "audience-mock.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 2
+  },
+  {
+    "page": "platform.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 1
+  },
+  {
+    "page": "studios.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "how-it-works.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "stories.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "event-story.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "interior-story.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "brand-story.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "client-relationships.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "shared-briefs.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "design-reviews.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "approvals.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "studio-operations.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "pricing.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "pricing-research.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "trust.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 1
+  },
+  {
+    "page": "learn.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "about.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "contact.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "get-started.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 0
+  },
+  {
+    "page": "design-reference.html",
+    "background": "rgb(6, 9, 8)",
+    "header": 1,
+    "library": "radix",
+    "overflow": false,
+    "tabs": 1
+  }
+]

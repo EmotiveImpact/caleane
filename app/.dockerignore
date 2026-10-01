@@ -1,0 +1,9 @@
+node_modules
+dist
+data
+docs
+test
+*.md
+.env*
+.git
+.railway

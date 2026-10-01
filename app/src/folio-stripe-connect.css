@@ -1,0 +1,19 @@
+.folio-settings-page .stripe-connect-settings{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.76fr);gap:38px;align-items:start;max-width:1260px;margin:22px 0 0;padding:30px;background:#fff;border:1px solid #e0e1e5;border-radius:4px}
+.folio-settings-page .stripe-connect-intro .eyebrow{font-size:10px;letter-spacing:.11em;color:#777983;margin:0 0 15px}
+.folio-settings-page .stripe-connect-intro h2{font-size:25px;font-weight:550;letter-spacing:-.035em;line-height:1.2;color:#24252d;margin:0 0 14px}
+.folio-settings-page .stripe-connect-intro>p:last-child{max-width:470px;color:#6e707a;font-size:13px;line-height:1.7;margin:0}
+.folio-settings-page .stripe-connect-control{border-left:1px solid #e4e5e8;padding-left:32px;min-height:135px}
+.folio-settings-page .stripe-connect-control h3{font-size:16px;font-weight:550;letter-spacing:-.02em;margin:11px 0 8px}
+.folio-settings-page .stripe-connect-control p{font-size:12px;line-height:1.65;color:#666b74;margin:10px 0 15px}
+.folio-settings-page .stripe-connect-control .stripe-connect-status{margin:0}
+.folio-settings-page .stripe-connect-tag{display:inline-flex;border:1px solid #dfe1e4;background:#f6f6f7;padding:5px 9px;font-size:10px;font-weight:550;letter-spacing:.035em;color:#555b62}
+.folio-settings-page .stripe-connect-country{display:block;max-width:290px;margin:18px 0 8px;color:#50525e;font-size:11px;font-weight:600}
+.folio-settings-page .stripe-connect-country select{display:block;width:100%;min-height:42px;margin-top:8px;padding:9px 11px;border:1px solid #dcdde2;border-radius:4px;background:#fbfbfc;color:#22242d;font:inherit;font-size:13px}
+.folio-settings-page .stripe-connect-country select:disabled{opacity:.65}
+.folio-settings-page .stripe-connect-control small{display:block;color:#878993;font-size:10px;line-height:1.5;margin:0 0 14px}
+.folio-settings-page .stripe-connect-primary{display:inline-flex;gap:10px;align-items:center;justify-content:center;min-height:43px;margin:12px 12px 0 0;padding:10px 16px;border:1px solid #191a1c;border-radius:4px;background:#191a1c;color:#fff;font-size:12px;font-weight:550;cursor:pointer}
+.folio-settings-page .stripe-connect-refresh{display:inline-flex;gap:7px;align-items:center;margin:12px 0 0;padding:10px 0;border:0;background:none;color:#4d535b;font-size:11px;cursor:pointer}
+.folio-settings-page .stripe-connect-primary:disabled,.folio-settings-page .stripe-connect-refresh:disabled{opacity:.5;cursor:not-allowed}
+.folio-settings-page .stripe-connect-control .stripe-connect-error{color:#8b3d3d;margin:16px 0 0}
+@media(max-width:900px){.folio-settings-page .stripe-connect-settings{grid-template-columns:1fr;gap:22px}.folio-settings-page .stripe-connect-control{border-left:0;border-top:1px solid #e4e5e8;padding:22px 0 0}}
+@media(max-width:640px){.folio-settings-page .stripe-connect-settings{padding:22px}.folio-settings-page .stripe-connect-primary{width:100%;margin-right:0}.folio-settings-page .stripe-connect-refresh{display:flex}}

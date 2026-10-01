@@ -1,0 +1,165 @@
+/* Shared Caleane white workspace with a charcoal sidebar. Document paper and artwork retain their colours. */
+:root{--studio-paper:#fff;--studio-surface:#f7f7f6;--studio-ink:#202326;--studio-muted:#6e7274;--studio-rule:#e2e2df;--studio-accent:#202326;--studio-accent-hover:color-mix(in srgb,var(--studio-accent) 82%,#000);--studio-accent-soft:color-mix(in srgb,var(--studio-accent) 8%,#fff);--studio-stone:var(--studio-accent);--folio-content-ink:var(--studio-ink);--folio-content-muted:var(--studio-muted);--folio-content-rule:var(--studio-rule);--folio-ink:var(--studio-ink);--folio-border:var(--studio-rule);--folio-muted:var(--studio-muted)}
+body:has(.folio-workspace){background:var(--studio-paper);color:var(--studio-ink);color-scheme:light}
+.app:has(.folio-workspace){background:var(--studio-paper);--ae-accent:var(--studio-accent);--ae-soft:var(--studio-accent-soft)}
+.workspace.folio-workspace{background:var(--studio-paper)}
+body:has(.folio-workspace) .folio-rail{background:#101113;color:#f0eee9}
+body:has(.folio-workspace) .folio-rail nav button.active,body:has(.folio-workspace) .folio-settings.active{background:#ffffff0c;color:#fff}
+body:has(.folio-workspace) .folio-rail nav button.active:before{background:#fff}
+.folio-workspace>.topbar{height:64px;min-height:64px;border-bottom:1px solid var(--studio-rule);background:var(--studio-paper)}
+.folio-workspace>.workspace-body{padding-top:26px}
+.folio-workspace :is(.studio-page-heading,.page-heading,.project-title,.ws-heading) h1{font-size:32px!important;line-height:1.15!important;font-weight:600!important}
+.folio-workspace .project-heading{padding-top:20px;padding-bottom:16px}.folio-workspace .back-link{margin-bottom:12px}.folio-workspace .project-title h1{margin-bottom:6px}.folio-workspace .project-tabs{border-color:var(--studio-rule);gap:24px}.folio-workspace .project-tabs button{padding-top:14px;padding-bottom:14px;color:var(--studio-muted)}.folio-workspace .project-tabs button[data-state=active]{color:var(--studio-accent);border-color:var(--studio-accent)}
+body:has(.folio-workspace) :is(.modal,.search-dialog,.notification-popover,.folio-account-menu){background:var(--studio-paper);color:var(--studio-ink);border-color:var(--studio-rule);color-scheme:light}
+body:has(.folio-workspace) :is(input,textarea,select){color:var(--studio-ink);background:var(--studio-surface);border-color:transparent;color-scheme:light;caret-color:var(--studio-accent)}
+body:has(.folio-workspace) :is(input,textarea)::placeholder{color:#797a73;opacity:1}
+body:has(.folio-workspace) :is(button,a,input[type=checkbox],input[type=radio]):focus-visible{outline:2px solid var(--studio-accent)!important;outline-offset:3px}
+.folio-workspace :is(.text-button,.journey-link,.back-link,.muted,.eyebrow,.field>span,.field>label){color:var(--studio-muted)}
+.folio-workspace :is(.button,.journey-primary,.crm-primary,.task-primary){background:var(--studio-accent);color:#fff;border-color:transparent}
+.folio-workspace :is(.button.secondary,.journey-outline,.crm-secondary){background:var(--studio-surface);color:var(--studio-ink);border-color:transparent}
+.folio-workspace :is(.button,.journey-primary,.crm-primary,.task-primary):hover{background:var(--studio-accent-hover);color:#fff}
+.folio-workspace :is(.button.secondary,.journey-outline,.crm-secondary):hover{background:#ebeded;color:var(--studio-ink)}
+.folio-workspace :is(.badge,.studio-status,.studio-count,.studio-avatar,.avatar,.demo-tag,.folio-stage,.journey-status){background:#eceeed;color:#555b5e;border-color:transparent}
+.folio-workspace :is(.badge.approved,.badge.complete,.studio-status.is-approved){background:#e1e6dc;color:#46583f}
+.folio-workspace :is(.studio-status.is-changes,.badge.changes-requested){background:#eee3d2;color:#72532d}
+.folio-workspace :is(.studio-tabs button,.studio-display-controls button,.studio-display-controls select){color:var(--studio-muted)}
+.folio-workspace :is(.studio-tabs button.active,.studio-tabs button[aria-pressed=true]){color:var(--studio-accent);border-bottom-color:var(--studio-accent)}
+.folio-workspace .studio-tabs button span{background:#eceeed;color:var(--studio-muted)}
+.folio-workspace :is(.studio-project-photo,.studio-image-placeholder){background:var(--studio-surface);color:var(--studio-muted)}
+.folio-workspace :is(.studio-attention-item,.studio-review-preview,.studio-client-preview,.studio-review-row,.studio-project-list-row,.studio-brief-list>button){background:transparent;border-color:var(--studio-rule);color:var(--studio-ink)}
+.folio-workspace :is(.studio-review-row.is-selected,.studio-client-row.is-selected,.studio-client-row.active){background:#f1f1ef;color:var(--studio-ink)}
+.folio-workspace :is(.studio-attention-item:hover,.studio-project-list-row:hover,.studio-client-row:hover,.studio-review-row:hover){background:var(--studio-surface)}
+.folio-workspace :is(.studio-attention-item b,.studio-attention-symbol){background:#eceeed;color:#555b5e}
+.folio-workspace :is(.studio-review-preview dd,.studio-client-preview dd){color:var(--studio-ink)}
+.folio-workspace :is(.studio-decision-row,.studio-attention,.studio-review-preview,.studio-client-preview,.studio-tabs,.studio-decisions,.studio-section-heading){border-color:var(--studio-rule)}
+/* Existing task workspace shares the same surfaces. */
+.folio-workspace .task-workspace{--task-line:var(--studio-rule);--task-muted:var(--studio-muted)}
+.folio-workspace .task-filters button{color:var(--studio-muted)}.folio-workspace .task-filters button[aria-pressed=true]{color:var(--studio-accent);border-bottom-color:var(--studio-accent)}
+.folio-workspace .task-ledger-row.is-selected{background:var(--studio-accent-soft)}.folio-workspace .task-owner i,.folio-workspace .task-group-icon{background:#eceeed;color:#666b6e}
+.folio-workspace :is(.task-tools select,.task-ledger-row time,.task-row-status,.task-detail-fields label>span,.task-discussion-link button){color:var(--studio-muted)}
+.folio-workspace .task-ledger-row time.is-overdue{color:#96503a}.folio-workspace .task-detail :is(input,textarea,select){background:var(--studio-surface);color:var(--studio-ink)}
+.folio-workspace .task-ledger-row>input{accent-color:var(--studio-accent)}
+/* Neutral legacy work surfaces across the remaining routes. */
+.folio-workspace :is(.crm-lane,.crm-stat-strip,.crm-segmented,.crm-inspector,.crm-create-dialog,.folio-panel,.panel,.delivery-editor,.journey-card,.context-note,.notice,.folio-crm-summary,.empty,.folio-agenda-row,.folio-connection){background:var(--studio-surface);border-color:var(--studio-rule);color:var(--studio-ink)}
+.folio-workspace :is(.crm-opportunity,.crm-opportunity-card,.crm-card){background:var(--studio-surface);border-color:var(--studio-rule);color:var(--studio-ink)}
+.folio-workspace :is(.crm-stat-strip strong,.crm-opportunity strong,.crm-inspector h2,.crm-inspector strong,.journey-title,.delivery-section h3){color:var(--studio-ink)}
+.folio-workspace :is(.crm-segmented button,.crm-search,.crm-toolbar,.crm-stat-strip span){color:var(--studio-muted)}
+.folio-workspace .crm-segmented button[aria-pressed=true]{background:var(--studio-accent-soft);color:var(--studio-accent)}
+.folio-workspace :is(.alert,.task-error,.crm-alert){background:#f1e3db;color:#874d36}
+@media(max-width:700px){.folio-workspace>.workspace-body{padding-top:22px}.folio-workspace :is(.studio-page-heading,.page-heading,.project-title,.ws-heading) h1{font-size:28px!important}}
+body:has(.folio-workspace) .folio-workspace>.topbar :is(.topbar-current,.topbar-crumb,.topbar-studio,.text-button,.topbar-actions button){color:var(--studio-muted)}
+body:has(.folio-workspace) .folio-workspace>.topbar .topbar-current{color:var(--studio-ink)}
+body:has(.folio-workspace) .folio-workspace>.topbar .demo-tag{background:#eceeed;color:var(--studio-muted)}
+.folio-workspace .project-title>div>p:last-child{color:var(--studio-muted)}
+.studio-day-project-grid{align-items:start}.studio-day-project-grid>button{display:block;align-self:start}
+body:has(.folio-workspace) .folio-workspace>.topbar .topbar-create .button{color:#fff}
+body:has(.folio-workspace) :is(.modal-dialog,.folio-modal) .button:not(.secondary){background:var(--studio-accent);color:#fff}
+body:has(.folio-workspace) :is(.modal-dialog,.folio-modal) .button:not(.secondary):hover{background:var(--studio-accent-hover)}
+body:has(.folio-workspace) .studio-setup-actions .button{background:var(--studio-accent);color:#fff}
+.folio-workspace .studio-billing{color:var(--studio-ink)}
+.folio-workspace .studio-billing :is(strong,.studio-billing-head h1){color:var(--studio-ink)!important}
+.folio-workspace .studio-billing :is(p,small,time,.studio-billing-overview span,.studio-billing-filters button){color:var(--studio-muted)}
+.folio-workspace .studio-billing-filters button[aria-pressed=true]{color:var(--studio-accent);border-color:var(--studio-accent)}
+.folio-workspace .studio-billing-ledger>button{color:var(--studio-ink);border-color:var(--studio-rule)}
+.folio-workspace .studio-billing-ledger>button:hover{background:var(--studio-surface)}
+.folio-workspace .studio-billing :is(.studio-billing-overview,.studio-billing-overview>div,.studio-billing-filters,.studio-billing-note){border-color:var(--studio-rule)}
+.folio-workspace .folio-settings-page{color:var(--studio-ink)}
+.folio-workspace .folio-settings-page :is(.settings-layout>form,.settings-layout>.connection,.stripe-connect-settings,.studio-identity-preview){background:var(--studio-surface);color:var(--studio-ink);border-color:var(--studio-rule)}
+.folio-workspace .folio-settings-page :is(.field span,.connection p,.connection small,.stripe-connect-settings p,.stripe-connect-refresh){color:var(--studio-muted)}
+.folio-workspace .folio-settings-page :is(.connection h2,.connection h3,.connection a,.stripe-connect-settings h2){color:var(--studio-ink)}
+.folio-workspace .folio-settings-page :is(.field input,.field textarea,.field select,.connection pre,.connection code){background:var(--studio-paper);color:var(--studio-ink)}
+.folio-workspace .folio-settings-page .connection .button{background:var(--studio-paper);color:var(--studio-ink)}
+.folio-workspace .folio-settings-page .settings-layout>form>.button{background:var(--studio-accent);color:#fff}
+body:has(.folio-workspace) .task-create{--task-muted:var(--studio-muted)}
+body:has(.folio-workspace) .task-create :is(input,textarea,select){background:var(--studio-surface);color:var(--studio-ink)}
+body:has(.folio-workspace) .task-create label{color:var(--studio-muted)}
+
+/* Document and settings additions use the same light studio controls. */
+.folio-workspace .doc-primary{background:var(--studio-accent);color:#fff}.folio-workspace .doc-primary:hover{background:var(--studio-accent-hover)}.folio-workspace .doc-quiet{color:var(--studio-ink)}.folio-workspace .doc-quiet:hover{background:var(--studio-accent-soft)}.folio-workspace .project-documents>.contract-document-bar{background:transparent;padding:12px 0}.folio-workspace .project-documents>.contract-document-bar h2{margin:0;font-size:23px}.data-governance-settings{margin-top:40px;padding-top:24px;border-top:1px solid var(--studio-rule);max-width:1000px}.data-governance-settings h3{margin-top:28px;font-size:17px}.data-governance-settings p{font-size:13px;line-height:1.6;max-width:720px}.data-governance-settings .field{max-width:620px}
+
+/* Shared accent on pages with older, local colour rules. */
+.folio-workspace .crm-stage-summary.selected{color:var(--studio-accent);border-bottom-color:var(--studio-accent);background:var(--studio-accent-soft)}
+.folio-workspace .crm-stage-summary:focus-visible{outline-color:var(--studio-accent)}
+.folio-workspace :is(.crm-search,.crm-view-switch,.crm-stage-summary,.crm-table-head){background:var(--studio-surface)}
+.folio-workspace .relationship-filters button.active{color:var(--studio-accent);border-color:var(--studio-accent)}
+.folio-workspace :is(.relationship-thread.active,.studio-client-directory .studio-client-row.is-selected){background:var(--studio-accent-soft)}
+.folio-workspace .project-chat .project-talk-composer footer button{background:var(--studio-accent);color:#fff}
+.folio-workspace .project-chat .project-talk-composer footer button:hover{background:var(--studio-accent-hover)}
+.folio-workspace .folio-calendar-days>button>span.today{background:var(--studio-accent);color:#fff}
+.folio-workspace .folio-calendar-days>button.selected{background:var(--studio-accent-soft);box-shadow:inset 0 0 0 1px var(--studio-accent)}
+.folio-workspace .folio-calendar-days small:not(.is-task):not(.folio-more-dates){background:var(--studio-accent-soft);border-left-color:var(--studio-accent);color:var(--studio-ink)}
+.folio-workspace .folio-library-filters button[aria-pressed=true]{color:var(--studio-accent);border-color:var(--studio-accent)}
+.folio-workspace .folio-segmented button[aria-pressed=true]{color:var(--studio-accent)}
+.folio-workspace :is(.billing-primary,.studio-setup-choices button.selected){border-color:var(--studio-accent)}
+.folio-workspace .billing-primary{background:var(--studio-accent);color:#fff}
+.folio-workspace .billing-primary:hover{background:var(--studio-accent-hover)}
+.folio-workspace .studio-setup-choices button.selected{background:var(--studio-accent-soft)}
+@media(max-width:1050px){.folio-workspace .crm-stage-summary.selected{box-shadow:inset 0 -3px var(--studio-accent)}}
+
+/* Shared hierarchy: deliberate weight and spacing, preserving the studio palette. */
+.folio-rail-brand{margin-top:6px;margin-bottom:10px}
+.folio-rail nav{gap:2px;margin:8px 0}
+.folio-rail nav button,.folio-rail .folio-settings{min-height:40px;flex-shrink:0;padding:9px 17px;gap:12px;font-size:14px;font-weight:520;line-height:20px}
+.folio-rail nav button.active,.folio-rail .folio-settings.active{font-weight:600}
+.folio-rail nav button svg,.folio-rail .folio-settings svg{width:18px;height:18px;stroke-width:1.7}
+.folio-rail-bottom{padding-top:10px}
+.folio-workspace :is(.task-heading,.studio-billing-head,.crm-heading) h1{font-size:36px;line-height:1.15;font-weight:600;letter-spacing:-.035em}
+.folio-workspace :is(.studio-section-heading,.section-title,.studio-day-rail section) h2{font-size:21px;font-weight:600;line-height:1.3;letter-spacing:-.025em}
+.folio-workspace :is(.studio-page-heading,.page-heading,.task-heading,.studio-billing-head){margin-bottom:24px}
+.folio-workspace :is(.studio-tabs,.project-tabs,.task-filters) button{font-weight:520}
+.folio-workspace :is(.studio-tabs button.active,.project-tabs button[data-state=active],.task-filters button[aria-pressed=true]){font-weight:600}
+.folio-workspace :is(.button,.journey-primary,.journey-outline,.crm-primary,.crm-secondary,.task-primary,.doc-primary){min-height:38px;font-size:13px;font-weight:550;line-height:20px;padding:9px 14px;border-radius:4px}
+.folio-workspace :is(.studio-day-action strong,.studio-project-caption strong,.studio-client-row strong){font-weight:550}
+.folio-workspace .topbar-current{font-weight:550}
+@media(max-width:760px){
+ .folio-rail nav button,.folio-rail .folio-settings{min-height:44px}
+ .folio-workspace :is(.studio-page-heading,.page-heading,.project-title,.task-heading,.studio-billing-head,.crm-heading) h1{font-size:28px!important}
+}
+
+/* One shared header rhythm across the rail and workspace. */
+:root{--folio-topbar-height:72px}
+.folio-rail-brand{height:72px;flex-basis:72px;margin-top:0;margin-bottom:8px;gap:11px;padding-inline:18px}
+.folio-rail-brand .calenne-symbol{width:23px;height:23px}
+.folio-rail-brand .folio-brand-name{font-size:24px;font-weight:550;letter-spacing:-.025em}
+.folio-workspace>.topbar{height:72px;min-height:72px;padding-inline:var(--folio-page-gutter)}
+.folio-workspace>.workspace-body{padding-top:24px;padding-inline:var(--folio-page-gutter)}
+.folio-workspace>.topbar>.topbar-actions{gap:16px}
+.folio-workspace>.topbar :is(.topbar-actions>.text-button,.topbar-create .button){height:32px;min-height:32px;padding-block:6px;line-height:20px}
+@media(max-width:760px){.folio-workspace>.topbar{padding-left:60px;padding-right:20px}.folio-workspace>.topbar>.topbar-actions{gap:10px}}
+
+/* Project navigation: four clear areas, then the relevant working sections. */
+.folio-workspace .project-area-nav{display:flex;align-items:center;gap:28px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--studio-rule);white-space:nowrap}
+.folio-workspace .project-area-nav::-webkit-scrollbar{display:none}
+.folio-workspace .project-area-nav button{position:relative;flex:none;min-height:40px;padding:8px 0;border:0;background:none;color:var(--studio-muted);font:inherit;font-size:13px;font-weight:520;cursor:pointer}
+.folio-workspace .project-area-nav button[aria-current=page]{color:var(--studio-ink);font-weight:600}
+.folio-workspace .project-area-nav button[aria-current=page]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--studio-ink)}
+.folio-workspace .project-tabs{display:flex;gap:24px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;min-width:0}
+.folio-workspace .project-tabs::-webkit-scrollbar{display:none}
+.folio-workspace>.workspace-body .project-tabs button{min-height:42px;padding:10px 0;font-size:13px}
+.folio-workspace .topbar-context{min-width:0;overflow:hidden;white-space:nowrap}
+.folio-workspace .topbar-current{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.folio-workspace>.topbar>.topbar-actions{flex:none}
+@media(max-width:760px){.folio-workspace .project-area-nav{gap:22px}.folio-workspace .project-tabs{gap:20px}}
+@media(max-width:600px){
+ .folio-workspace .project-area-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px;overflow:visible}
+ .folio-workspace .project-area-nav button{text-align:left;min-width:0;white-space:normal;min-height:38px}
+}
+
+/* The brief's side rail shows status and history without a competing card. */
+.folio-workspace .project-body .project-aside{height:fit-content;padding:2px 0 0 24px;border:0;border-left:1px solid var(--studio-rule);background:transparent;color:var(--studio-ink)}
+.folio-workspace .project-aside .brief-aside-intro .eyebrow{margin:0 0 10px;color:var(--studio-muted);font-size:10px;font-weight:600;letter-spacing:.1em}
+.folio-workspace .project-aside .brief-aside-intro h3{margin:0 0 10px;color:var(--studio-ink);font-size:24px;font-weight:600;line-height:1.2;letter-spacing:-.035em}
+.folio-workspace .project-aside .brief-aside-intro>p:last-child{margin:0;color:var(--studio-muted);font-size:13px;line-height:1.55}
+.folio-workspace .project-aside .brief-aside-meta{margin:22px 0 0}
+.folio-workspace .project-aside .brief-aside-meta>div{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid var(--studio-rule);border-bottom:0}
+.folio-workspace .project-aside .brief-aside-meta dt,.folio-workspace .project-aside .brief-aside-meta dd{font-size:12px;line-height:1.45}
+.folio-workspace .project-aside .brief-aside-meta dt{color:var(--studio-muted)}
+.folio-workspace .project-aside .brief-aside-meta dd{color:var(--studio-ink);font-weight:550;text-align:right;white-space:nowrap}
+.folio-workspace .project-aside .brief-aside-stage{padding:18px 0 16px;border-top:1px solid var(--studio-rule)}
+.folio-workspace .project-aside .brief-aside-stage .ws-field{margin:0;min-width:0}
+.folio-workspace .project-aside .brief-aside-stage .ws-field>label{color:var(--studio-muted);font-size:12px;font-weight:400}
+.folio-workspace .project-aside .brief-aside-stage .ws-select{min-height:40px}
+.folio-workspace .project-aside .brief-aside-history{padding:8px 0;color:var(--studio-ink);font-size:12px;font-weight:550;text-align:left}
+.folio-workspace .project-aside .history{max-width:100%;overflow:hidden;overflow-wrap:anywhere}
+.folio-workspace .project-aside .history pre{max-width:100%;overflow:auto}
+@media(max-width:1020px){.folio-workspace .project-body .project-aside{border-left:0;border-top:1px solid var(--studio-rule);padding:24px 0 0}}

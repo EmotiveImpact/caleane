@@ -1,0 +1,33 @@
+/* Accent pigment fades into black at the fourth navigation item. */
+body:has(.folio-workspace) .folio-rail {
+  --rail-fade-end: 254px;
+  isolation: isolate;
+  background: radial-gradient(ellipse 310px var(--rail-fade-end) at 110% 0,
+    color-mix(in srgb, var(--studio-accent) 90%, #fff) 0%,
+    var(--studio-accent) 24%,
+    color-mix(in srgb, var(--studio-accent) 62%, #000) 48%,
+    color-mix(in srgb, var(--studio-accent) 22%, #000) 73%,
+    #000 100%);
+  color: #f0eee9;
+  border-right: 1px solid #ffffff12;
+}
+.folio-rail::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .32;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23000' filter='url(%23grain)' opacity='.65' d='M0 0h160v160H0z'/%3E%3C/svg%3E");
+  mask-image: radial-gradient(ellipse 310px var(--rail-fade-end) at 110% 0, #000 15%, #0009 55%, transparent 100%);
+}
+body:has(.folio-workspace) .folio-rail :is(nav button, .folio-settings, .folio-account-toggle) { color: #f0eee9; }
+body:has(.folio-workspace) .folio-rail :is(nav button, .folio-settings):hover { background: #ffffff0c; color: #f0eee9; }
+body:has(.folio-workspace) .folio-rail :is(nav button.active, .folio-settings.active) { background: #ffffff10; color: #f0eee9; }
+body:has(.folio-workspace) .folio-rail :is(nav button.active, .folio-settings.active)::before { background: #e0e7ea; }
+body:has(.folio-workspace) .folio-rail :is(button, a):focus-visible { outline-color: #fff!important; }
+.folio-rail nav { scrollbar-color: #485052 transparent; }
+.folio-rail-bottom { border-top-color: #ffffff20; }
+.folio-rail .studio-account-label small { color: #aeb8bb; }
+.folio-rail .folio-account-toggle > span:first-child { background: color-mix(in srgb, var(--studio-accent) 45%, #000); color: #f0eee9; border-color: #ffffff25; }
+@media(max-width:760px) { body:has(.folio-workspace) .folio-rail { --rail-fade-end: 270px; } }

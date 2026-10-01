@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="640" viewBox="0 0 1440 640">
+<rect width="1440" height="640" fill="#f0f0ef"/>
+<style>text{font-family:Arial,Helvetica,sans-serif}.small{font-size:12px}.tiny{font-size:10px}.heading{font-size:22px;font-weight:600}.strong{font-size:13px;font-weight:600}</style>
+<text x="36" y="42" font-size="23" fill="#202326">Caleane · accent study</text>
+<text x="36" y="64" class="small" fill="#707477">One white canvas, one accent for actions and selection. Status colours stay semantic.</text>
+<g transform="translate(28 94)">
+ <rect width="440" height="512" rx="7" fill="#fff" stroke="#d8d9d9"/>
+ <rect width="82" height="512" rx="7" fill="#101113"/><rect x="76" width="6" height="512" fill="#101113"/>
+ <text x="18" y="37" font-size="19" font-weight="600" fill="#fff">C.</text>
+ <rect x="10" y="91" width="62" height="34" rx="3" fill="#292c2e"/><rect x="12" y="98" width="2" height="20" fill="#fff"/>
+ <text x="24" y="113" class="tiny" fill="#fff">Finance</text>
+ <text x="24" y="155" class="tiny" fill="#b9babc">Clients</text><text x="24" y="193" class="tiny" fill="#b9babc">Tasks</text>
+ <rect x="82" y="0" width="358" height="48" fill="#fff"/><path d="M82 48H440" stroke="#e4e5e5"/>
+ <text x="102" y="29" class="tiny" fill="#777b7e">NAY DÉCOR / FINANCES</text>
+ <text x="104" y="92" class="heading" fill="#202326">Finances</text><text x="104" y="113" class="small" fill="#7a7d80">The work behind the work.</text>
+ <rect x="104" y="145" width="117" height="32" rx="4" fill="#202326"/><text x="122" y="166" class="small" fill="#fff">New invoice</text>
+ <path d="M104 209H417" stroke="#e3e4e4"/><text x="104" y="232" class="small" fill="#202326">All invoices</text><path d="M104 245H172" stroke="#202326" stroke-width="2"/><text x="191" y="232" class="small" fill="#777b7e">Outstanding</text>
+ <rect x="104" y="268" width="313" height="45" rx="3" fill="#f5f5f4"/><text x="118" y="295" class="small" fill="#85888a">Search invoice or client</text>
+ <text x="104" y="353" class="strong" fill="#202326">Amelia’s wedding</text><text x="366" y="353" class="small" fill="#5d6163">£2,400</text><path d="M104 372H417" stroke="#e3e4e4"/>
+ <text x="104" y="405" class="strong" fill="#202326">Private dinner</text><text x="366" y="405" class="small" fill="#5d6163">£1,200</text><path d="M104 424H417" stroke="#e3e4e4"/>
+ <text x="104" y="479" class="tiny" fill="#707477">GRAPHITE  /  #202326</text>
+</g>
+<g transform="translate(500 94)">
+ <rect width="440" height="512" rx="7" fill="#fff" stroke="#d8d9d9"/>
+ <rect width="82" height="512" rx="7" fill="#101113"/><rect x="76" width="6" height="512" fill="#101113"/>
+ <text x="18" y="37" font-size="19" font-weight="600" fill="#fff">C.</text>
+ <rect x="10" y="91" width="62" height="34" rx="3" fill="#273941"/><rect x="12" y="98" width="2" height="20" fill="#46606b"/>
+ <text x="24" y="113" class="tiny" fill="#fff">Finance</text>
+ <text x="24" y="155" class="tiny" fill="#b9babc">Clients</text><text x="24" y="193" class="tiny" fill="#b9babc">Tasks</text>
+ <rect x="82" y="0" width="358" height="48" fill="#fff"/><path d="M82 48H440" stroke="#e4e5e5"/>
+ <text x="102" y="29" class="tiny" fill="#777b7e">NAY DÉCOR / FINANCES</text>
+ <text x="104" y="92" class="heading" fill="#202326">Finances</text><text x="104" y="113" class="small" fill="#7a7d80">The work behind the work.</text>
+ <rect x="104" y="145" width="117" height="32" rx="4" fill="#344e5b"/><text x="122" y="166" class="small" fill="#fff">New invoice</text>
+ <path d="M104 209H417" stroke="#e3e4e4"/><text x="104" y="232" class="small" fill="#344e5b">All invoices</text><path d="M104 245H172" stroke="#344e5b" stroke-width="2"/><text x="191" y="232" class="small" fill="#777b7e">Outstanding</text>
+ <rect x="104" y="268" width="313" height="45" rx="3" fill="#f2f5f6"/><text x="118" y="295" class="small" fill="#85888a">Search invoice or client</text>
+ <text x="104" y="353" class="strong" fill="#202326">Amelia’s wedding</text><text x="366" y="353" class="small" fill="#5d6163">£2,400</text><path d="M104 372H417" stroke="#e3e4e4"/>
+ <text x="104" y="405" class="strong" fill="#202326">Private dinner</text><text x="366" y="405" class="small" fill="#5d6163">£1,200</text><path d="M104 424H417" stroke="#e3e4e4"/>
+ <text x="104" y="479" class="tiny" fill="#707477">DEEP SLATE  /  #344E5B</text>
+</g>
+<g transform="translate(972 94)">
+ <rect width="440" height="512" rx="7" fill="#fff" stroke="#d8d9d9"/>
+ <rect width="82" height="512" rx="7" fill="#101113"/><rect x="76" width="6" height="512" fill="#101113"/>
+ <text x="18" y="37" font-size="19" font-weight="600" fill="#fff">C.</text>
+ <rect x="10" y="91" width="62" height="34" rx="3" fill="#3a3035"/><rect x="12" y="98" width="2" height="20" fill="#604852"/>
+ <text x="24" y="113" class="tiny" fill="#fff">Finance</text>
+ <text x="24" y="155" class="tiny" fill="#b9babc">Clients</text><text x="24" y="193" class="tiny" fill="#b9babc">Tasks</text>
+ <rect x="82" y="0" width="358" height="48" fill="#fff"/><path d="M82 48H440" stroke="#e4e5e5"/>
+ <text x="102" y="29" class="tiny" fill="#777b7e">NAY DÉCOR / FINANCES</text>
+ <text x="104" y="92" class="heading" fill="#202326">Finances</text><text x="104" y="113" class="small" fill="#7a7d80">The work behind the work.</text>
+ <rect x="104" y="145" width="117" height="32" rx="4" fill="#604852"/><text x="122" y="166" class="small" fill="#fff">New invoice</text>
+ <path d="M104 209H417" stroke="#e3e4e4"/><text x="104" y="232" class="small" fill="#604852">All invoices</text><path d="M104 245H172" stroke="#604852" stroke-width="2"/><text x="191" y="232" class="small" fill="#777b7e">Outstanding</text>
+ <rect x="104" y="268" width="313" height="45" rx="3" fill="#f7f3f5"/><text x="118" y="295" class="small" fill="#85888a">Search invoice or client</text>
+ <text x="104" y="353" class="strong" fill="#202326">Amelia’s wedding</text><text x="366" y="353" class="small" fill="#5d6163">£2,400</text><path d="M104 372H417" stroke="#e3e4e4"/>
+ <text x="104" y="405" class="strong" fill="#202326">Private dinner</text><text x="366" y="405" class="small" fill="#5d6163">£1,200</text><path d="M104 424H417" stroke="#e3e4e4"/>
+ <text x="104" y="479" class="tiny" fill="#707477">MULBERRY  /  #604852</text>
+</g>
+</svg>

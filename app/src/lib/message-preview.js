@@ -1,0 +1,2 @@
+export function messagePreview(message){if(!message)return '';const text=message.text?.trim();if(text)return text;const files=message.attachments||[],count=files.length||message.attachmentIds?.length||0;return count===1?'1 attachment'+(files[0]?.name?' · '+files[0].name:''):count>1?count+' attachments':'Message';}
+export function messageSearchText(message){return [message.by,message.text,...(message.attachments||[]).map(file=>file.name)].filter(Boolean).join(' ');}

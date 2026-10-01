@@ -1,0 +1,20 @@
+/* Behaviour comes from Radix; appearance comes from the Caleane reference. */
+.ui-island{display:contents}
+.ui-dialog-overlay{position:fixed;inset:0;z-index:100;background:#000d}
+[data-ui-dialog]{position:fixed;inset:0;z-index:101;outline:none;font-family:var(--site-font)}
+.pl-dialog[data-state=open]{display:flex;flex-direction:column}
+.ui-disclosure-trigger{display:block;width:100%;border:0;border-radius:0;background:none;color:inherit;text-align:left;font:inherit;cursor:pointer}
+.ui-disclosure-trigger:focus-visible{outline:2px solid var(--site-focus);outline-offset:5px}
+.ui-disclosure [data-state=closed][hidden]{display:none}
+.ui-slider{position:relative;display:flex;align-items:center;width:100%;height:28px;margin-top:18px;touch-action:none;user-select:none;cursor:pointer}
+.ui-slider-track{position:relative;flex:1;height:3px;background:#ffffff35;border-radius:2px}
+.ui-slider-range{position:absolute;height:100%;background:var(--site-muted);border-radius:2px}
+.ui-slider-thumb{display:block;width:13px;height:13px;border-radius:50%;background:var(--site-paper);box-shadow:0 0 0 1px #06090850}
+.ui-slider-thumb:focus-visible{outline:2px solid var(--site-focus);outline-offset:5px}
+.ui-mobile-menu{z-index:60;width:100vw;max-height:calc(100dvh - var(--site-header-height));overflow-y:auto;background:var(--site-bg);padding:12px var(--site-gutter) 22px;color:var(--site-paper);font:400 16px/1.4 var(--site-font);outline:none}
+.ui-mobile-menu nav{display:flex;flex-direction:column}
+.ui-mobile-menu a{display:block;padding:14px 0;color:var(--site-muted);text-decoration:none;border-bottom:1px solid var(--site-rule)}
+.ui-mobile-menu a:hover,.ui-mobile-menu a[aria-current]{color:var(--site-paper)}
+.ui-mobile-menu a:focus-visible{outline:2px solid var(--site-focus);outline-offset:5px}
+.cal-home .cal-header[data-menu-open]{background:var(--site-bg)}
+@media(prefers-reduced-motion:reduce){.ui-mobile-menu,[data-ui-dialog]{animation:none;transition:none}}

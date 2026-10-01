@@ -1,0 +1,42 @@
+.folio-finances{border:1px solid #e1e2e7;border-radius:4px;background:#fff;padding:24px;min-width:0;container-type:inline-size}
+.folio-finances-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:24px;border-bottom:1px solid #e7e8eb}
+.folio-finances-heading h2{font-size:23px;line-height:1.2;letter-spacing:-.03em;font-weight:550;margin:0 0 10px;color:#22232d}
+.folio-finances-heading p{margin:0;max-width:54ch;font-size:12px;line-height:1.55;color:#787a85}
+.folio-finances-heading>svg{flex:none;color:#92949d;margin-top:3px}
+.folio-finances-summary{display:grid;grid-template-columns:1fr 1fr minmax(130px,1.4fr);border-bottom:1px solid #e7e8eb;padding:24px 0 27px;gap:18px}
+.folio-finances-summary>div+div{border-left:1px solid #e7e8eb;padding-left:18px}
+.folio-finances-summary span{display:block;font-size:11px;color:#797b86;margin-bottom:12px}
+.folio-finances-summary strong{display:block;font-size:22px;line-height:1.2;letter-spacing:-.03em;color:#252630;font-weight:500}
+.folio-finances-summary>div:last-child strong{font-size:18px;white-space:nowrap}
+.folio-finances-summary>div:last-child strong+strong{margin-top:5px}
+.folio-finances-project{padding-top:28px}
+.folio-finances-project+.folio-finances-project{border-top:1px solid #e7e8eb;margin-top:21px}
+.folio-finances-project-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:17px}
+.folio-finances-project-heading h3{min-width:0;font-size:17px;line-height:1.3;font-weight:550;letter-spacing:-.02em;margin:0;color:#2b2c35}
+.folio-finances-project-heading button,.folio-finances-empty button,.folio-finances-message button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:#4f5260;font-size:11px;white-space:nowrap;padding:4px 0}
+.folio-finances-project-heading button:hover,.folio-finances-empty button:hover,.folio-finances-message button:hover{color:#111216;text-decoration:underline;text-underline-offset:3px}
+.folio-finances-column-head,.folio-finances-row{display:grid;grid-template-columns:minmax(140px,1.4fr) minmax(70px,.7fr) minmax(105px,.85fr) minmax(94px,.8fr);column-gap:10px;align-items:center}
+.folio-finances-column-head{font-size:10px;color:#8c8e98;padding:0 0 9px}
+.folio-finances-row{width:100%;min-height:68px;border:0;border-top:1px solid #ebebee;background:#fff;text-align:left;color:#353640;padding:12px 0;cursor:pointer}
+.folio-finances-row:hover{background:#fafafb}
+.folio-finances-invoice,.folio-finances-amount{min-width:0}
+.folio-finances-invoice strong,.folio-finances-amount{display:block;font-size:12px;font-weight:550;line-height:1.4}
+.folio-finances-invoice small,.folio-finances-amount small{display:block;font-size:10px;color:#858792;font-weight:400;margin-top:4px;line-height:1.3}
+.folio-finances-due{font-size:11px;color:#6f717d;white-space:nowrap}
+.folio-finances-status{font-size:10px;line-height:1.3;color:#555762;background:#f0f1f3;border-radius:3px;padding:5px 6px;width:max-content;max-width:100%}
+.folio-finances-status.is-paid{color:#355348;background:#e9f1ed}
+.folio-finances-status.is-partially-paid{color:#675839;background:#f5f0e5}
+.folio-finances-status.is-cancelled{color:#7d7e86;background:#f1f1f2}
+
+.folio-finances-note{font-size:10px;line-height:1.5;color:#8a8c96;margin:25px 0 0}
+.folio-finances-message{padding:31px 0;font-size:13px;line-height:1.6;color:#777985}
+.folio-finances-message p{margin:0 0 10px}
+.folio-finances-empty{padding:42px 5px 20px;color:#777985}
+.folio-finances-empty>svg{color:#888a94}
+.folio-finances-empty h3{font-size:17px;font-weight:550;color:#2d2e37;margin:16px 0 9px}
+.folio-finances-empty p{font-size:12px;line-height:1.6;max-width:50ch;margin:0 0 14px}
+@container (max-width:600px){.folio-finances-column-head{display:none}.folio-finances-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'invoice amount' 'due status';row-gap:9px;column-gap:8px;min-height:83px}.folio-finances-invoice{grid-area:invoice}.folio-finances-due{grid-area:due}.folio-finances-due::before{content:'Due ';color:#9a9ca5}.folio-finances-amount{grid-area:amount;text-align:right}.folio-finances-status{grid-area:status;justify-self:end}}
+@container (max-width:430px){.folio-finances-summary{grid-template-columns:1fr 1fr;gap:14px}.folio-finances-summary>div:last-child{grid-column:span 2;border-left:0;border-top:1px solid #e7e8eb;padding:14px 0 0}.folio-finances-summary>div:last-child strong{font-size:18px}.folio-finances-project-heading{align-items:flex-start;flex-wrap:wrap}}
+@media(max-width:1250px){.folio-finances-status{font-size:9px}.folio-finances-row{min-height:74px}}
+@media(max-width:760px){.folio-finances{padding:19px}.folio-finances-summary{gap:10px}.folio-finances-summary>div+div{padding-left:10px}.folio-finances-summary strong{font-size:18px}.folio-finances-summary>div:last-child strong{font-size:14px}.folio-finances-project-heading{align-items:flex-start;flex-wrap:wrap}.folio-finances-column-head{display:none}.folio-finances-row{grid-template-columns:1fr auto;grid-template-areas:'invoice amount' 'due status';row-gap:9px;column-gap:8px;min-height:86px}.folio-finances-invoice{grid-area:invoice}.folio-finances-due{grid-area:due}.folio-finances-due::before{content:'Due ';color:#9a9ca5}.folio-finances-amount{grid-area:amount;text-align:right}.folio-finances-status{grid-area:status;justify-self:end}.folio-finances-heading h2{font-size:21px}}
+@media(max-width:420px){.folio-finances-summary{grid-template-columns:1fr 1fr}.folio-finances-summary>div:last-child{grid-column:span 2;border-left:0;border-top:1px solid #e7e8eb;padding:13px 0 0}.folio-finances-summary>div:last-child strong{font-size:18px}.folio-finances-invoice strong,.folio-finances-amount{font-size:11px}.folio-finances-invoice small{font-size:9px}}
