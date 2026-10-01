@@ -2,11 +2,11 @@
 
 A separate app for creative studios and their clients. NAY DÉCOR is its first connected website. The product display name is **Caleane**. Existing folder names, asset paths and environment variables retain the earlier Calenne spelling for compatibility.
 
-The marketing domain is https://caleane.com. The app.caleane.com subdomain is assigned to a separate Vercel project, but the workspace backend is not deployed yet. Keep existing studio website integrations on their current origins until the backend migration and connection tests are complete. See [deployment status](../docs/PRODUCTION-DEPLOYMENT.md).
+The marketing domain is https://caleane.com. Its login links to the hosted Studio/Client demo at https://app.caleane.com/login. The demo uses fictional seed data and visitor-owned browser snapshots; it does not contain the local database or offer real customer accounts. Keep existing studio website integrations on their current origins until the production backend migration and connection tests are complete. See [deployment status](../docs/PRODUCTION-DEPLOYMENT.md).
 
 ## Website and workspace
 
-The [Caleane marketing website](https://caleane.com) is live on Vercel as a labelled, `noindex` sample preview. It does not host the multi-user workspace. Its hosted calls to action stay with the sample workflow. The product workspace runs locally from this directory; see [current readiness](docs/READINESS.md) for verified scope and public launch gates. An earlier Railway demo is historical and is not the deployment destination for this product.
+The [Caleane marketing website](https://caleane.com) is live on Vercel as a labelled, `noindex` sample preview. Its account links open the [hosted sample workspace](https://app.caleane.com/login), where visitors choose Studio view or Client view. The full local runtime remains available from this directory; see [current readiness](docs/READINESS.md) for the live customer launch gates. An earlier Railway demo is historical and is not the deployment destination for this product.
 
 ## Run it
 

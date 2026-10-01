@@ -5,3 +5,4 @@ public/app.js
 public/app.css
 .env
 dist/
+.vercel

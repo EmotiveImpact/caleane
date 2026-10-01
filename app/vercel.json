@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "VITE_HOSTED_DEMO=1 npm run build",
+  "outputDirectory": "dist",
+  "functions": { "api/demo.js": { "maxDuration": 30 } },
+  "rewrites": [{ "source": "/((?!api/|assets/|demo-worker\\.js|embed\\.js).*)", "destination": "/index.html" }],
+  "headers": [
+    { "source": "/demo-worker.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }, { "key": "Service-Worker-Allowed", "value": "/" }] },
+    { "source": "/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }, { "key": "X-Content-Type-Options", "value": "nosniff" }] }
+  ]
+}

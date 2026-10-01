@@ -30,7 +30,7 @@ The front page opens at <http://127.0.0.1:4330/>. Its workspace links use the lo
 
 Calenne is the software platform. NAY DÉCOR is a separate creative business whose local website sends event enquiries to its `nay-decor` studio account. The NAY site has no runtime dependency on Calenne source files; on localhost it connects by HTTP at port 4320. The connection is disabled on other hosts until a hosted Calenne origin is configured.
 
-The marketing website is deployed on Vercel at https://caleane.com. The workspace remains local; its separate Vercel project and app.caleane.com DNS are prepared, but its durable database, file storage and request lifecycle migration remain unfinished. The website retains its sample workflow and noindex setting until account access is available. See [deployment status](docs/PRODUCTION-DEPLOYMENT.md) and `app/README.md` for the capability boundary.
+The marketing website is deployed on Vercel at https://caleane.com. Its login links to the hosted sample workspace at https://app.caleane.com/login, with Studio view and Client view. Each visitor's fictional sample state stays in that browser; real accounts, email and payments are disabled. The live customer service still needs the durable database and file storage migration. See [deployment status](docs/PRODUCTION-DEPLOYMENT.md) and `app/README.md` for the capability boundary.
 
 ## Strategy and navigation
 

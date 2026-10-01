@@ -1,0 +1,8 @@
+data/
+node_modules/
+dist/
+test/
+docs/
+.env*
+*.sqlite*
+*.db*
