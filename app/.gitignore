@@ -6,3 +6,4 @@ public/app.css
 .env
 dist/
 .vercel
+hosted-demo-runtime.mjs

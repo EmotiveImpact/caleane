@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "VITE_HOSTED_DEMO=1 npm run build",
+  "buildCommand": "node scripts/build-hosted-demo.mjs && VITE_HOSTED_DEMO=1 npm run build",
   "outputDirectory": "dist",
   "functions": { "api/demo.js": { "maxDuration": 30 } },
   "rewrites": [{ "source": "/((?!api/|assets/|demo-worker\\.js|embed\\.js).*)", "destination": "/index.html" }],

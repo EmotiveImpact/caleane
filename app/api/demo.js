@@ -1,1 +1,1 @@
-export { default } from '../hosted-demo.mjs';
+export { default } from '../hosted-demo-runtime.mjs';

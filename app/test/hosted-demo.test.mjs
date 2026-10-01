@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { runHostedDemo, default as handler } from '../hosted-demo.mjs';
+const { runHostedDemo, default: handler } = await import(process.env.CALEANE_TEST_DEMO_BUNDLE === '1' ? '../hosted-demo-runtime.mjs' : '../hosted-demo.mjs');
 
 const options = { origin: 'https://app.caleane.com', key: randomBytes(32) };
 function browser() {
