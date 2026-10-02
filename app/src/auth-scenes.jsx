@@ -33,7 +33,7 @@ export function AuthScenes() {
     <span className="auth-wordmark"><img src="/assets/identity/calenne-symbol-ivory.svg" alt=""/>Caleane</span>
     <div className="auth-story-copy">
       <p className="eyebrow">THE BUSINESS BEHIND THE BEAUTIFUL</p>
-      <h1>Make room<br/>for the idea.</h1>
+      <h1><span>Make room</span>{' '}<span>for the idea.</span></h1>
       <p>A shared home for your clients, designs<br/>and the conversations that bring them to life.</p>
     </div>
   </div>;

@@ -17,7 +17,7 @@
 - Separate Vercel project: `caleane-app` (`prj_jsR07cn5jSy8F9OOMytDXTCjQBaQ`).
 - Source directory: `app/`. The Vercel project currently uses a direct directory deployment, with no Git root directory override or automatic Git deployment connection.
 - The app hostname is assigned to this project. Spaceship has `app` CNAME pointing to Vercel's returned project target, `35648c359525bc70.vercel-dns-017.com.`.
-- Sample deployment: `dpl_2evHfhisHPfoX7Pj7EGZuC8saLDZ`; Vercel reports READY. This is the existing app UI and fictional seed data, not a live customer service.
+- Sample deployment: `dpl_A1QRdkxueidoEDskvBNYDyWQuGc1`; Vercel reports READY. This is the existing app UI and fictional seed data, not a live customer service.
 - Runtime correction: Vercel logs exposed a `sanitize-html` / ESM parser startup failure. `app/scripts/build-hosted-demo.mjs` bundles the current sanitizer into the demo runtime; other packages remain external so PDF assets keep their normal paths. The 4 demo tests also pass against this compiled runtime with Node's `require(ESM)` disabled. The hosted build shows the Studio/Client chooser immediately, before API discovery.
 - `app/hosted-demo.mjs` wraps the actual workspace API for Vercel. It restores a visitor-owned, AES-GCM authenticated sample database snapshot for each request, executes the existing role checks, then returns the sealed snapshot. Temporary SQLite files are only per-request scratch space and are removed after processing. No authoritative state depends on a Vercel instance's filesystem.
 - `app/public/demo-worker.js` serializes API requests and keeps that visitor's snapshot and demo session in their browser's IndexedDB. Studio/client switching shares the visitor's sample project state. Clearing browser storage or Reset demo starts fresh. Different browsers have independent samples.
@@ -25,6 +25,12 @@
 - Real signup, account email, calendar provider calls and payment routes are blocked in this wrapper. Only the fictional Studio view and Client view entry paths are offered. Uploads are restricted to sample files below 1 MB; oversized sample state requires a reset.
 - The local app's database and uploaded blobs are excluded from deployment. Its normal Node/SQLite runtime remains available locally.
 - Verification: all 86 local app tests pass; the new tests cover fresh function instances, independent visitors, studio/client permissions, altered snapshots and disabled provider routes. A separate worker harness verified request serialization, saved-state reuse and reset. The hosted demo and marketing builds passed, and Vercel reported READY with their custom-domain aliases. Hosted browser acceptance on 1 October: reloaded the existing app.caleane.com tab, verified the Studio/Client buttons replaced the old sign-in form, clicked Studio view and saw the studio dashboard, then switched to Client and saw the restricted client navigation and project conversation. This verifies demo entry and role switching, not every hosted feature.
+
+## Mobile demo entry polish — 2 October
+
+- The sign-in headline uses two block spans with an explicit text space, so hiding a line break can no longer join “room” and “for”.
+- Phone layouts have a compact image header, white entry area, stacked Studio/Client buttons with descriptions, and a wrapping demo footer. Desktop retains the two-column composition.
+- Published build is READY on app.caleane.com. The new entry was visually checked in the hosted tab. An isolated local build verified 320px, 390px and 1280px layouts without horizontal overflow; mobile button heights are approximately 82px.
 
 ## Live customer workspace — still pending
 
