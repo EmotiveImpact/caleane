@@ -12,6 +12,7 @@ export function installForms(db){db.exec(`
  CREATE TABLE IF NOT EXISTS enquiry_form_versions(form_id TEXT NOT NULL,studio_id TEXT NOT NULL,version INTEGER NOT NULL,definition TEXT NOT NULL,published_at TEXT NOT NULL,PRIMARY KEY(form_id,version),FOREIGN KEY(form_id,studio_id) REFERENCES enquiry_forms(id,studio_id));
  CREATE TABLE IF NOT EXISTS enquiry_form_responses(id TEXT PRIMARY KEY,studio_id TEXT NOT NULL,form_id TEXT NOT NULL,version INTEGER NOT NULL,project_id TEXT NOT NULL,client_id TEXT NOT NULL,key TEXT NOT NULL,digest TEXT NOT NULL,snapshot TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(studio_id,key),FOREIGN KEY(form_id,studio_id) REFERENCES enquiry_forms(id,studio_id),FOREIGN KEY(project_id,studio_id) REFERENCES projects(id,studio_id),FOREIGN KEY(client_id,studio_id) REFERENCES clients(id,studio_id));
  CREATE INDEX IF NOT EXISTS enquiry_forms_studio ON enquiry_forms(studio_id,updated_at);
+ CREATE INDEX IF NOT EXISTS enquiry_responses_project ON enquiry_form_responses(studio_id,project_id,created_at DESC,id);
  CREATE INDEX IF NOT EXISTS enquiry_responses_form ON enquiry_form_responses(studio_id,form_id,created_at);
  `);}
 export function validateForm(body){

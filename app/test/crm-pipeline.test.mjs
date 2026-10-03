@@ -55,3 +55,23 @@ test('relationship pipeline, activity and tasks are persistent, tenant scoped an
   assert.equal((await call('/api/opportunities?studio='+other,'GET',undefined,'other')).data.opportunities.length,0);
  }finally{await new Promise(resolve=>server.close(resolve));db.close();await rm(dir,{recursive:true,force:true});}
 });
+
+ test('legacy automatic decision dates are corrected once, while edited forecasts and original dates survive',async()=>{
+ const {openStore}=await import('../store.mjs');
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-pipeline-dates-')),dbFile=path.join(dir,'test.sqlite');
+ let db;
+ try{
+  const app=await createWorkspace({dbFile,demo:true});db=app.db;
+  const rows=db.prepare('SELECT o.id,o.project_id,p.data FROM crm_opportunities o JOIN projects p ON p.id=o.project_id ORDER BY o.id').all();
+  const originalDates=rows.map(row=>JSON.parse(row.data).brief.date);
+  db.prepare('UPDATE crm_opportunities SET expected_close=?,revision=1 WHERE id=?').run(originalDates[0],rows[0].id);
+  db.prepare('UPDATE crm_opportunities SET expected_close=?,revision=2 WHERE id=?').run(originalDates[1],rows[1].id);
+  db.prepare('UPDATE crm_opportunities SET expected_close=?,revision=1,source=? WHERE id=?').run(originalDates[2], 'Referral',rows[2].id);
+  db.close();db=openStore(dbFile);
+  assert.equal(db.prepare('SELECT expected_close FROM crm_opportunities WHERE id=?').get(rows[0].id).expected_close,'');
+  assert.equal(db.prepare('SELECT revision FROM crm_opportunities WHERE id=?').get(rows[0].id).revision,2);
+  for(const index of [1,2])assert.equal(db.prepare('SELECT expected_close FROM crm_opportunities WHERE id=?').get(rows[index].id).expected_close,originalDates[index]);
+  for(const [index,row] of rows.entries())assert.equal(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(row.project_id).data).brief.date,originalDates[index]);
+  db.close();db=openStore(dbFile);assert.equal(db.prepare('SELECT revision FROM crm_opportunities WHERE id=?').get(rows[0].id).revision,2,'correction is not repeated');
+ }finally{db?.close();await rm(dir,{recursive:true,force:true});}
+ });

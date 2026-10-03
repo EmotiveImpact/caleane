@@ -13,3 +13,10 @@ export function recentDecisions(projects){return projects.flatMap(project=>[
  ...(project.estimates||[]).filter(d=>d.decidedAt).map(d=>({id:d.id,project,title:d.title,status:d.status,by:d.decidedBy,at:d.decidedAt,version:d.version,tab:'Estimate'})),
  ...(project.decisions||[]).filter(d=>d.decidedAt).map(d=>({id:d.id,project,title:d.title,status:d.status,by:d.decidedBy,at:d.decidedAt,tab:'Decisions'}))
  ]).sort((a,b)=>b.at.localeCompare(a.at));}
+
+export function projectInGroup(project,group){
+ if(group==='Enquiries')return project.status==='Enquiry';
+ if(group==='Complete'||group==='Archived')return project.status===group;
+ if(group==='Awaiting approval')return pendingReviews([project]).length>0;
+ return !['Enquiry','Complete','Archived'].includes(project.status);
+}

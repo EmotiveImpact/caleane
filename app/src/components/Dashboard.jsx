@@ -2,7 +2,7 @@ import React,{useState,useEffect} from 'react';
 import {CalendarDays,Check,FolderClosed,Mail,FileCheck2,MessageSquare} from 'lucide-react';
 import {ProjectImage,RecentDecisions} from './StudioViews';
 import {attentionFor} from '../lib/attention';
-import {pendingReviews} from '../lib/studio-view';
+import {pendingReviews,projectInGroup} from '../lib/studio-view';
 import './studio-overview.css';
 const date=v=>new Date(v.length===10?v+'T12:00:00':v).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 export function Dashboard({user,projects,owner,studio,openProject,showProjects,request,openClient,openMail,openTasks,openCalendar}){
@@ -14,7 +14,7 @@ export function Dashboard({user,projects,owner,studio,openProject,showProjects,r
  const mail=extras.conversations.filter(c=>!c.projectId&&c.unreadMessages>0).map(c=>({id:'mail-'+c.id,kind:'message',label:'Reply to '+c.clientName,detail:c.subject,clientId:c.clientId}));
  const items=[...due,...mail,...attention];
  const upcoming=projects.filter(p=>p.brief.date>=today&&!['Archived','Complete'].includes(p.status)).sort((a,b)=>a.brief.date.localeCompare(b.brief.date)).slice(0,4);
- const recent=[...projects].filter(p=>p.status!=='Archived').sort((a,b)=>(b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||'')).slice(0,3);
+ const recent=[...projects].filter(p=>owner?projectInGroup(p,'Active'):p.status!=='Archived').sort((a,b)=>(b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||'')).slice(0,3);
  const waiting=owner?pendingReviews(projects):[];
  const followups=extras.clients.filter(c=>c.followUp).sort((a,b)=>a.followUp.localeCompare(b.followUp)).slice(0,3);
  function openItem(i){if(owner&&i.taskId)openTasks(i.taskId);else if(i.project)openProject(i.project,i.tab,null,i.tab==='Designs'?i.project.designs.at(-1)?.id:null);else openMail(i.clientId);}

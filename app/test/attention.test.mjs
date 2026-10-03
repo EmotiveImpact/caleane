@@ -4,6 +4,7 @@ import {attentionFor} from '../src/lib/attention.js';
 const project={id:'p',status:'Enquiry',briefRevision:2,brief:{occasion:'Wedding'},changeRequests:[],designs:[],unreadMessages:0};
 test('attention identifies the right person and destination for each decision',()=>{
  assert.equal(attentionFor(project,true)[0].tab,'Brief');
+ assert.equal(attentionFor({...project,enquiryReviewedAt:'2026-10-03T12:00:00Z'},true).some(i=>i.kind==='enquiry'),false,'reviewed enquiries leave the global review queue');
  assert.equal(attentionFor(project,false).length,0);
  const review={...project,status:'Design',designs:[{status:'Awaiting approval',briefRevision:2,title:'New concept'}]};
  assert.equal(attentionFor(review,false)[0].kind,'approval');

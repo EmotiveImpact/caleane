@@ -76,6 +76,10 @@ export function openStore(file){
   FOREIGN KEY(client_id,studio_id) REFERENCES clients(id,studio_id),
   FOREIGN KEY(opportunity_id,studio_id) REFERENCES crm_opportunities(id,studio_id));
  CREATE UNIQUE INDEX IF NOT EXISTS crm_opportunities_tenant_key ON crm_opportunities(id,studio_id);
+ CREATE TABLE IF NOT EXISTS crm_enquiry_reviews(
+  opportunity_id TEXT NOT NULL,studio_id TEXT NOT NULL,reviewed_at TEXT NOT NULL,reviewed_by TEXT NOT NULL,
+  PRIMARY KEY(opportunity_id,studio_id),
+  FOREIGN KEY(opportunity_id,studio_id) REFERENCES crm_opportunities(id,studio_id));
  CREATE INDEX IF NOT EXISTS crm_opportunities_studio_stage ON crm_opportunities(studio_id,stage,updated_at DESC);
  CREATE INDEX IF NOT EXISTS crm_opportunities_client ON crm_opportunities(studio_id,client_id);
  CREATE INDEX IF NOT EXISTS crm_activities_client ON crm_activities(studio_id,client_id,created_at DESC);
@@ -117,6 +121,12 @@ export function openStore(file){
  transaction(db,()=>{
   installRelationships(db);
   for(const row of db.prepare('SELECT data FROM projects').all()){const p=JSON.parse(row.data);materializeProjectConversation(db,p);ensureProjectOpportunity(db,p);}
+  // Only untouched automatically generated opportunities used the project date as a forecast.
+  // Preserve every manually edited forecast and all original project/form dates.
+  db.prepare(`UPDATE crm_opportunities SET expected_close='',revision=revision+1
+   WHERE revision=1 AND expected_close<>'' AND (source IN ('Project enquiry','Sample project') OR source LIKE 'Form: %')
+   AND expected_close=(SELECT json_extract(data,'$.brief.date') FROM projects WHERE id=project_id AND studio_id=crm_opportunities.studio_id)
+   AND NOT EXISTS(SELECT 1 FROM crm_activities WHERE opportunity_id=crm_opportunities.id AND studio_id=crm_opportunities.studio_id)`).run();
   for(const read of db.prepare('SELECT * FROM project_reads').all()){
    const c=db.prepare('SELECT id FROM conversations WHERE project_id=?').get(read.project_id);
    if(!c||!db.prepare('SELECT id FROM users WHERE id=?').get(read.user_id))continue;
@@ -145,7 +155,7 @@ export function ensureProjectOpportunity(db,p){
  const at=p.createdAt||now();
  db.prepare(`INSERT OR IGNORE INTO crm_opportunities
   (id,studio_id,client_id,project_id,title,description,stage,amount_minor,currency,probability,expected_close,lost_reason,source,revision,created_at,updated_at)
-  VALUES(?,?,?,?,?,'','Discovery',0,'GBP',20,?,'',?,1,?,?)`).run(id(),p.studioId,client.id,p.id,p.title,p.brief?.date||'',p.demo?'Sample project':'Project enquiry',at,p.updatedAt||at);
+  VALUES(?,?,?,?,?,'','Discovery',0,'GBP',20,?,'',?,1,?,?)`).run(id(),p.studioId,client.id,p.id,p.title,'',p.demo?'Sample project':'Project enquiry',at,p.updatedAt||at);
 }
 
 // Savepoints also work inside the public intake transaction.

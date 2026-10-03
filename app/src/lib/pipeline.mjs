@@ -9,6 +9,7 @@ export function stageLabelsFor(studio){
 export function nextStepFor(opportunity,tasks){return tasks.filter(t=>t.opportunityId===opportunity.id&&!t.completed).sort((a,b)=>(a.dueDate||'9999').localeCompare(b.dueDate||'9999')||a.title.localeCompare(b.title))[0];}
 export function attentionFor(opportunity,tasks,today){
  if(!isOpenEnquiry(opportunity))return null;
+ if(opportunity.needsReview)return {kind:'review',label:'Review enquiry',rank:-1,task:null};
  const task=nextStepFor(opportunity,tasks);
  if(!task)return {kind:'missing',label:'Set a next step',rank:3,task:null};
  if(!task.dueDate)return {kind:'undated',label:'Choose a follow-up date',rank:2,task};

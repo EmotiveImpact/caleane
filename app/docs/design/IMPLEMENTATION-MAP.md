@@ -13,7 +13,11 @@
 | Custom and conditional enquiry questions | **Done (local)** | Settings → enquiry form; hosted planner and website embed |
 | Workspace search | **Done (local)** | Top bar → Search; scoped projects, clients, opportunities, tasks and invoices |
 | Staff contribution and private design preparation | **Done (local)** | Team → project assignment; owner reviews and shares versions |
-| Pipeline opportunity inspector | **Done (local)** | Pipeline card → overlay drawer |
+| Pipeline opportunity inspector | **Done (local)** | Contextual drawer: preserved form request, explicit review, dated next steps, project conversation and revision-protected start planning |
+| Enquiry review and active-project separation | **Done (local)** | Unaccepted projects remain in Enquiries; Active and Overview work exclude them. Project date and expected decision date are separate |
+| Calendar day-details drawer | **Done (local)** | Click a day → desktop drawer/mobile sheet; exact project and task navigation, filters, day browsing and retryable follow-up errors |
+| Notification history and read state | **Waiting — implementation** | Current bell is a needs-attention popover, not a persisted event inbox; full drawer, read history and exact-item navigation remain |
+| Server-paged pipeline retrieval | **Waiting — implementation** | Visible lists paginate locally; the API still returns the dataset used by board, summaries and attention |
 | Estimates, proposals, invoices and external payment records | **Done (local)** | Project commercial tabs and Finances; owner-recorded payments are not live collection |
 | Versioned contracts and portal acceptance | **Done (local)** | Project → Contract: owner-authored terms, issue/withdraw, approver accept/decline, immutable receipt; no certified signing provider |
 | Venue, supplier, equipment and studio-time booking records | **Done (local)** | Project → Delivery → Resources: dates, confirmations, conflicts, history and optional client sharing; no supplier is contacted or reserved automatically |
@@ -175,3 +179,12 @@ This section supersedes earlier Waiting bullets for features listed below. The w
 ### Evidence
 
 53 automated tests passed and production build passed. Isolated browser journeys verified task assignment/comment reload, actual message reply and 196 KB attachment persistence, client shared chat and issued-only document visibility, assigned contributor messaging, letter issue/archive creation and immediate typing-to-save correctness. Mobile contributor chat had no horizontal overflow (355 CSS px at the browser's current zoom). Provider APIs were faked in tests; no production deployment or delivery activation occurred.
+
+
+## 3 October: enquiry intake and calendar context — Done (local)
+
+- Finished the pipeline intake recommendations: original saved form answers, provenance, explicit reviewed state, separate project/decision dates, enquiry project grouping, exact conversation navigation and protected start-planning action. Historic brief-only records are clearly distinguished from original submissions.
+- Calendar day details now open immediately in a Radix side panel instead of falling beneath the month. Project dates, tasks and private follow-ups have exact destinations; mobile uses a full-screen panel.
+- 24 focused checks passed; production build passed. Desktop and mobile browser checks verified layout, exact task navigation and focus return. Mutations were tested with isolated databases. No business records created or modified during browser QA.
+- **Waiting — implementation:** persisted notification events/read state and its new drawer; server-paged enquiry queries. The existing needs-attention bell remains unchanged.
+- **Waiting — validation:** customer usability sessions. Provider setup/live acceptance and deferred live payments retain the statuses above.

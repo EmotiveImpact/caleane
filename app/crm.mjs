@@ -18,8 +18,18 @@ const opportunityRow=(db,studioId,opportunityId)=>{
 const dto=row=>({id:row.id,studioId:row.studio_id,clientId:row.client_id,clientName:row.client_name,clientEmail:row.client_email,
  projectId:row.project_id,title:row.title,description:row.description,stage:row.stage,amountMinor:row.amount_minor,
  currency:row.currency,probability:row.probability,expectedClose:row.expected_close,lostReason:row.lost_reason,
- source:row.source,revision:row.revision,createdAt:row.created_at,updatedAt:row.updated_at});
-const withClient='SELECT o.*,c.name AS client_name,c.email AS client_email FROM crm_opportunities o JOIN clients c ON c.id=o.client_id AND c.studio_id=o.studio_id';
+ source:row.source,revision:row.revision,createdAt:row.created_at,updatedAt:row.updated_at,
+ projectStatus:row.project_status||null,projectUpdatedAt:row.project_updated_at||null,projectDate:row.project_date||'',formName:row.form_name||null,
+ receivedAt:row.received_at||row.created_at,reviewedAt:row.reviewed_at||null,reviewedBy:row.reviewed_by||null,
+ needsReview:row.reviewed_at===''||!row.reviewed_at&&!!(row.response_id||row.project_status==='Enquiry')});
+const withClient=`SELECT o.*,c.name AS client_name,c.email AS client_email,
+ json_extract(p.data,'$.updatedAt') AS project_updated_at,json_extract(p.data,'$.status') AS project_status,json_extract(p.data,'$.brief.date') AS project_date,
+ r.id AS response_id,r.created_at AS received_at,json_extract(r.snapshot,'$.definition.name') AS form_name,
+ review.reviewed_at,review.reviewed_by
+ FROM crm_opportunities o JOIN clients c ON c.id=o.client_id AND c.studio_id=o.studio_id
+ LEFT JOIN projects p ON p.id=o.project_id AND p.studio_id=o.studio_id
+ LEFT JOIN enquiry_form_responses r ON r.id=(SELECT id FROM enquiry_form_responses WHERE project_id=o.project_id AND studio_id=o.studio_id ORDER BY created_at DESC,id DESC LIMIT 1)
+ LEFT JOIN crm_enquiry_reviews review ON review.opportunity_id=o.id AND review.studio_id=o.studio_id`;
 
 function fields(input,current){
  const title=string(input.title??current?.title,200,'the opportunity title');if(!title)error(400,'Add an opportunity title.');
@@ -44,7 +54,10 @@ export function listOpportunities(db,studioId){
 export function getOpportunity(db,studioId,opportunityId){
  opportunityRow(db,studioId,opportunityId);
  const row=db.prepare(`${withClient} WHERE o.id=? AND o.studio_id=?`).get(opportunityId,studioId);
- return {...dto(row),activities:listActivities(db,studioId,row.client_id,opportunityId),tasks:listTasks(db,studioId,opportunityId)};
+ const response=row.response_id?db.prepare('SELECT version,snapshot FROM enquiry_form_responses WHERE id=? AND studio_id=?').get(row.response_id,studioId):null;
+ const project=row.project_id?JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(row.project_id,studioId)?.data||'null'):null;
+ const snapshot=response?JSON.parse(response.snapshot):null;
+ return {...dto(row),intake:snapshot?{formName:snapshot.definition.name,version:response.version,submittedAt:snapshot.submittedAt||row.received_at,brief:snapshot.brief,consentText:snapshot.definition.consentText||'',consent:snapshot.consent,original:true}:project?{formName:null,version:null,submittedAt:project.createdAt,brief:project.brief,original:false}:null,activities:listActivities(db,studioId,row.client_id,opportunityId),tasks:listTasks(db,studioId,opportunityId)};
 }
 export function createOpportunity(db,studioId,user,input){
  const client=clientRow(db,studioId,string(input.clientId,100,'the client'));
@@ -55,6 +68,18 @@ export function createOpportunity(db,studioId,user,input){
   VALUES(?,?,?,NULL,?,?,?,?,?,?,?,?,?,1,?,?)`).run(oid,studioId,client.id,v.title,v.description,v.stage,v.amountMinor,v.currency,v.probability,v.expectedClose,v.lostReason,v.source,at,at);
   insertActivity(db,{studioId,clientId:client.id,opportunityId:oid,kind:'System',title:'Opportunity opened',detail:v.title,user,at});
  });return getOpportunity(db,studioId,oid);
+}
+export function reviewOpportunity(db,studioId,user,opportunityId,input){
+ const current=opportunityRow(db,studioId,opportunityId);
+ if(!Number.isInteger(input.revision)||input.revision!==current.revision)error(409,'This enquiry changed. Close and reopen it before reviewing.');
+ if(typeof input.reviewed!=='boolean')error(400,'Choose a review state.');
+ const at=now();transaction(db,()=>{
+  const changed=db.prepare('UPDATE crm_opportunities SET revision=revision+1,updated_at=? WHERE id=? AND studio_id=? AND revision=?').run(at,opportunityId,studioId,input.revision);
+  if(!changed.changes)error(409,'This enquiry changed. Close and reopen it before reviewing.');
+  if(input.reviewed)db.prepare('INSERT INTO crm_enquiry_reviews VALUES(?,?,?,?) ON CONFLICT(opportunity_id,studio_id) DO UPDATE SET reviewed_at=excluded.reviewed_at,reviewed_by=excluded.reviewed_by').run(opportunityId,studioId,at,user.name);
+  else db.prepare('INSERT INTO crm_enquiry_reviews VALUES(?,?,?,?) ON CONFLICT(opportunity_id,studio_id) DO UPDATE SET reviewed_at=excluded.reviewed_at,reviewed_by=excluded.reviewed_by').run(opportunityId,studioId,'',user.name);
+  insertActivity(db,{studioId,clientId:current.client_id,opportunityId,kind:'System',title:input.reviewed?'Enquiry reviewed':'Enquiry marked for review',detail:'',user,at});
+ });return getOpportunity(db,studioId,opportunityId);
 }
 export function updateOpportunity(db,studioId,user,opportunityId,input){
  const current=opportunityRow(db,studioId,opportunityId),v=fields(input,current);

@@ -14,7 +14,7 @@ import {fileURLToPath} from 'node:url';
 import {randomBytes,timingSafeEqual} from 'node:crypto';
 import Stripe from 'stripe';
 import {openStore,id,now,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
-import {listOpportunities,getOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask} from './crm.mjs';
+import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask} from './crm.mjs';
 import {bindInvitedContact,conversationAccess,ensurePrimaryContact,listClientContacts,listStakeholders,projectAccess,projectClientId} from './relationships.mjs';
 import {installStripePayments,activeStripeCheckout,createStripeCheckout,expireStripeCheckout,processStripeWebhook,listStripeCheckoutAttempts} from './stripe-payments.mjs';
 import {installStripeOnboarding,startStripeOnboarding,refreshStripeOnboarding,returnFromStripeOnboarding,stripeOnboardingStatus} from './stripe-onboarding.mjs';
@@ -159,7 +159,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     const branding=sid=>JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(sid)?.data||'{}');
     const decorate=p=>{if(staffViewer)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Studio viewer',canContribute:!!db.prepare('SELECT 1 FROM studio_project_collaborators WHERE studio_id=? AND project_id=? AND user_id=?').get(p.studioId,p.id,user.id),briefRevision:p.briefRevision,brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,venue:p.brief.venue,vision:p.brief.vision,workflowType:p.brief.workflowType},designs:p.designs.map(d=>({id:d.id,version:d.version,title:d.title,status:d.status,at:d.at})),tasks:(p.tasks||[]).map(t=>({id:t.id,title:t.title,due:t.due,assignee:t.assignee,completed:t.completed})),createdAt:p.createdAt,updatedAt:p.updatedAt};const c=db.prepare('SELECT * FROM conversations WHERE project_id=?').get(p.id),accessRole=owner?'Owner':projectAccess(db,p.studioId,p.id,user.id),latest=accessRole==='Owner'||accessRole==='Approver'?db.prepare(`SELECT i.* FROM invoices i WHERE i.studio_id=? AND i.project_id=? ORDER BY
      CASE WHEN i.cancelled_at IS NULL AND i.amount_minor>COALESCE((SELECT SUM(ip.amount_minor) FROM invoice_payments ip WHERE ip.studio_id=i.studio_id AND ip.invoice_id=i.id),0) THEN 0 ELSE 1 END,
-     i.issued_at DESC,i.number DESC LIMIT 1`).get(p.studioId,p.id):null;const invoice=latest?invoiceDTO(db,latest):null;return {...p,operations:owner?p.operations:undefined,clientId:projectClientId(db,p.studioId,p.id),accessRole,conversationId:c?.id,unreadMessages:c?conversationUnreadCount(db,c,user):0,latestInvoice:invoice?{id:invoice.id,number:invoice.number,kind:invoice.kind,currency:invoice.currency,amountMinor:invoice.amountMinor,paidMinor:invoice.paidMinor,dueDate:invoice.dueDate,status:invoice.status}:null};};
+     i.issued_at DESC,i.number DESC LIMIT 1`).get(p.studioId,p.id):null;const invoice=latest?invoiceDTO(db,latest):null;return {...p,enquiryReviewedAt:owner?db.prepare('SELECT r.reviewed_at FROM crm_enquiry_reviews r JOIN crm_opportunities o ON o.id=r.opportunity_id AND o.studio_id=r.studio_id WHERE o.project_id=? AND o.studio_id=?').get(p.id,p.studioId)?.reviewed_at:undefined,operations:owner?p.operations:undefined,clientId:projectClientId(db,p.studioId,p.id),accessRole,conversationId:c?.id,unreadMessages:c?conversationUnreadCount(db,c,user):0,latestInvoice:invoice?{id:invoice.id,number:invoice.number,kind:invoice.kind,currency:invoice.currency,amountMinor:invoice.amountMinor,paidMinor:invoice.paidMinor,dueDate:invoice.dueDate,status:invoice.status}:null};};
     const memberships=[...db.prepare('SELECT s.*,m.role FROM studios s JOIN memberships m ON m.studio_id=s.id WHERE m.user_id=?').all(user.id),...db.prepare("SELECT s.*,'staff_viewer' AS role FROM studios s JOIN studio_staff st ON st.studio_id=s.id WHERE st.user_id=? AND st.access='viewer'").all(user.id)];
     if(route==='/api/me'&&req.method==='GET')return reply(200,{user:{id:user.id,name:user.name,email:user.email},studios:memberships.map(s=>({...s,origins:JSON.parse(s.origins),branding:branding(s.id)}))});
     if(route==='/api/stripe/connect/refresh'&&req.method==='GET'){
@@ -319,9 +319,20 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(req.method==='POST')return reply(201,{opportunity:createOpportunity(db,studio.id,user,body)});
      fail(405,'Method not allowed.');
     }
-    const opportunityMatch=route.match(/^\/api\/opportunities\/([a-f0-9-]+)(?:\/(activities|project))?$/);
+    const opportunityMatch=route.match(/^\/api\/opportunities\/([a-f0-9-]+)(?:\/(activities|project|review|planning))?$/);
     if(opportunityMatch){
      requireOwner();const oid=opportunityMatch[1],opportunity=getOpportunity(db,studio.id,oid);
+     if(opportunityMatch[2]==='planning'&&req.method==='POST'){
+      if(body.revision!==opportunity.revision)fail(409,'This enquiry changed. Close and reopen it before starting planning.');
+      if(!opportunity.projectId)fail(409,'Create a linked project first.');
+      if(opportunity.stage==='Lost')fail(409,'Reopen the enquiry before starting planning.');
+      if(!opportunity.reviewedAt)fail(409,'Review the request before starting planning.');
+      const project=JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(opportunity.projectId,studio.id).data);
+      if(project.status!=='Enquiry'||body.projectUpdatedAt!==project.updatedAt)fail(409,'The project changed. Close and reopen this enquiry before starting planning.');
+      transaction(db,()=>{project.status='Planning';event(project,user,'Started project planning');saveProject(db,project);db.prepare('UPDATE crm_opportunities SET revision=revision+1,updated_at=? WHERE id=? AND studio_id=?').run(now(),oid,studio.id);logActivity(db,studio.id,user,opportunity.clientId,{kind:'Note',title:'Project planning started',detail:'Booking confirmation is recorded separately.'},oid);});
+      return reply(200,{project:decorate(project),opportunity:getOpportunity(db,studio.id,oid)});
+     }
+     if(opportunityMatch[2]==='review'&&req.method==='POST')return reply(200,{opportunity:reviewOpportunity(db,studio.id,user,oid,body)});
      if(opportunityMatch[2]==='activities'&&req.method==='POST')return reply(201,{activities:logActivity(db,studio.id,user,opportunity.clientId,body,oid)});
      if(opportunityMatch[2]==='project'&&req.method==='POST'){
       if(opportunity.projectId)fail(409,'This opportunity already has a project.');

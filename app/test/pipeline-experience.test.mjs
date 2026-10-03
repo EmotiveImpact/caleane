@@ -21,15 +21,16 @@ const h=React.createElement,user=()=>userEvent.setup({document:dom.window.docume
 afterEach(cleanup);after(async()=>{await unlink(compiled);dom.window.close();});
 const studio={id:'s',name:'Sample studio',branding:{profession:'floral-design'}};
 const base={id:'o1',clientId:'c1',clientName:'Amelia',title:'Wedding flowers',description:'Ivory flowers.',stage:'Discovery',amountMinor:0,currency:'GBP',probability:20,expectedClose:'',lostReason:'',source:'Website',revision:1,activities:[],tasks:[],projectId:'p1'};
-function fixture({stale=false}={}){
- let opportunity=structuredClone(base),tasks=[];const writes=[],opened=[];
+function fixture({stale=false,count=1,intake=null}={}){
+ let opportunity={...structuredClone(base),...(intake?{intake,formName:intake.formName,projectStatus:'Enquiry',needsReview:true}: {})},tasks=[];const writes=[],opened=[];
  const request=async(path,method,body)=>{
   if(method==='PATCH'&&path.startsWith('/api/opportunities/')){writes.push({path,body});if(stale&&writes.length===2)throw Error('This opportunity changed while you were editing. Refresh and try again.');assert.equal(body.revision,opportunity.revision);opportunity={...opportunity,...body,revision:opportunity.revision+1};return {opportunity:{...opportunity,tasks}};}
+  if(method==='POST'&&path.includes('/review?')){writes.push({path,body});assert.equal(body.revision,opportunity.revision);opportunity={...opportunity,reviewedAt:body.reviewed?'2026-10-03T12:00:00Z':null,reviewedBy:'Sophie',needsReview:!body.reviewed,revision:opportunity.revision+1};return {opportunity:{...opportunity,tasks}};}
   if(method==='POST'&&path.startsWith('/api/opportunities')){writes.push({path,body});opportunity={...base,...body,clientName:'Amelia'};return {opportunity};}
   if(method==='POST'&&path.startsWith('/api/crm/tasks')){writes.push({path,body});const task={id:'t1',...body,completed:false};tasks=[...tasks,task];return {task};}
   if(method==='PATCH'&&path.startsWith('/api/crm/tasks/')){tasks=tasks.map(t=>({...t,...body}));return {task:tasks[0]};}
   if(path.startsWith('/api/opportunities/o1'))return {opportunity:{...opportunity,tasks}};
-  if(path.startsWith('/api/opportunities'))return {opportunities:[opportunity]};
+  if(path.startsWith('/api/opportunities'))return {opportunities:count===1?[opportunity]:Array.from({length:count},(_,i)=>({...opportunity,id:'o'+(i+1),title:'Enquiry '+String(i+1).padStart(2,'0'),stage:i%2?'Qualified':'Discovery'}))};
   if(path.startsWith('/api/clients'))return {clients:[{id:'c1',name:'Amelia'}]};
   if(path.startsWith('/api/crm/tasks'))return {tasks};
   if(path.startsWith('/api/task-workspace'))return {assignments:{'crm:t1':'Sophie'}};
@@ -69,7 +70,7 @@ test('not proceeding requires an explanation and keeps project accessible; Undo 
  const input=user(),{writes}=fixture();await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));await screen.findByRole('heading',{name:'Next steps'});
  await choose(input,'Enquiry status','Not proceeding');assert.ok(screen.getByRole('dialog',{name:'Not proceeding'}));assert.equal(writes.length,0);
  await input.type(screen.getByRole('textbox',{name:'Reason',exact:true}),'Dates changed');await input.click(screen.getByRole('button',{name:'Mark as not proceeding'}));
- await waitFor(()=>assert.equal(screen.queryByRole('dialog',{name:'Not proceeding'}),null));assert.equal(writes[0].body.lostReason,'Dates changed');assert.ok(screen.getByRole('button',{name:'Open project',exact:true}));
+ await waitFor(()=>assert.equal(screen.queryByRole('dialog',{name:'Not proceeding'}),null));assert.equal(writes[0].body.lostReason,'Dates changed');assert.ok(screen.getByRole('button',{name:'Open project brief',exact:true}));
  await input.click(screen.getByRole('button',{name:'Undo',exact:true}));await waitFor(()=>assert.equal(writes.length,2));assert.equal(writes[1].body.stage,'Discovery');
 });
 
@@ -91,4 +92,33 @@ test('board provides every open stage and editor keeps commercial data separate 
  assert.ok(screen.getByRole('heading',{name:'Preparing quote',exact:true}));assert.ok(screen.getByRole('heading',{name:'Awaiting decision',exact:true}));
  await input.click(screen.getByRole('button',{name:'View Wedding flowers'}));await screen.findByRole('heading',{name:'Next steps'});await input.click(screen.getByRole('button',{name:'Prepare quote'}));assert.deepEqual(opened,[['project','p1','Estimate']]);
  await input.click(screen.getByRole('button',{name:'Edit details'}));assert.ok(screen.getByRole('textbox',{name:'Enquiry title'}));assert.equal(screen.queryByRole('heading',{name:'Next steps'}),null);
+});
+
+
+test('pagination bounds displayed records, preserves stage grouping and resets with filters or page size',async()=>{
+ const input=user();fixture({count:53});await screen.findByText('1–25 of 53 enquiries');
+ assert.equal(screen.getAllByRole('button',{name:/^View Enquiry /}).length,25);
+ const firstPage=screen.getAllByRole('button',{name:/^View Enquiry /}).map(e=>e.getAttribute('aria-label'));
+ await input.click(screen.getByRole('button',{name:'Next',exact:true}));await screen.findByText('26–50 of 53 enquiries');
+ assert.equal(screen.getAllByRole('button',{name:/^View Enquiry /}).length,25);assert.ok(screen.getAllByRole('button',{name:/^View Enquiry /}).every(e=>!firstPage.includes(e.getAttribute('aria-label'))));
+ await choose(input,'Enquiries per page','10 rows');await screen.findByText('1–10 of 53 enquiries');
+ await input.click(screen.getByRole('button',{name:'Next',exact:true}));await screen.findByText('11–20 of 53 enquiries');
+ await choose(input,'Enquiry stage','Discussing the brief');await screen.findByText('1–10 of 26 enquiries');assert.equal(screen.getByRole('button',{name:'Previous',exact:true}).disabled,true);
+ await input.click(screen.getByRole('radio',{name:'All enquiries',exact:true}));await choose(input,'Enquiry stage','Open enquiries');await screen.findByText('1–10 of 53 enquiries');
+ assert.ok(screen.getByRole('heading',{name:'New enquiry',exact:true}));assert.equal(screen.queryByRole('heading',{name:'Discussing the brief',exact:true}),null,'a page slices the grouped sequence, rather than regrouping unrelated chunks');
+ await input.click(screen.getByRole('radio',{name:'Board',exact:true}));assert.equal(screen.queryByRole('navigation',{name:'Enquiry pagination'}),null);assert.equal(screen.getAllByRole('button',{name:/^View Enquiry /}).length,53);
+});
+
+
+test('submitted request is available in context; review is explicit, preserves stage and the conversation stays project scoped',async()=>{
+ const intake={formName:'Interior consultation',version:2,submittedAt:'2026-10-03T10:00:00Z',original:true,brief:{name:'Amelia',email:'amelia@example.test',workflowType:'interior-design',occasion:'A single room',date:'2027-04-10',venue:'London',vision:'A calm space for reading.',budget:'£8,000',details:{spaces:'Living room',constraints:'Keep the bookshelves'},intakeAnswers:[{label:'Natural light',value:'South facing',applicable:true},{label:'Hidden answer',value:'Private hidden response',applicable:false}]}};
+ const input=user(),{writes,opened}=fixture({intake});await screen.findByRole('heading',{name:'New enquiries to review'});
+ await input.click(screen.getByRole('button',{name:'View Wedding flowers'}));await screen.findByRole('heading',{name:'Their request'});
+ assert.equal(writes.length,0,'opening does not mark the enquiry reviewed');assert.ok(screen.getByText('A calm space for reading.'));assert.ok(screen.getByText('Client budget'));assert.ok(screen.getByText('£8,000'));
+ await input.click(screen.getByText('View original submission'));assert.ok(screen.getByText('Keep the bookshelves'));assert.ok(screen.getByText('South facing'));assert.equal(screen.queryByText('Private hidden response'),null);
+ assert.equal(screen.getByRole('button',{name:'Start planning'}).disabled,true);
+ await input.click(screen.getByRole('button',{name:'Mark reviewed',exact:true}));await screen.findByText(/Reviewed by Sophie/);
+ assert.equal(writes[0].body.reviewed,true);assert.equal(writes[0].body.stage,undefined);assert.equal(screen.getByRole('button',{name:'Start planning'}).disabled,false);
+ await input.click(screen.getByRole('button',{name:'Open conversation',exact:true}));assert.deepEqual(opened,[['project','p1','Conversation']]);
+ await input.click(screen.getByRole('button',{name:'Mark for review',exact:true}));await screen.findByRole('button',{name:'Mark reviewed',exact:true});assert.equal(writes[1].body.revision,2);assert.equal(writes[1].body.reviewed,false);
 });
