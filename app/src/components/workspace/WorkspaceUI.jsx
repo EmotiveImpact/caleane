@@ -43,7 +43,7 @@ export const WorkspaceButton=forwardRef(function WorkspaceButton({variant='prima
 });
 
 export function WorkspaceHeading({title,description,action,className}){
-  return <header className={cx('ws-heading',className)}><div><h1>{title}</h1>{description&&<p>{description}</p>}</div>{action&&<div className="ws-heading-actions">{action}</div>}</header>;
+  return <header className={cx('ws-heading','workspace-page-heading',className)}><div><h1>{title}</h1>{description&&<p>{description}</p>}</div>{action&&<div className="ws-heading-actions">{action}</div>}</header>;
 }
 
 export function WorkspaceField({label,hint,error,children,className,id,...props}){

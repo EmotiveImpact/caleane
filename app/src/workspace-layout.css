@@ -1,0 +1,221 @@
+/* Shared workspace geometry. Feature styles own their content, never the
+   outer inset, page heading or collection toolbar. Colour stays in tokens. */
+.workspace.folio-workspace {
+  --workspace-page-inset: 24px;
+  --workspace-section-gap: 24px;
+  --workspace-heading-height: 68px;
+  --workspace-control-height: 40px;
+  --workspace-content-width: 1760px;
+}
+
+.workspace.folio-workspace > .workspace-body,
+.workspace.folio-workspace > .folio-client-layout.is-directory-view,
+.workspace.folio-workspace > .folio-client-layout.is-inbox-workspace,
+.workspace.folio-workspace > .studio-client-record > .folio-record {
+  box-sizing: border-box;
+  padding: var(--workspace-page-inset) var(--folio-page-gutter) 60px;
+  min-width: 0;
+}
+.workspace.folio-workspace > .workspace-body {
+  width: 100%;
+  max-width: var(--workspace-content-width);
+  margin-inline: auto;
+}
+.workspace.folio-workspace > .studio-client-record > .folio-record {
+  max-width: var(--workspace-content-width);
+  margin-inline: auto;
+}
+.workspace.folio-workspace .forms-workspace:not(.is-form-editing) { max-width: none; }
+.workspace.folio-workspace :is(.studio-client-directory,.relationship-inbox) {
+  max-width: calc(var(--workspace-content-width) - 2 * var(--folio-page-gutter));
+  margin-inline: auto;
+}
+.workspace.folio-workspace > .workspace-body .studio-billing {
+  padding: 0;
+  max-width: none;
+}
+
+.workspace.folio-workspace .workspace-page-heading {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: var(--workspace-heading-height);
+  padding: 0;
+  margin: 0 0 var(--workspace-section-gap);
+  border: 0;
+}
+.workspace.folio-workspace .workspace-page-heading > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.workspace.folio-workspace .workspace-page-heading h1 {
+  font-size: 32px !important;
+  line-height: 38px !important;
+  font-weight: 600 !important;
+  letter-spacing: -.035em !important;
+  margin: 0;
+  padding: 0;
+}
+.workspace.folio-workspace .workspace-page-heading > div:first-child > p:last-child {
+  font-size: 14px;
+  line-height: 22px;
+  margin: 8px 0 0;
+  max-width: 75ch;
+}
+.workspace.folio-workspace .workspace-page-heading :is(.eyebrow,.crm-overline,.folio-overline,.billing-kicker) {
+  display: none;
+}
+.workspace.folio-workspace .workspace-page-heading > :is(.studio-heading-actions,.ws-heading-actions,.forms-toolbar) {
+  display: flex;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+.workspace.folio-workspace .folio-settings-page > .workspace-page-heading {
+  margin-bottom: var(--workspace-section-gap);
+}
+
+/* Page actions share a silhouette, including the + glyph. Variant colours
+   and disabled/hover states remain with the existing button components. */
+.workspace.folio-workspace .workspace-page-heading > button,
+.workspace.folio-workspace .workspace-page-heading > :is(.studio-heading-actions,.ws-heading-actions,.forms-toolbar) > button,
+.workspace.folio-workspace .project-actions > button,
+.workspace.folio-workspace .project-actions > .invite-wrap > button,
+.workspace.folio-workspace .folio-client-actions > .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--workspace-control-height);
+  box-sizing: border-box;
+  padding: 0 16px;
+  margin: 0;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.workspace.folio-workspace .workspace-page-heading button > svg,
+.workspace.folio-workspace .project-actions > button > svg,
+.workspace.folio-workspace .project-actions > .invite-wrap > button > svg,
+.workspace.folio-workspace .folio-client-actions > .button > svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke-width: 1.8;
+}
+
+/* Collection controls occupy the same row beneath the heading. Long filter
+   labels scroll inside that row instead of moving neighbouring controls. */
+.workspace.folio-workspace :is(.studio-index-controls,.studio-collection-controls,.task-controls) {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 16px 24px;
+  min-height: 48px;
+  margin: 0 0 var(--workspace-section-gap);
+  padding: 0;
+  border-bottom: 1px solid var(--studio-rule);
+}
+.workspace.folio-workspace :is(.studio-index-controls,.studio-collection-controls) > .studio-tabs,
+.workspace.folio-workspace .task-controls > .task-filters {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  gap: 24px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.workspace.folio-workspace :is(.studio-index-controls,.studio-collection-controls) > .studio-tabs > button,
+.workspace.folio-workspace .task-controls > .task-filters > button {
+  min-height: 48px;
+  box-sizing: border-box;
+  padding-block: 12px;
+  flex-shrink: 0;
+}
+.workspace.folio-workspace .studio-index-controls > .studio-display-controls,
+.workspace.folio-workspace .task-controls > .task-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-height: 48px;
+  margin: 0;
+}
+.workspace.folio-workspace .task-tools > .ws-select { width: auto; }
+
+/* Record views add their own navigation, using the same heading start. */
+.workspace.folio-workspace .project-heading { padding: 0; margin: 0 0 var(--workspace-section-gap); }
+.workspace.folio-workspace .project-title {
+  min-height: var(--workspace-heading-height);
+  align-items: flex-start;
+  gap: 24px;
+}
+.workspace.folio-workspace .project-title h1,
+.workspace.folio-workspace .folio-client-header h1 {
+  font-size: 32px !important;
+  line-height: 38px !important;
+  font-weight: 600 !important;
+  letter-spacing: -.035em !important;
+  margin: 0;
+}
+.workspace.folio-workspace .project-title > div:first-child > p:last-child,
+.workspace.folio-workspace .folio-client-header .folio-identity p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+}
+.workspace.folio-workspace .project-actions { align-items: center; gap: 12px; padding: 0; }
+.workspace.folio-workspace .studio-client-record .folio-client-header {
+  min-height: var(--workspace-heading-height);
+  padding: 0;
+  margin: 0 0 var(--workspace-section-gap);
+  gap: 16px;
+  align-items: flex-start;
+}
+.workspace.folio-workspace .studio-client-record .folio-detail-grid { margin-top: 24px; }
+
+/* The form canvas keeps its compact editing header, while sharing the shell
+   gutter with the form index and every other section. */
+.workspace.folio-workspace > .workspace-body:has(.is-form-editing) { padding-inline: var(--folio-page-gutter); }
+
+@media (max-width: 760px) {
+  .workspace.folio-workspace {
+    --workspace-page-inset: 24px;
+    --workspace-section-gap: 20px;
+    --workspace-control-height: 44px;
+  }
+  .workspace.folio-workspace .workspace-page-heading { gap: 16px; }
+  .workspace.folio-workspace .workspace-page-heading h1,
+  .workspace.folio-workspace .project-title h1,
+  .workspace.folio-workspace .folio-client-header h1 { font-size: 28px !important; line-height: 34px !important; }
+  .workspace.folio-workspace :is(.studio-index-controls,.studio-collection-controls,.task-controls) { gap: 8px 12px; }
+  .workspace.folio-workspace .studio-index-controls,
+  .workspace.folio-workspace .task-controls { grid-template-columns: minmax(0,1fr); }
+  .workspace.folio-workspace .studio-index-controls > .studio-display-controls,
+  .workspace.folio-workspace .task-controls > .task-tools { min-height: 44px; justify-content: flex-end; }
+}
+@media (max-width: 600px) {
+  .workspace.folio-workspace .workspace-page-heading { flex-wrap: wrap; }
+  .workspace.folio-workspace .workspace-page-heading > div:first-child { flex-basis: 100%; }
+  .workspace.folio-workspace .workspace-page-heading > :is(button,.studio-heading-actions,.ws-heading-actions,.forms-toolbar) { margin-left: auto; }
+  .workspace.folio-workspace .project-title { flex-direction: column; gap: 16px; }
+  .workspace.folio-workspace .project-title .project-actions {
+    align-self: flex-end;
+    justify-content: flex-end;
+    width: 100%;
+  }
+  .workspace.folio-workspace .studio-client-record .folio-client-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

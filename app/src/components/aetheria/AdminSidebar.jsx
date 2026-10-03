@@ -2,8 +2,8 @@
 import React,{useEffect,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {WorkspacePopover,WorkspaceSelect,WorkspaceTooltip} from '../workspace/WorkspaceUI';
-import {House,FolderClosed,Columns3,ListTodo,UserRound,Settings2,LogOut,CalendarDays,Mail,Images,Menu,X,ReceiptText,FileText,CircleCheck,UsersRound,PanelLeftClose,PanelLeftOpen} from 'lucide-react';
-const ownerItems=[['overview','Overview',House],['projects','Projects',FolderClosed],['clients','Clients',UserRound],['forms','Forms',FileText],['briefs','Briefs',FileText],['approvals','Approvals',CircleCheck],['pipeline','Pipeline',Columns3],['tasks','Tasks',ListTodo],['finances','Finances',ReceiptText],['inbox','Messages',Mail],['calendar','Calendar',CalendarDays],['library','Library',Images]];
+import {House,FolderClosed,Columns3,ListTodo,UserRound,Settings2,LogOut,CalendarDays,Mail,Images,Menu,X,ReceiptText,ClipboardList,FileText,CircleCheck,UsersRound,PanelLeftClose,PanelLeftOpen} from 'lucide-react';
+const ownerItems=[['overview','Overview',House],['projects','Projects',FolderClosed],['clients','Clients',UserRound],['forms','Forms',ClipboardList],['briefs','Briefs',FileText],['approvals','Approvals',CircleCheck],['pipeline','Pipeline',Columns3],['tasks','Tasks',ListTodo],['finances','Finances',ReceiptText],['inbox','Messages',Mail],['calendar','Calendar',CalendarDays],['library','Library',Images]];
 const staffItems=[['overview','Overview',House],['projects','Projects',FolderClosed]];
 const clientItems=[['overview','Overview',House],['projects','Projects',FolderClosed],['approvals','Approvals',CircleCheck],['inbox','Messages',Mail]];
 const SIDEBAR_PREFERENCE='caleane.sidebar.collapsed';

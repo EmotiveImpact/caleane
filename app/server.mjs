@@ -200,7 +200,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     const createInvitation=mail=>{requireOwner();const linked=db.prepare(`SELECT u.email FROM crm_contacts ct JOIN users u ON u.id=ct.user_id WHERE ct.studio_id=? AND ct.email=?`).get(studio.id,mail);if(linked&&linked.email!==mail)fail(409,'This contact already has a portal login at a different email.');const token=randomBytes(32).toString('hex'),result={url:`${origin}/join#${token}`,email:mail,expiresDays:7,delivery:outbox?'queued':'copy_link'};transaction(db,()=>{db.prepare('UPDATE invitations SET used=1 WHERE studio_id=? AND email=?').run(studio.id,mail);db.prepare('INSERT INTO invitations VALUES(?,?,?,?,0)').run(hash(token),studio.id,mail,Date.now()+7*86400000);if(outbox)outbox.enqueueInvitation({studioId:studio.id,email:mail,inviteUrl:result.url});});return result;};
     const clientDTO=row=>{const organization=db.prepare(`SELECT o.name FROM crm_client_organizations co JOIN crm_organizations o ON o.id=co.organization_id AND o.studio_id=co.studio_id WHERE co.client_id=? AND co.studio_id=?`).get(row.id,studio.id);return {id:row.id,email:row.email,name:row.name,...JSON.parse(row.data),organizationName:organization?.name||''};};
-    if(route==='/api/search'&&req.method==='GET'){requireOwner();const query=str(url.searchParams.get('q')||'',80);return reply(200,searchWorkspace(db,studio.id,query));}
+    if(route==='/api/search'&&req.method==='GET'){requireOwner();const query=str(url.searchParams.get('q')||'',80);return reply(200,searchWorkspace(db,studio.id,query,url.searchParams.get('scope')||'all'));}
     if(route==='/api/staff'){
      requireOwner();
      if(req.method==='GET'){

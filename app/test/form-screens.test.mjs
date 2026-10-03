@@ -51,12 +51,12 @@ test('the public API enforces the same screen route and preserves the published 
  const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-screens-')),origin='http://127.0.0.1:4320',app=await createWorkspace({dbFile:path.join(dir,'db.sqlite'),origin,demo:true});await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+app.server.address().port;let cookie='';
  async function call(route,body,key){const r=await fetch(base+route,{method:body?'POST':'GET',headers:{Origin:origin,...(body?{'Content-Type':'application/json'}:{}),...(key?{'Idempotency-Key':key}:{Cookie:cookie})},body:body?JSON.stringify(body):undefined});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return {status:r.status,data:await r.json()};}
  try{
-  await call('/api/login',{email:'studio@example.test',password:'StudioDemo2026!'});const studio=(await call('/api/me')).data.studios[0],q='?studio='+studio.id,d=definition();d.theme={font:'serif',background:'paper',radius:'square'};d.screens[0].layout='image-right';d.screens[0].imageFit='contain';d.screens[0].imagePosition='bottom';d.screens[0].contentWidth='narrow';d.theme.buttonStyle='outline';d.screens[2].columns=2;d.screens[0].jumps=[{to:'s-contact',when:condition('q-service','contains','Design')}];
+  await call('/api/login',{email:'studio@example.test',password:'StudioDemo2026!'});const studio=(await call('/api/me')).data.studios[0],q='?studio='+studio.id,d=definition();d.theme={font:'serif',background:'paper',radius:'square'};d.screens[0].layout='image-right';d.screens[0].imageFit='contain';d.screens[0].imagePosition='37% 72%';d.screens[0].contentWidth='narrow';d.theme.buttonStyle='outline';d.screens[2].columns=2;d.screens[0].jumps=[{to:'s-contact',when:condition('q-service','contains','Design')}];
   let form=(await call('/api/forms'+q,{slug:'mixed-screens',definition:d})).data.form;form=(await call('/api/forms/'+form.id+q,{action:'publish',revision:form.revision})).data.form;
   const body={name:'Screen QA',email:'screen-qa@example.test',occasion:'Wedding',formVersion:1,intakeAnswers:{'q-service':['Planning'],'q-guests':'60'}};
   assert.equal((await call('/api/public/nay-decor/forms/mixed-screens/enquiries',body,'missing-visible')).status,400);
   assert.equal((await call('/api/public/nay-decor/forms/mixed-screens/enquiries',{...body,intakeAnswers:{'q-service':['Design'],'q-guests':'60','q-setup':'Should be cleared'}},'skipped-required')).status,201);
-  const response=(await call('/api/forms/'+form.id+'/responses'+q)).data.responses[0];assert.equal(response.snapshot.brief.intakeAnswers[2].value,'');assert.equal(response.snapshot.brief.intakeAnswers[2].applicable,false);assert.equal(response.snapshot.definition.screens[0].layout,'image-right');assert.equal(response.snapshot.definition.screens[0].imageFit,'contain');assert.equal(response.snapshot.definition.screens[0].imagePosition,'bottom');assert.equal(response.snapshot.definition.screens[0].contentWidth,'narrow');assert.equal(response.snapshot.definition.theme.buttonStyle,'outline');assert.equal(response.snapshot.definition.theme.font,'serif');
+  const response=(await call('/api/forms/'+form.id+'/responses'+q)).data.responses[0];assert.equal(response.snapshot.brief.intakeAnswers[2].value,'');assert.equal(response.snapshot.brief.intakeAnswers[2].applicable,false);assert.equal(response.snapshot.definition.screens[0].layout,'image-right');assert.equal(response.snapshot.definition.screens[0].imageFit,'contain');assert.equal(response.snapshot.definition.screens[0].imagePosition,'37% 72%');assert.equal(response.snapshot.definition.screens[0].contentWidth,'narrow');assert.equal(response.snapshot.definition.theme.buttonStyle,'outline');assert.equal(response.snapshot.definition.theme.font,'serif');
   assert.equal((await call('/api/public/nay-decor/forms/mixed-screens/enquiries',{...body,intakeAnswers:{'q-service':['Planning'],'q-guests':'60','q-setup':'Marquee setup'}},'visible-complete')).status,201);
   assert.equal((await call('/api/public/nay-decor/forms/mixed-screens/enquiries',{...body,intakeAnswers:{'q-service':['Design'],'q-guests':'invalid'}},'invalid-source')).status,400);
  }finally{await new Promise(resolve=>app.server.close(resolve));app.db.close();await rm(dir,{recursive:true,force:true});}
@@ -72,4 +72,10 @@ test('editor destinations stop at required details and condition summaries expla
  assert.match(text,/What services do you need.*contains.*Planning/);
  assert.match(text,/ and How many guests.*is at least.*50/);
  assert.equal(describeCondition(null,[]),'Always');
+});
+
+test('image positions accept bounded coordinates and preserve legacy presets',()=>{
+ const d=definition();
+ for(const value of ['center','top','bottom','left','right','0% 100%','37% 72%','33.5% 12.25%']){d.screens[0].imagePosition=value;assert.equal(validateForm(d).screens[0].imagePosition,value);}
+ for(const value of ['__proto__','constructor','101% 50%','50% -1%','NaN% 50%','10px 20px','50% 50%;color:red',{},['center']]){d.screens[0].imagePosition=value;assert.throws(()=>validateForm(d));}
 });
