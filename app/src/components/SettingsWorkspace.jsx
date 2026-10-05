@@ -7,10 +7,11 @@ import {DataGovernanceSettings} from './DataGovernanceSettings';
 import {OperationsReadiness} from './OperationsReadiness';
 import {StripeConnectSettings} from './StripeConnectSettings';
 import {BrandKitSettings} from './BrandKitSettings';
+import {WebhookSettings} from './WebhookSettings';
 import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
-const sections=[['studio','Studio'],['appearance','Appearance'],['brand','Brand kit'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['connections','Connections'],['data','Data'],['status','Status']];
+const sections=[['studio','Studio'],['appearance','Appearance'],['brand','Brand kit'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['connections','Connections'],['integrations','Integrations'],['data','Data'],['status','Status']];
 export function settingsSection(search){
   const params=new URLSearchParams(search);
   if(params.has('calendar_callback')||['pending','connected'].includes(params.get('stripe')))return 'connections';
@@ -99,6 +100,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
       {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}
       {panel('templates',section==='templates'&&<TemplateSettings studio={studio} request={request}/>)}
       {panel('connections',<div className="settings-connections"><CalendarSyncSettings studio={studio} request={request}/><StripeConnectSettings studio={studio} request={request}/></div>)}
+      {panel('integrations',section==='integrations'&&<WebhookSettings studio={studio} request={request}/>)}
       {panel('data',<DataGovernanceSettings studio={studio} request={request} onChanged={reload}/>)}
       {panel('status',<><OperationsReadiness studio={studio} request={request}/>{['localhost','127.0.0.1'].includes(location.hostname)&&<a className="settings-component-link" href="/?view=components">Explore the component gallery</a>}</>)}
     </Tabs.Root>

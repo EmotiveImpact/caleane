@@ -35,6 +35,7 @@ import {installInvoiceAdjustments,invoiceAdjustments,invoiceState,issueCreditNot
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation} from './consultations.mjs';
+import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
 import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -65,11 +66,11 @@ function previewAuthorized(header,userDigest,passDigest){
  const userMatches=timingSafeEqual(suppliedUser,userDigest),passMatches=timingSafeEqual(suppliedPass,passDigest);
  return userMatches&&passMatches;
 }
-export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,trustProxy=process.env.TRUST_PROXY||0}={}){
+export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,webhookIntervalMs=disableExternalServices?0:15000,trustProxy=process.env.TRUST_PROXY||0}={}){
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installTaskCollaboration(db);installBrandKit(db);const limits=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);const limits=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
@@ -233,6 +234,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(await handleReminders({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handlePipeline({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin}))return;
+    if(await handleWebhooks({db,req,route,body,studio,owner,user,reply,delivery:webhookIntervalMs>0}))return;
     if(route==='/api/stripe/connect/status'&&req.method==='GET'){
      requireOwner();if(!stripe) return reply(200,{onboarding:{studioId:studio.id,status:'unavailable',chargesEnabled:false,detailsSubmitted:false,payoutsEnabled:false,country:''}});
      return reply(200,{onboarding:await stripeOnboardingStatus(db,stripe,{studioId:studio.id,ownerUserId:user.id})});
@@ -791,7 +793,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  // Uploads never attached to a message or task are removed at start-up and then hourly.
  const cleanUploads=()=>{try{cleanupUnattachedUploads(db);}catch(error){console.error('Upload cleanup failed:',error?.stack||error);}};cleanUploads();
  const uploadTimer=uploadCleanupIntervalMs>0?setInterval(cleanUploads,uploadCleanupIntervalMs):null;uploadTimer?.unref();
- server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);});
+ // Outgoing webhooks: find new events and send what is due every 15 seconds.
+ let webhookRun=null;const tickWebhooks=()=>{if(webhookRun)return;webhookRun=runWebhooks(db).catch(error=>console.error('Webhook delivery failed:',error?.stack||error)).finally(()=>{webhookRun=null;});};
+ const webhookTimer=webhookIntervalMs>0?setInterval(tickWebhooks,webhookIntervalMs):null;webhookTimer?.unref();
+ server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);if(webhookTimer)clearInterval(webhookTimer);});
  return {server,db};
 }
 // The demo seeds accounts with a published password, so a production process needs an explicit opt-in to run it.
