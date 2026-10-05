@@ -1,5 +1,5 @@
 import {id,now,transaction,materializeProjectConversation,appendConversationMessage,saveProject} from './store.mjs';
-import {readSetting,writeSetting,currencies,installStudioCommerce} from './studio-commerce.mjs';
+import {readSetting,writeSetting,currencies,installStudioCommerce,billingDefaults} from './studio-commerce.mjs';
 import {installConsultations} from './consultations.mjs';
 import {getProjectOperations,changeProjectOperations} from './studio-operations.mjs';
 import {createPlan,getPlan,installPaymentPlans} from './payment-plans.mjs';
@@ -25,7 +25,8 @@ export const defaultFollowUpMessages=[
 ];
 export const defaultPipelineSettings={autoStages:true,holdOnProposal:true,planOnAccept:true,confirmOnDeposit:true,
  followUps:false,followUpDays:[3,7,12],followUpMessages:defaultFollowUpMessages,
- dailyCapacity:1,minimumSpend:0,minimumCurrency:'GBP',serviceAreas:'',silentDays:7};
+ dailyCapacity:1,minimumSpend:0,minimumCurrency:'GBP',serviceAreas:'',silentDays:7,
+ prepBeforeConsultation:false,closeSilent:false,closeSilentDays:21};
 
 export function installPipeline(db){installStudioCommerce(db);installConsultations(db);installPaymentPlans(db);db.exec('CREATE TABLE IF NOT EXISTS crm_pipeline_triggers(studio_id TEXT NOT NULL REFERENCES studios(id),key TEXT NOT NULL,opportunity_id TEXT,detail TEXT NOT NULL DEFAULT \'\',at TEXT NOT NULL,PRIMARY KEY(studio_id,key));');}
 
@@ -36,8 +37,8 @@ export function pipelineSettings(db,studioId){
 export function savePipelineSettings(db,studioId,input){
  if(!input||typeof input!=='object'||Array.isArray(input))fail(400,'Check the automation settings.');
  const current=pipelineSettings(db,studioId),result={...current};
- for(const key of ['autoStages','holdOnProposal','planOnAccept','confirmOnDeposit','followUps'])if(input[key]!==undefined){if(typeof input[key]!=='boolean')fail(400,'Switch each automation on or off.');result[key]=input[key];}
- for(const [key,min,max,message] of [['dailyCapacity',1,20,'Events a day must be between 1 and 20.'],['minimumSpend',0,10000000,'Enter a minimum spend between zero and ten million.'],['silentDays',1,60,'Quiet days must be between 1 and 60.']])
+ for(const key of ['autoStages','holdOnProposal','planOnAccept','confirmOnDeposit','followUps','prepBeforeConsultation','closeSilent'])if(input[key]!==undefined){if(typeof input[key]!=='boolean')fail(400,'Switch each automation on or off.');result[key]=input[key];}
+ for(const [key,min,max,message] of [['dailyCapacity',1,20,'Events a day must be between 1 and 20.'],['minimumSpend',0,10000000,'Enter a minimum spend between zero and ten million.'],['silentDays',1,60,'Quiet days must be between 1 and 60.'],['closeSilentDays',7,120,'Days before closing a silent enquiry must be between 7 and 120.']])
   if(input[key]!==undefined){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)fail(400,message);result[key]=input[key];}
  if(input.minimumCurrency!==undefined){if(!currencies.includes(input.minimumCurrency))fail(400,'Choose a supported currency.');result.minimumCurrency=input.minimumCurrency;}
  if(input.serviceAreas!==undefined){if(typeof input.serviceAreas!=='string'||input.serviceAreas.length>500)fail(400,'Keep service areas under 500 characters.');result.serviceAreas=input.serviceAreas.trim();}
@@ -96,6 +97,34 @@ function syncValue(db,{studioId,opp,owner,estimate}){
 
 function fill(template,values){return template.replace(/\{(\w+)\}/g,(match,key)=>values[key]??match);}
 
+function nextFollowUpIndex(db,studioId,proposal,settings){return settings.followUpDays.findIndex((d,i)=>!fired(db,studioId,`follow:${proposal.id}:${i}`));}
+function sendFollowUp(db,{studioId,opp,p,proposal,owner,studio,settings,index,outbox,reason}){
+ const text=fill(settings.followUpMessages[index]||defaultFollowUpMessages[index],{client_first_name:(p.brief?.name||'there').split(' ')[0],client_name:p.brief?.name||'',project_title:p.title,proposal_title:proposal.title,expires_on:longDate(proposal.expiresOn),project_date:p.brief?.date?longDate(p.brief.date):'',studio_name:studio?.name||''});
+ let messageId=null;
+ transaction(db,()=>{
+  messageId=appendConversationMessage(db,materializeProjectConversation(db,p),owner,'owner',text);
+  mark(db,studioId,`follow:${proposal.id}:${index}`,opp.id,messageId);
+  activity(db,studioId,opp,owner,`Follow-up ${index+1} sent`,reason);
+ });
+ if(messageId&&outbox){try{outbox.enqueueProjectActivity({studioId,projectId:p.id,actorUserId:owner.id,eventId:messageId});}catch{/* The message is already in the project conversation. */}}
+ return messageId;
+}
+
+// The owner sends the next follow-up early, or pauses and resumes the sequence for one proposal.
+export function followUpAction(db,studioId,{opportunityId,action,outbox=null}){
+ installPipeline(db);
+ const owner=ownerOf(db,studioId),settings=pipelineSettings(db,studioId),studio=db.prepare('SELECT name FROM studios WHERE id=?').get(studioId);
+ const opp=db.prepare('SELECT * FROM crm_opportunities WHERE id=? AND studio_id=?').get(opportunityId,studioId);if(!opp)fail(404,'Enquiry not found.');
+ const p=projectOf(db,studioId,opp.project_id),proposal=p&&currentProposal(p);
+ if(!proposal||proposal.status!=='Awaiting response')fail(409,'Follow-ups only run while a proposal is waiting for a reply.');
+ if(action==='pause'){if(!fired(db,studioId,'pause:'+proposal.id))transaction(db,()=>{mark(db,studioId,'pause:'+proposal.id,opp.id);activity(db,studioId,opp,owner,'Follow-ups paused');});return;}
+ if(action==='resume'){transaction(db,()=>{db.prepare('DELETE FROM crm_pipeline_triggers WHERE studio_id=? AND key=?').run(studioId,'pause:'+proposal.id);activity(db,studioId,opp,owner,'Follow-ups resumed');});return;}
+ if(action!=='send')fail(400,'Choose a follow-up action.');
+ if(!hasPortalClient(db,studioId,p.id))fail(409,'Invite the client to their project space before sending follow-ups.');
+ const index=nextFollowUpIndex(db,studioId,proposal,settings);if(index<0)fail(409,'Every follow-up for this proposal has been sent.');
+ sendFollowUp(db,{studioId,opp,p,proposal,owner,studio,settings,index,outbox,reason:'Sent early by the studio.'});
+}
+
 export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}){
  installPipeline(db);
  const settings=pipelineSettings(db,studioId),owner=ownerOf(db,studioId),log=[];
@@ -107,6 +136,17 @@ export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}
    if(settings.autoStages){
     const booked=db.prepare("SELECT id FROM consultations WHERE studio_id=? AND status IN ('Booked','Completed') AND json_extract(data,'$.clientId')=? AND created_at>=? ORDER BY created_at LIMIT 1").get(studioId,opp.client_id,opp.created_at.slice(0,10));
     if(booked&&transaction(db,()=>advance(db,{studioId,opp,owner,to:'Qualified',key:`consultation:${booked.id}:${opp.id}`,reason:'the client booked a consultation'})))log.push({opportunityId:opp.id,action:'Qualified'});
+   }
+   if(settings.prepBeforeConsultation){
+    const next=db.prepare("SELECT id,start_at FROM consultations WHERE studio_id=? AND status='Booked' AND json_extract(data,'$.clientId')=? AND start_at>=? ORDER BY start_at LIMIT 1").get(studioId,opp.client_id,asOf);
+    if(next&&!fired(db,studioId,`prep:${next.id}:${opp.id}`))transaction(db,()=>{
+     mark(db,studioId,`prep:${next.id}:${opp.id}`,opp.id);
+     const client=db.prepare('SELECT name FROM clients WHERE id=? AND studio_id=?').get(opp.client_id,studioId)?.name||'the client',due=[addDays(next.start_at,-1),asOf].sort().at(-1);
+     db.prepare(`INSERT INTO crm_tasks (id,studio_id,client_id,opportunity_id,title,detail,due_date,priority,completed,created_at,completed_at,created_by) VALUES(?,?,?,?,?,?,?,?,0,?,'',?)`)
+      .run(id(),studioId,opp.client_id,opp.id,`Prepare for the consultation with ${client}`,`Read their brief and gather examples before the call on ${longDate(next.start_at)}.`,due,'Normal',now(),'Caleane automation');
+     activity(db,studioId,opp,owner,'Consultation prep task added',`Automatic: due ${longDate(due)}.`);
+     log.push({opportunityId:opp.id,action:'Prep'});
+    });
    }
    const p=projectOf(db,studioId,opp.project_id);if(!p)continue;
    const estimate=currentEstimate(p),proposal=currentProposal(p);
@@ -158,23 +198,26 @@ export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}
     if(b.hold?.status==='Confirmed'&&transaction(db,()=>advance(db,{studioId,opp,owner,to:'Won',key:'won:'+b.hold.id,reason:'the date is confirmed'})))log.push({opportunityId:opp.id,action:'Won'});
     else if(b.scopeAccepted&&b.deposit?.status==='Paid'&&transaction(db,()=>advance(db,{studioId,opp,owner,to:'Won',key:'deposit:'+b.deposit.invoiceId,reason:'the deposit was paid'})))log.push({opportunityId:opp.id,action:'Won'});
    }
-   // Follow-ups stop the moment the client writes back or the proposal is answered.
-   if(settings.followUps&&proposal?.status==='Awaiting response'&&proposal.expiresOn>=asOf&&hasPortalClient(db,studioId,p.id)){
+   // Follow-ups stop the moment the client writes back, the proposal is answered or the owner pauses them.
+   if(settings.followUps&&proposal?.status==='Awaiting response'&&proposal.expiresOn>=asOf&&hasPortalClient(db,studioId,p.id)&&!fired(db,studioId,'pause:'+proposal.id)){
     const replied=lastClientMessage(db,p.id);
     if(!replied||replied<proposal.createdAt){
-     const index=settings.followUpDays.findIndex((d,i)=>!fired(db,studioId,`follow:${proposal.id}:${i}`));
+     const index=nextFollowUpIndex(db,studioId,proposal,settings);
      if(index>=0&&dayNumber(asOf)-dayNumber(proposal.createdAt)>=settings.followUpDays[index]){
-      const text=fill(settings.followUpMessages[index]||defaultFollowUpMessages[index],{client_first_name:(p.brief?.name||'there').split(' ')[0],client_name:p.brief?.name||'',project_title:p.title,proposal_title:proposal.title,expires_on:longDate(proposal.expiresOn),project_date:p.brief?.date?longDate(p.brief.date):'',studio_name:studio?.name||''});
-      let messageId=null;
-      transaction(db,()=>{
-       messageId=appendConversationMessage(db,materializeProjectConversation(db,p),owner,'owner',text);
-       mark(db,studioId,`follow:${proposal.id}:${index}`,opp.id,messageId);
-       activity(db,studioId,opp,owner,`Follow-up ${index+1} sent`,'Automatic: no reply since the proposal was shared.');
-      });
-      if(messageId&&outbox){try{outbox.enqueueProjectActivity({studioId,projectId:p.id,actorUserId:owner.id,eventId:messageId});}catch{/* The message is already in the project conversation. */}}
+      sendFollowUp(db,{studioId,opp,p,proposal,owner,studio,settings,index,outbox,reason:'Automatic: no reply since the proposal was shared.'});
       log.push({opportunityId:opp.id,action:'Follow-up'});
      }
     }
+   }
+   // A proposal with no reply for a long time closes, so the pipeline reflects what is really open.
+   if(settings.closeSilent&&proposal?.status==='Awaiting response'&&!fired(db,studioId,'close:'+proposal.id)){
+    const replied=lastClientMessage(db,p.id),quiet=dayNumber(asOf)-dayNumber(replied&&replied>proposal.createdAt?replied:proposal.createdAt);
+    if(!['Won','Lost'].includes(opp.stage)&&(!replied||replied<proposal.createdAt)&&quiet>=settings.closeSilentDays)transaction(db,()=>{
+     mark(db,studioId,'close:'+proposal.id,opp.id);
+     db.prepare("UPDATE crm_opportunities SET stage='Lost',lost_reason='No response',revision=revision+1,updated_at=? WHERE id=? AND studio_id=? AND stage NOT IN ('Won','Lost')").run(now(),opp.id,studioId);
+     activity(db,studioId,opp,owner,`Moved from ${opp.stage} to Lost`,`Automatic: no reply for ${quiet} days after the proposal.`);
+     opp.stage='Lost';log.push({opportunityId:opp.id,action:'Lost'});
+    });
    }
   }catch(error){console.error('Pipeline sync failed for an enquiry:',error.message);}
  }
@@ -214,7 +257,7 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
  // Signals per enquiry.
  const signals={};
  for(const o of opps){
-  const p=projects.find(item=>item.id===o.project_id)||null,flags=[],fit=[];
+  const p=projects.find(item=>item.id===o.project_id)||null,flags=[],fit=[];let alternatives=[];
   const date=p?.brief?.date,estimate=p&&currentEstimate(p),proposal=p&&currentProposal(p);
   let booking=null;
   if(p&&owner){try{booking=getProjectOperations(db,{studioId,projectId:p.id,userId:owner.id,asOf}).booking;}catch{booking=null;}}
@@ -224,6 +267,7 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
    const ok=others<capacity;
    fit.push({kind:'date',ok,label:ok?`${shortDay(date)} is available`:`${shortDay(date)} is ${bookedOthers>=capacity?'fully booked':'held for another client'}`});
    if(!ok)flags.push({kind:'clash',tone:'bad',label:bookedOthers>=capacity?'Date full':'Date held',rank:1});
+   if(!ok)alternatives=[-7,7,-14,14,-21,21].map(n=>addDays(date,n)).filter(d=>d>asOf&&(days.get(d)?.booked.length||0)+(days.get(d)?.held.length||0)<capacity).slice(0,3).sort();
   }
   const budget=budgetMinor(p?.brief?.budget);
   if(open&&settings.minimumSpend>0&&budget!==null){
@@ -254,6 +298,7 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
    else if(proposal.status==='Scope accepted'&&booking?.deposit?.status!=='Paid')flags.push({kind:'deposit',tone:'good',label:'Accepted · deposit due',rank:2});
   }else if(open&&estimate?.status==='Changes requested')flags.push({kind:'changes',tone:'warn',label:'Quote changes requested',rank:1});
   if(open&&fit.length>=2&&fit.every(f=>f.ok)&&['Discovery','Qualified'].includes(o.stage))flags.push({kind:'fit',tone:'good',label:'Strong fit',rank:7});
+  const paused=proposal?fired(db,studioId,'pause:'+proposal.id):false;
   const followed=proposal?db.prepare("SELECT COUNT(*) AS n FROM crm_pipeline_triggers WHERE studio_id=? AND key LIKE ?").get(studioId,`follow:${proposal.id}:%`).n:0;
   const nextFollow=settings.followUps&&proposal?.status==='Awaiting response'&&followed<settings.followUpDays.length&&(!replied||replied<proposal.createdAt)?addDays(proposal.createdAt,settings.followUpDays[followed]):null;
   signals[o.id]={opportunityId:o.id,projectId:p?.id||null,eventDate:isDay(date)?date:'',venue:p?.brief?.venue||'',budget:p?.brief?.budget||'',
@@ -262,9 +307,9 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
    hold:hold?{id:hold.id,status:hold.status,startDate:hold.startDate,holdUntil:hold.holdUntil}:null,
    deposit:booking?.deposit&&!['No deposit invoice','Private'].includes(booking.deposit.status)?booking.deposit:null,
    productionStatus:booking?.productionStatus||null,portalClient:p?hasPortalClient(db,studioId,p.id):false,
-   lastClientMessageAt:replied,followUpsSent:followed,nextFollowUp:nextFollow,fit,flags:flags.sort((a,b)=>a.rank-b.rank)};
+   lastClientMessageAt:replied,followUpsSent:followed,nextFollowUp:paused?null:nextFollow,followUpsPaused:paused,alternatives,fit,flags:flags.sort((a,b)=>a.rank-b.rank)};
  }
- return {settings,asOf,dates,signals,insights:insights(db,studioId,opps,projects,asOf),handled:handledFor(db,studioId,asOf),replySpeed:replySpeed(db,studioId,opps,asOf)};
+ return {settings,asOf,dates,signals,planTemplate:billingDefaults(db,studioId).plan,insights:insights(db,studioId,opps,projects,asOf),handled:handledFor(db,studioId,asOf),replySpeed:replySpeed(db,studioId,opps,asOf)};
 }
 
 // What the automations did in the last week, for the Today panel.
@@ -321,6 +366,7 @@ export async function handlePipeline({db,req,route,body,studio,owner,reply,outbo
  if(req.method==='GET'){syncPipeline(db,studio.id,{outbox});return reply(200,pipelineOverview(db,studio.id)),true;}
  if(req.method!=='POST')fail(405,'Method not allowed.');
  if(body.action==='save'){savePipelineSettings(db,studio.id,body.settings);syncPipeline(db,studio.id,{outbox});return reply(200,pipelineOverview(db,studio.id)),true;}
+ if(body.action==='follow-up'){followUpAction(db,studio.id,{opportunityId:String(body.opportunityId||''),action:body.step,outbox});return reply(200,pipelineOverview(db,studio.id)),true;}
  if(body.action==='run'){const log=syncPipeline(db,studio.id,{outbox});return reply(200,{...pipelineOverview(db,studio.id),log}),true;}
  fail(400,'Choose a pipeline action.');
 }

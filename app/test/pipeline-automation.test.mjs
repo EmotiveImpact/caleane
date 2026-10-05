@@ -4,7 +4,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {openStore,id,makeProject,insertProject,saveProject,materializeProjectConversation} from '../store.mjs';
-import {syncPipeline,pipelineOverview,savePipelineSettings,budgetMinor,installPipeline} from '../pipeline-automation.mjs';
+import {syncPipeline,pipelineOverview,savePipelineSettings,budgetMinor,installPipeline,followUpAction} from '../pipeline-automation.mjs';
 import {updateOpportunity} from '../crm.mjs';
 import {getPlan} from '../payment-plans.mjs';
 import {installForms} from '../forms.mjs';
@@ -100,5 +100,47 @@ test('the pipeline follows quotes, holds, follow-ups, acceptance and deposits wi
   const insights=pipelineOverview(db,studioId).insights;
   assert.equal(insights.overall.won,2,'both confirmed weddings count as won');
   assert.ok(insights.stageDays.length===4);
+ }finally{db.close();await rm(dir,{recursive:true,force:true});}
+});
+
+test('the owner can send a follow-up early or pause them, and optional rules add prep tasks and close silent enquiries',async()=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-pipeline-')),db=openStore(path.join(dir,'pipeline.sqlite'));
+ const studioId=id(),ownerId=id(),owner={id:ownerId,name:'Studio Owner'};
+ const read=projectId=>JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(projectId).data);
+ const opportunity=projectId=>db.prepare('SELECT * FROM crm_opportunities WHERE project_id=?').get(projectId);
+ const messages=projectId=>db.prepare("SELECT m.* FROM conversation_messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.project_id=?").all(projectId);
+ try{
+  db.prepare('INSERT INTO studios VALUES(?,?,?,?,?)').run(studioId,'wild-stem','Wild Stem','#181925','[]');
+  db.prepare('INSERT INTO users VALUES(?,?,?,?)').run(ownerId,'owner@example.test',owner.name,'unused');
+  db.prepare('INSERT INTO memberships VALUES(?,?,?)').run(ownerId,studioId,'owner');
+  installPipeline(db);installForms(db);
+  const project=makeProject(studioId,{name:'Bea Lowe',email:'bea@example.test',occasion:'Wedding flowers',workflowType:'floral-design',date:'2099-06-12'},owner);insertProject(db,project);
+  const other=makeProject(studioId,{name:'Fairley',email:'fairley@example.test',occasion:'Wedding flowers',workflowType:'floral-design',date:'2099-06-12'},owner);
+  other.operations={revision:1,holds:[{id:id(),startDate:'2099-06-12',endDate:'2099-06-12',holdUntil:'2099-06-01',status:'Confirmed',location:'',note:''}],milestones:[]};insertProject(db,other);
+  const fresh=read(project.id),estimateId=id();
+  fresh.estimates=[{id:estimateId,version:1,briefRevision:fresh.briefRevision,title:'Flowers',note:'',currency:'GBP',items:[{title:'Bouquet',quantity:1,unitAmount:100000}],taxRate:0,subtotal:100000,tax:0,total:100000,status:'Awaiting review',at:'2099-05-01T09:00:00.000Z',by:owner.name}];
+  fresh.proposals=[{id:id(),version:1,title:'Flowers',scope:'Bouquet',exclusions:'',delivery:'On the day',expiresOn:'2099-06-01',estimate:structuredClone(fresh.estimates[0]),briefRevision:fresh.briefRevision,status:'Awaiting response',by:owner.name,createdAt:'2099-05-01T09:00:00.000Z'}];
+  saveProject(db,fresh);
+  syncPipeline(db,studioId,{asOf:'2099-05-01'});
+  const opp=opportunity(project.id);
+  const signal=pipelineOverview(db,studioId,{asOf:'2099-05-01'}).signals[opp.id];
+  assert.deepEqual(signal.alternatives,['2099-05-29','2099-06-05','2099-06-19'],'a full date suggests the nearest free dates a week either side');
+  followUpAction(db,studioId,{opportunityId:opp.id,action:'send'});
+  assert.equal(messages(project.id).length,1,'send now posts the first follow-up straight away');
+  followUpAction(db,studioId,{opportunityId:opp.id,action:'pause'});
+  savePipelineSettings(db,studioId,{followUps:true});
+  syncPipeline(db,studioId,{asOf:'2099-05-20'});
+  assert.equal(messages(project.id).length,1,'a paused sequence sends nothing');
+  assert.equal(pipelineOverview(db,studioId,{asOf:'2099-05-20'}).signals[opp.id].followUpsPaused,true);
+  followUpAction(db,studioId,{opportunityId:opp.id,action:'resume'});
+  syncPipeline(db,studioId,{asOf:'2099-05-20'});
+  assert.equal(messages(project.id).length,2,'resuming sends the next follow-up that is due');
+  db.prepare('INSERT INTO consultations VALUES(?,?,?,?,?,?,?)').run(id(),studioId,'2099-05-25T10:00:00.000Z','2099-05-25T10:30:00.000Z','Booked',JSON.stringify({clientId:opp.client_id}),'2099-05-20T09:00:00.000Z');
+  savePipelineSettings(db,studioId,{prepBeforeConsultation:true,closeSilent:true,closeSilentDays:21});
+  syncPipeline(db,studioId,{asOf:'2099-05-22'});
+  const prep=db.prepare("SELECT * FROM crm_tasks WHERE opportunity_id=? AND title LIKE 'Prepare for the consultation%'").get(opp.id);
+  assert.equal(prep.due_date,'2099-05-24','the prep task is due the day before the consultation');
+  assert.equal(opportunity(project.id).stage,'Lost','no reply for 21 days closes the enquiry');
+  assert.equal(opportunity(project.id).lost_reason,'No response');
  }finally{db.close();await rm(dir,{recursive:true,force:true});}
 });

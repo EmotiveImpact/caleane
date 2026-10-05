@@ -34,10 +34,12 @@ function fixture({stale=false,count=1,intake=null,pipeline=null}={}){
   if(path.startsWith('/api/clients'))return {clients:[{id:'c1',name:'Amelia'}]};
   if(path.startsWith('/api/crm/tasks'))return {tasks};
   if(path.startsWith('/api/task-workspace'))return {assignments:{'crm:t1':'Sophie'}};
+  if(pipeline&&method==='POST'&&path.startsWith('/api/pipeline')){writes.push({path,body});return pipeline;}
   if(pipeline&&path.startsWith('/api/pipeline'))return pipeline;
   if(pipeline&&path.startsWith('/api/catalogue'))return {items:[{id:'i1',name:'Bridal bouquet',unitAmount:28500,currency:'GBP',unit:'each',archived:false}]};
   if(pipeline&&method==='POST'&&path.startsWith('/api/projects/p1/estimates')){writes.push({path,body});return {project:{id:'p1'}};}
-  if(pipeline&&path.startsWith('/api/projects/p1?'))return {project:{id:'p1',estimates:[],proposals:[]}};
+  if(pipeline&&method==='POST'&&path.startsWith('/api/projects/p1/messages')){writes.push({path,body});return {project:{id:'p1'}};}
+  if(pipeline&&path.startsWith('/api/projects/p1?'))return {project:pipeline.project||{id:'p1',estimates:[],proposals:[]}};
   throw Error('Unexpected request '+path);
  };
  render(h(PipelineCRM,{studio,request,run:fn=>fn(),openClient:id=>opened.push(['client',id]),openProject:(p,tab)=>opened.push(['project',p.id,tab]),openTask:id=>opened.push(['task',id]),onProjectCreated(){}}));return {writes,opened};
@@ -152,4 +154,31 @@ test('board keeps every stage reachable on small screens and the enquiry drives 
  await waitFor(()=>assert.ok(writes.some(w=>w.path.startsWith('/api/projects/p1/estimates'))));
  const quote=writes.find(w=>w.path.startsWith('/api/projects/p1/estimates')).body;
  assert.deepEqual(quote.items,[{title:'Bridal bouquet',quantity:1,unitAmount:28500}]);assert.equal(quote.currency,'GBP');
+});
+
+test('follow-ups can be sent early or paused, full dates offer alternatives and the client preview shows the deposit',async()=>{
+ const estimate={id:'e1',version:1,status:'Awaiting review',currency:'GBP',total:100000,items:[{title:'Bridal bouquet',quantity:1,unitAmount:100000}],at:'2026-10-01T10:00:00Z'};
+ const signal={opportunityId:'o1',projectId:'p1',eventDate:'2027-06-12',venue:'Bath',portalClient:true,followUpsSent:0,nextFollowUp:'2026-10-04',alternatives:['2027-06-05','2027-06-19'],
+  estimate:{id:'e1',version:1,status:'Awaiting review',total:100000,currency:'GBP',items:1},proposal:{id:'q1',version:1,title:'Wedding flowers',status:'Awaiting response',expiresOn:'2026-10-20',sharedAt:'2026-10-01T10:00:00Z'},
+  hold:{id:'h1',status:'Held',startDate:'2027-06-12',holdUntil:'2026-10-20'},fit:[],flags:[{kind:'clash',tone:'bad',label:'Date full',rank:1}]};
+ const pipeline={settings:{dailyCapacity:1,followUps:true,followUpDays:[3,7,12],followUpMessages:['Hi','Hi','Hi']},dates:[],insights:null,signals:{o1:signal},planTemplate:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}],project:{id:'p1',estimates:[estimate],proposals:[{id:'q1',title:'Wedding flowers',scope:'Bouquets'}]}};
+ const input=user(),{writes}=fixture({pipeline});
+ await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));
+ const deal=await screen.findByRole('region',{name:'Quote and booking'});
+ assert.match(deal.textContent,/Nearby free dates: Sat 5 Jun and Sat 19 Jun/);
+ await input.click(within(deal).getByRole('button',{name:'Offer other dates'}));
+ const message=screen.getByRole('textbox',{name:'Message'});assert.match(message.value,/Saturday 5 June and Saturday 19 June/);
+ await input.click(screen.getByRole('button',{name:'Send message'}));
+ await waitFor(()=>assert.ok(writes.some(w=>w.path.startsWith('/api/projects/p1/messages'))));
+ const tabs=screen.getByRole('tablist',{name:'Enquiry sections'});
+ await input.click(within(tabs).getByRole('tab',{name:'Follow-ups'}));
+ await input.click(screen.getByRole('button',{name:'Send now'}));
+ await waitFor(()=>assert.deepEqual(writes.at(-1).body,{action:'follow-up',opportunityId:'o1',step:'send'}));
+ await input.click(screen.getByRole('button',{name:'Pause follow-ups'}));
+ await waitFor(()=>assert.equal(writes.at(-1).body.step,'pause'));
+ await input.click(within(tabs).getByRole('tab',{name:'Quote'}));
+ assert.ok(await screen.findByText('Deposit £300.00, to confirm the date'));
+ await input.click(screen.getByRole('button',{name:'See it as the client'}));
+ const preview=await screen.findByRole('dialog',{name:'Wedding flowers'});
+ assert.match(preview.textContent,/£300.00 deposit/);assert.match(preview.textContent,/Balance £700.00 14 days before the event/);
 });
