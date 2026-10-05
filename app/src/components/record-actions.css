@@ -1,0 +1,10 @@
+/* Remove, delete and undo controls shared by records that can be created by hand. */
+.text-button.is-danger,button.text-button.is-danger{color:#a13e3b}
+.text-button.is-danger:hover{text-decoration:underline}
+.studio-reference-manage,.record-manage{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;margin-top:6px}
+.folio-record-controls{margin-top:28px;padding-top:20px;border-top:1px solid var(--line,#e2e1db);display:grid;gap:8px}
+.folio-record-controls h3{margin:0;font-size:14px;font-weight:550}
+.folio-archived-badge{display:inline-block;margin-right:8px;padding:2px 8px;border-radius:999px;background:#ecebe5;color:#5d6257;font-size:11px}
+.button.is-danger{background:#a13e3b;border-color:#a13e3b;color:#fff}
+.folio-erase-dialog ul{margin:8px 0;padding-left:18px}
+.studio-reference-pin.is-draft{background:#a13e3b;color:#fff}

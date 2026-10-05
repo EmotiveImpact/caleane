@@ -5,7 +5,7 @@ import {constrainPosition,zoomCamera} from '../lib/reference-board';
 
 function Tile({reference,p,studio,pos,selected,editable,onSelect,onChange,onOpen}){
  const node=useRef(null),transformer=useRef(null),[image,setImage]=useState(null),[failed,setFailed]=useState(false);
- const src=mediaFor(p,studio,reference),font='Instrument Sans, Inter, sans-serif';
+ const src=mediaFor(p,studio,reference),font='Instrument Sans, sans-serif';
  useEffect(()=>{setImage(null);setFailed(false);if(!src)return;let active=true;const img=new window.Image();img.onload=()=>{if(active)setImage(img);};img.onerror=()=>{if(active)setFailed(true);};img.src=src;return()=>{active=false;};},[src]);
  useEffect(()=>{if(selected&&editable&&transformer.current){transformer.current.nodes([node.current]);transformer.current.getLayer().batchDraw();}},[selected,editable]);
  function commit(next){const safe=constrainPosition(next);node.current.setAttrs({...safe,scaleX:1,scaleY:1});onChange(safe);}

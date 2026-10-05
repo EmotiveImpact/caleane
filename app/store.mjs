@@ -1,12 +1,15 @@
 import {installConversationFeatures,messageDetails,messageDetailsDTO,validateMessageDetails,saveMessageDetails,conversationExtras} from './conversation-features.mjs';
 import {DatabaseSync} from 'node:sqlite';
 import {randomBytes,scryptSync,timingSafeEqual,createHash,randomUUID} from 'node:crypto';
+import {runMigrations} from './migrations.mjs';
 import {installRelationships,clientForProject,ensurePrimaryContact,ensureProjectRelationship,projectClientId} from './relationships.mjs';
 export const id=()=>randomUUID();
 export const now=()=>new Date().toISOString();
 export const hash=value=>createHash('sha256').update(value).digest('hex');
 export function passwordHash(password){const salt=randomBytes(16).toString('hex');return salt+':'+scryptSync(password,salt,64).toString('hex');}
-export function passwordOK(password,stored){const [salt,key]=stored.split(':');const expected=Buffer.from(key,'hex');return timingSafeEqual(expected,scryptSync(password,salt,64));}
+let dummyHash;
+// A missing account still costs one scrypt, so sign-in timing does not reveal which emails exist.
+export function passwordOK(password,stored){const real=typeof stored==='string'&&stored.includes(':');const [salt,key]=(real?stored:(dummyHash||=passwordHash(randomBytes(16).toString('hex')))).split(':');const expected=Buffer.from(key,'hex');return timingSafeEqual(expected,scryptSync(password,salt,64))&&real;}
 export function openStore(file){
  const db=new DatabaseSync(file);db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
  CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password TEXT NOT NULL);
@@ -16,6 +19,7 @@ export function openStore(file){
  CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,user_id TEXT REFERENCES users(id),expires INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS invitations(token TEXT PRIMARY KEY,studio_id TEXT REFERENCES studios(id),email TEXT NOT NULL,expires INTEGER NOT NULL,used INTEGER NOT NULL DEFAULT 0);
  CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY,project_id TEXT REFERENCES projects(id),name TEXT NOT NULL,mime TEXT NOT NULL,content BLOB NOT NULL);
+ CREATE INDEX IF NOT EXISTS files_project ON files(project_id);
  CREATE TABLE IF NOT EXISTS clients(id TEXT PRIMARY KEY,studio_id TEXT REFERENCES studios(id),email TEXT NOT NULL,name TEXT NOT NULL,data TEXT NOT NULL,UNIQUE(studio_id,email));
  CREATE TABLE IF NOT EXISTS project_reads(user_id TEXT NOT NULL,project_id TEXT NOT NULL,seen TEXT NOT NULL,PRIMARY KEY(user_id,project_id));
  CREATE TABLE IF NOT EXISTS studio_branding(studio_id TEXT PRIMARY KEY,data TEXT NOT NULL);
@@ -120,20 +124,26 @@ export function openStore(file){
  installConversationFeatures(db);
  transaction(db,()=>{
   installRelationships(db);
-  for(const row of db.prepare('SELECT data FROM projects').all()){const p=JSON.parse(row.data);materializeProjectConversation(db,p);ensureProjectOpportunity(db,p);}
+  // Only parse projects that still lack a conversation, relationship or opportunity (legacy data or a new table).
+  const fresh=[];
+  for(const row of db.prepare(`SELECT data FROM projects p WHERE NOT EXISTS(SELECT 1 FROM conversations c WHERE c.project_id=p.id)
+   OR NOT EXISTS(SELECT 1 FROM crm_project_relationships r WHERE r.project_id=p.id AND r.studio_id=p.studio_id)
+   OR NOT EXISTS(SELECT 1 FROM crm_opportunities o WHERE o.project_id=p.id)`).all()){const p=JSON.parse(row.data);if(!db.prepare('SELECT 1 FROM conversations WHERE project_id=?').get(p.id))fresh.push(p.id);materializeProjectConversation(db,p);ensureProjectOpportunity(db,p);}
   // Only untouched automatically generated opportunities used the project date as a forecast.
   // Preserve every manually edited forecast and all original project/form dates.
   db.prepare(`UPDATE crm_opportunities SET expected_close='',revision=revision+1
    WHERE revision=1 AND expected_close<>'' AND (source IN ('Project enquiry','Sample project') OR source LIKE 'Form: %')
    AND expected_close=(SELECT json_extract(data,'$.brief.date') FROM projects WHERE id=project_id AND studio_id=crm_opportunities.studio_id)
    AND NOT EXISTS(SELECT 1 FROM crm_activities WHERE opportunity_id=crm_opportunities.id AND studio_id=crm_opportunities.studio_id)`).run();
-  for(const read of db.prepare('SELECT * FROM project_reads').all()){
+  // Legacy read positions only seed conversations created above; later reads are written to both tables.
+  for(const read of fresh.flatMap(projectId=>db.prepare('SELECT * FROM project_reads WHERE project_id=?').all(projectId))){
    const c=db.prepare('SELECT id FROM conversations WHERE project_id=?').get(read.project_id);
    if(!c||!db.prepare('SELECT id FROM users WHERE id=?').get(read.user_id))continue;
    const last=db.prepare('SELECT MAX(seq) AS seq FROM conversation_messages WHERE conversation_id=? AND created_at<=?').get(c.id,read.seen);
    if(last.seq)db.prepare('INSERT OR IGNORE INTO conversation_reads VALUES(?,?,?)').run(read.user_id,c.id,last.seq);
   }
  });
+ runMigrations(db);
  return db;
 }
 export function event(project,actor,text){project.activity.unshift({id:id(),actor:actor.name,text,at:now()});project.updatedAt=now();}
@@ -165,11 +175,13 @@ export function materializeProjectConversation(db,p){
  ensureClient(db,p);
  const relation=ensureProjectRelationship(db,p);
  let c=db.prepare('SELECT * FROM conversations WHERE project_id=?').get(p.id);
- if(!c){const cid=id();db.prepare('INSERT INTO conversations VALUES(?,?,?,?,?,?,?,?)').run(cid,p.studioId,relation.client_id,p.id,p.title,p.threadStatus||'Open',p.createdAt,p.updatedAt);c=db.prepare('SELECT * FROM conversations WHERE id=?').get(cid);}
+ // Project messages are copied once, when the conversation is first created (new or legacy projects).
+ // After that appendConversationMessage writes each message to both places, so saves never rewrite history.
+ if(!c){const cid=id();db.prepare('INSERT INTO conversations VALUES(?,?,?,?,?,?,?,?)').run(cid,p.studioId,relation.client_id,p.id,p.title,p.threadStatus||'Open',p.createdAt,p.updatedAt);c=db.prepare('SELECT * FROM conversations WHERE id=?').get(cid);
  for(const m of p.messages||[]){
   const author=m.userId?db.prepare('SELECT id FROM users WHERE id=?').get(m.userId):db.prepare('SELECT u.id FROM users u JOIN memberships ms ON ms.user_id=u.id WHERE ms.studio_id=? AND ms.role=? AND u.name=?').get(p.studioId,m.role,m.by);
   db.prepare('INSERT OR IGNORE INTO conversation_messages(id,conversation_id,user_id,author_name,role,text,created_at) VALUES(?,?,?,?,?,?,?)').run(m.id,c.id,author?.id||null,m.by,m.role,m.text,m.at);
- }
+ }}
  // Existing project actions still own their primary thread status and messages.
  const latest=(p.messages||[]).at(-1)?.at||c.updated_at;
  db.prepare('UPDATE conversations SET status=?,updated_at=MAX(updated_at,?) WHERE id=?').run(p.threadStatus||c.status,latest,c.id);

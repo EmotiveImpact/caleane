@@ -1,16 +1,18 @@
 import {randomBytes,randomUUID,createCipheriv,createDecipheriv} from 'node:crypto';
 import {hash,passwordHash,transaction} from './store.mjs';
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
-export function createAccountSecurity(db,{origin,encryptionKey='',clock=Date.now}={}){
+// previousKeys still decrypt queued mail sealed before a key change (for example the shared notification key).
+export function createAccountSecurity(db,{origin,encryptionKey='',previousKeys=[],clock=Date.now}={}){
  db.exec(`CREATE TABLE IF NOT EXISTS account_verifications(user_id TEXT PRIMARY KEY REFERENCES users(id),email TEXT NOT NULL,verified_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS account_tokens(digest TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),email TEXT NOT NULL,purpose TEXT NOT NULL,expires INTEGER NOT NULL,used INTEGER NOT NULL DEFAULT 0,created INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS account_mail(id TEXT PRIMARY KEY,token_digest TEXT NOT NULL REFERENCES account_tokens(digest),payload TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'pending',attempts INTEGER NOT NULL DEFAULT 0,next_attempt INTEGER NOT NULL,lease_until INTEGER NOT NULL DEFAULT 0,lease TEXT);
  CREATE INDEX IF NOT EXISTS account_tokens_user ON account_tokens(user_id,purpose,created);`);
  const key=encryptionKey?Buffer.from(encryptionKey,'base64'):null;
  if(key&&key.length!==32)throw new Error('Account mail requires a 32-byte notification encryption key.');
+ const keys=key?[key,...previousKeys.filter(Boolean).map(k=>Buffer.from(k,'base64')).filter(k=>k.length===32&&!k.equals(key))]:[];
  const site=new URL(origin);if(site.protocol!=='https:'&&!(['localhost','127.0.0.1'].includes(site.hostname)&&site.protocol==='http:'))throw new Error('Use HTTPS for account links.');
  function seal(data){const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',key,iv);const content=Buffer.concat([cipher.update(JSON.stringify(data)),cipher.final()]);return [iv,cipher.getAuthTag(),content].map(b=>b.toString('base64url')).join('.');}
- function open(data){const [iv,tag,content]=data.split('.').map(s=>Buffer.from(s,'base64url'));const decipher=createDecipheriv('aes-256-gcm',key,iv);decipher.setAuthTag(tag);return JSON.parse(Buffer.concat([decipher.update(content),decipher.final()]).toString());}
+ function open(data){const [iv,tag,content]=data.split('.').map(s=>Buffer.from(s,'base64url'));let error;for(const candidate of keys){try{const decipher=createDecipheriv('aes-256-gcm',candidate,iv);decipher.setAuthTag(tag);return JSON.parse(Buffer.concat([decipher.update(content),decipher.final()]).toString());}catch(e){error=e;}}throw error;}
  function status(user){return {email:user.email,verified:!!db.prepare('SELECT 1 FROM account_verifications WHERE user_id=? AND email=?').get(user.id,user.email),queueConfigured:!!key,deliveryConfigured:!!(key&&process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1')};}
  function enqueue(user,purpose){
   if(!key)fail(503,'Account email is not configured yet. Contact your studio administrator.');

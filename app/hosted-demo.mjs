@@ -46,7 +46,7 @@ export async function runHostedDemo(input, { origin, key } = {}) {
   let workspace;
   try {
     if (input.state) await writeFile(dbFile, open(input.state, key));
-    workspace = await createWorkspace({ dbFile, origin, demo: true, disableExternalServices: true, notificationKey: '', enableStripeCollection: false, stripeWebhookSecret: '' });
+    workspace = await createWorkspace({ dbFile, origin, demo: true, disableExternalServices: true, notificationKey: '', accountMailKey: '', enableStripeCollection: false, stripeWebhookSecret: '' });
     let response;
     const blocked = /^(?:\/api\/signup|\/api\/webhooks\/|\/api\/account\/(?:recovery|reset|verify|verification)|\/api\/calendar-sync)/.test(url.pathname) || /stripe|checkout/.test(url.pathname);
     if (blocked) {

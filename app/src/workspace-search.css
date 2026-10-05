@@ -4,3 +4,4 @@
 .workspace-search-scopes button[data-state=on]{background:var(--studio-accent-soft);color:var(--studio-accent)}
 .workspace-search-widen{display:block;margin:14px auto 0;padding:8px 12px;border:0;border-radius:4px;background:var(--studio-surface);color:var(--studio-accent);font:inherit}
 .workspace-search-scopes button:focus-visible,.workspace-search-widen:focus-visible{outline:2px solid var(--studio-accent);outline-offset:2px}
+.workspace-search-result{cursor:pointer}.workspace-search-more{border:0;background:transparent;padding:0;color:var(--studio-accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}.workspace-search-more:focus-visible{outline:2px solid var(--studio-accent);outline-offset:2px;border-radius:2px}

@@ -13,7 +13,7 @@ The [Caleane marketing website](https://caleane.com) is live on Vercel as a labe
 Tested with Node 22.12 and its `--experimental-sqlite` flag.
 
 ```sh
-cd /Users/augustusedem/Calenne/app
+cd app
 npm ci
 npm run dev
 ```
@@ -96,9 +96,9 @@ The public studio slug is an identifier, not a secret. The public API creates en
 
 ## Independence and extraction
 
-This directory is the Calenne app within `/Users/augustusedem/Calenne/`. It has its own package manifest, lockfile, build, server, database schema, assets and tests. Vite builds from this directory alone and uses the bundled `public/assets`; the NAY website and Calenne front page are separate. Keep those assets and the font licence when moving it. The Node server mounts Vite middleware during development and serves `dist/` after a production build.
+This directory is the Caleane app within this repository. It has its own package manifest, lockfile, build, server, database schema, assets and tests. Vite builds from this directory alone and uses the bundled `public/assets`; the NAY website and Caleane front page are separate. Keep those assets and the font licence when moving it. The Node server mounts Vite middleware during development and serves `dist/` after a production build.
 
-`packages/guided-form` in `/Users/augustusedem/Downloads/NayDecor` remains the small controller for NAY’s custom planner. This app is the shared project system. `public/embed.js` is its distribution plugin, and the API is the connection for fully custom planners.
+`packages/guided-form` in the separate NAY DÉCOR repository remains the small controller for NAY’s custom planner. This app is the shared project system. `public/embed.js` is its distribution plugin, and the API is the connection for fully custom planners.
 
 ## Checks
 
@@ -127,7 +127,7 @@ Planning estimate versions, invoices, delivery records and private owner notes w
 
 ## Aetheria and design status
 
-The supplied Aetheria source remains in `/Users/augustusedem/Downloads/NayDecor/reference/aetheriaadmin/`; its Next.js runtime is not part of either active app. Adapted card and sidebar components live in `src/components/aetheria`. The workspace uses a monochrome palette with bundled Instrument Sans. The supplied source did not include usable OpenRunde font files.
+The supplied Aetheria source remains in the NAY DÉCOR repository under `reference/aetheriaadmin/`; its Next.js runtime is not part of either active app. Adapted card and sidebar components live in `src/components/aetheria`. The workspace uses a monochrome palette with bundled Instrument Sans. The supplied source did not include usable OpenRunde font files.
 
 The owner selected concept 3, Studio Folio. The dark navigation rail and restrained editorial treatment now carry through Home, Work, Calendar, Library, Settings, the project workflow, and the Clients/Mail record. The record has a client directory, relationship tabs, document-style correspondence and linked project context; the client portal has a matching correspondence view. The Amelia demo portrait is generated fictional imagery, used only for the sample record. Copying a template or reference repository does not make the app production-ready.
 

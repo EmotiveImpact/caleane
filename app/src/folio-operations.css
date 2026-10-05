@@ -59,3 +59,5 @@
  .folio-day-agenda{display:block}
  .folio-upcoming-dates{border-top:1px solid var(--studio-rule,#e1e3e6);padding-top:23px;margin-top:20px}
 }
+
+.folio-library-more{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:14px;margin:28px 0 8px;color:#7b8491;font-size:12px}@media(max-width:700px){.folio-library-tools{flex-wrap:wrap}}
