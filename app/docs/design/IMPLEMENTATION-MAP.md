@@ -186,5 +186,15 @@ This section supersedes earlier Waiting bullets for features listed below. The w
 - Finished the pipeline intake recommendations: original saved form answers, provenance, explicit reviewed state, separate project/decision dates, enquiry project grouping, exact conversation navigation and protected start-planning action. Historic brief-only records are clearly distinguished from original submissions.
 - Calendar day details now open immediately in a Radix side panel instead of falling beneath the month. Project dates, tasks and private follow-ups have exact destinations; mobile uses a full-screen panel.
 - 24 focused checks passed; production build passed. Desktop and mobile browser checks verified layout, exact task navigation and focus return. Mutations were tested with isolated databases. No business records created or modified during browser QA.
-- **Waiting — implementation:** persisted notification events/read state and its new drawer; server-paged enquiry queries. The existing needs-attention bell remains unchanged.
+- **Waiting — implementation:** server-paged enquiry queries. Persisted notifications are done; see 5 October below.
 - **Waiting — validation:** customer usability sessions. Provider setup/live acceptance and deferred live payments retain the statuses above.
+
+
+## 5 October: persisted notifications — Done (local)
+
+- `notification-feed.mjs` stores one `notification_events` row per recipient with its own read state. Sources: public and form enquiries (owners only), project and client-level messages (everyone else in the conversation, including assigned contributors), project activity (owners and invited clients, not contributors) and task assignments (the assignee, only when the assignee changes). The actor is never notified about their own action, and the email outbox is unchanged.
+- Access is checked again whenever the feed is read, so removing a client or contributor from a project hides its notifications without deleting history. Read state cannot be changed for another person.
+- `GET /api/notifications` pages newest first by insertion order (`before` cursor, up to 50 per page) and returns the visible unread count. `POST /api/notifications/read` accepts `ids` or `all`; `POST /api/notifications/unread` reverses individual items.
+- The new drawer sits beside the needs-attention bell for owners and clients, and in the contributor top bar. It uses the shared Radix drawer, offers All/Unread, Mark all as read, Mark unread and Show older, and opens the exact pipeline record, conversation, Activity tab, Messages or task. The bell itself is unchanged: it still shows live work waiting, while the drawer keeps a history.
+- Evidence: 115 automated tests pass, including the new API and drawer tests; production build passes. Chromium checks on an isolated demo database at 1280px and 390px showed owner and client feeds, navigation to the project conversation, read count updates, no horizontal overflow and no console errors. Existing records do not create a notification backlog.
+- **Not included:** email or push delivery of these notifications, per-person notification preferences and retention clean-up of old rows.

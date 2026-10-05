@@ -19,6 +19,7 @@ import {bindInvitedContact,conversationAccess,ensurePrimaryContact,listClientCon
 import {installStripePayments,activeStripeCheckout,createStripeCheckout,expireStripeCheckout,processStripeWebhook,listStripeCheckoutAttempts} from './stripe-payments.mjs';
 import {installStripeOnboarding,startStripeOnboarding,refreshStripeOnboarding,returnFromStripeOnboarding,stripeOnboardingStatus} from './stripe-onboarding.mjs';
 import {installNotifications,createNotificationOutbox} from './notifications.mjs';
+import {installNotificationFeed,recordProjectEvent,recordMessage,recordEnquiry,handleNotificationFeed} from './notification-feed.mjs';
 import {saveReferenceLayout} from './reference-layout.mjs';
 import {getProjectOperations,changeProjectOperations} from './studio-operations.mjs';
 import {DEFAULT_WORKFLOW,isWorkflowId,projectTypesFor,briefFieldsFor} from './src/lib/workflows.js';
@@ -55,12 +56,12 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);const limits=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);const limits=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
  const accountSecurity=createAccountSecurity(db,{origin,encryptionKey:notificationKey});
- const queueProjectEvent=(studioId,projectId,actorUserId,eventId)=>{if(outbox&&eventId)outbox.enqueueProjectActivity({studioId,projectId,actorUserId,eventId});};
+ const queueProjectEvent=(studioId,projectId,actorUserId,eventId)=>{if(!eventId)return;recordProjectEvent(db,{studioId,projectId,actorUserId,eventId});if(outbox)outbox.enqueueProjectActivity({studioId,projectId,actorUserId,eventId});};
  function rate(req,bucket,max=30){const key=bucket+':'+req.socket.remoteAddress;const time=Date.now();for(const [k,v] of limits)if(v.until<time)limits.delete(k);const v=limits.get(key)||{n:0,until:time+600000};if(++v.n>max)fail(429,'Please wait a few minutes before trying again.');limits.set(key,v);}
  if(demo&&!db.prepare('SELECT id FROM studios WHERE slug=?').get('nay-decor')){
   const studioId=id();db.prepare('INSERT INTO studios VALUES(?,?,?,?,?)').run(studioId,'nay-decor','NAY DÉCOR','#181925',JSON.stringify(['http://127.0.0.1:4318','http://127.0.0.1:4317',origin]));
@@ -121,9 +122,9 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    }
    if(publicMatch&&(publicMatch[2]||publicMatch[4])&&req.method==='POST'){
     const formExists=db.prepare('SELECT 1 FROM enquiry_forms WHERE studio_id=? AND slug=?').get(publicStudio.id,publicMatch[3]||'enquiry');
-    if(formExists||publicMatch[3]){rate(req,'intake',30);const result=submitForm(db,{studio:publicStudio,slug:publicMatch[3]||'enquiry',body,key:req.headers['idempotency-key'],buildBrief:brief,legacy:!publicMatch[3]});return reply(result.status,result.data);}
+    if(formExists||publicMatch[3]){rate(req,'intake',30);const result=submitForm(db,{studio:publicStudio,slug:publicMatch[3]||'enquiry',body,key:req.headers['idempotency-key'],buildBrief:brief,legacy:!publicMatch[3],onCreated:projectId=>recordEnquiry(db,{studioId:publicStudio.id,projectId})});return reply(result.status,result.data);}
     rate(req,'intake',30);if(body.website)fail(400,'Please leave the website field empty.');const publicBrand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(publicStudio.id)?.data||'{}');const questions=validateIntakeQuestions(publicBrand.intakeQuestions||[]);const b=brief({...body,workflowType:publicBrand.profession||DEFAULT_WORKFLOW,intakeAnswers:captureIntakeAnswers(body.intakeAnswers,questions)});const key=str(req.headers['idempotency-key']||'',120);if(!key)fail(400,'An enquiry reference is required.');const digest=hash(JSON.stringify(b));const previous=db.prepare('SELECT * FROM receipts WHERE studio_id=? AND key=?').get(publicStudio.id,key);if(previous){if(previous.digest!==digest)fail(409,'This enquiry reference has already been used.');return reply(200,{ok:true,reference:previous.project_id.slice(0,8).toUpperCase()});}
-    const p=makeProject(publicStudio.id,b,{name:b.name});db.exec('BEGIN');try{insertProject(db,p);db.prepare('INSERT INTO receipts VALUES(?,?,?,?)').run(publicStudio.id,key,digest,p.id);db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return reply(201,{ok:true,reference:p.id.slice(0,8).toUpperCase()});
+    const p=makeProject(publicStudio.id,b,{name:b.name});db.exec('BEGIN');try{insertProject(db,p);db.prepare('INSERT INTO receipts VALUES(?,?,?,?)').run(publicStudio.id,key,digest,p.id);recordEnquiry(db,{studioId:publicStudio.id,projectId:p.id});db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return reply(201,{ok:true,reference:p.id.slice(0,8).toUpperCase()});
    }
    function startSession(user){const token=randomBytes(32).toString('hex');db.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now());db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token),user.id,Date.now()+7*86400000);res.setHeader('Set-Cookie',`studio_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${origin.startsWith('https:')?'; Secure':''}`);}
    const cookie=req.headers.cookie?.match(/(?:^|;\s*)studio_session=([a-f0-9]+)/)?.[1];
@@ -187,6 +188,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(route==='/api/studio-export'&&req.method==='GET'){const data=exportStudio(db,{studioId:studio.id,userId:user.id},{includeFiles:url.searchParams.get('files')==='1'});res.setHeader('Content-Disposition','attachment; filename=caleane-studio-export.json');return reply(200,data);}
     if(route==='/api/operations'&&req.method==='GET')return reply(200,await operationalReadiness(db,{studioId:studio.id,userId:user.id,backupReceiptPath:process.env.CALEANE_BACKUP_RECEIPT||'',emailConfigured:!!(process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1'),offsiteBackupsConfigured:false}));
     if(await handleCalendarSync({db,req,url,route,body,user,studio,owner,reply,origin}))return;
+    if(handleNotificationFeed({db,req,url,route,body,user,studio,owner,reply}))return;
     if(await handleTaskCollaboration({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
     if(await handleConversationFileUpload({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
     if(route==='/api/stripe/connect/status'&&req.method==='GET'){
@@ -381,7 +383,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       let created=false;const conversation=transaction(db,()=>{
        let c=project?materializeProjectConversation(db,JSON.parse(project.data)):null;
        if(!c){created=true;const cid=id(),at=now();db.prepare('INSERT INTO conversations VALUES(?,?,?,?,?,?,?,?)').run(cid,studio.id,client.id,null,subject,'Open',at,at);c=db.prepare('SELECT * FROM conversations WHERE id=?').get(cid);}
-       if(text){const messageId=appendConversationMessage(db,c,user,studio.role,text);if(c.project_id)queueProjectEvent(studio.id,c.project_id,user.id,messageId);}
+       if(text){const messageId=appendConversationMessage(db,c,user,studio.role,text);if(c.project_id)queueProjectEvent(studio.id,c.project_id,user.id,messageId);else recordMessage(db,{studioId:studio.id,conversationId:c.id,messageId,actorUserId:user.id});}
        return conversationDTO(db,db.prepare('SELECT * FROM conversations WHERE id=?').get(c.id),user);
       });return reply(created?201:200,{conversation});
      }
@@ -393,7 +395,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      const accessRole=c&&(owner?'Owner':conversationAccess(db,c,user.id));if(!accessRole)fail(404,'Conversation not found.');const action=conversationMatch[2];
      if(!action&&req.method==='GET')return reply(200,{conversation:conversationDTO(db,c,user)});
      if(req.method!=='POST')fail(405,'Method not allowed.');
-     if(action==='messages'){if(accessRole==='Viewer')fail(403,'This participant has view-only access.');const text=str(body.text||'',5000),clientKey=body.clientMessageId?str(body.clientMessageId,120):null;transaction(db,()=>{const messageId=appendConversationMessage(db,c,user,staffViewer?'owner':studio.role,text,clientKey,body);if(c.project_id)queueProjectEvent(studio.id,c.project_id,user.id,messageId);});}
+     if(action==='messages'){if(accessRole==='Viewer')fail(403,'This participant has view-only access.');const text=str(body.text||'',5000),clientKey=body.clientMessageId?str(body.clientMessageId,120):null;transaction(db,()=>{const messageId=appendConversationMessage(db,c,user,staffViewer?'owner':studio.role,text,clientKey,body);if(c.project_id)queueProjectEvent(studio.id,c.project_id,user.id,messageId);else recordMessage(db,{studioId:studio.id,conversationId:c.id,messageId,actorUserId:user.id});});}
      else if(action==='seen'){if(!markConversationSeen(db,c,user,str(body.lastMessageId,100)))fail(400,'Choose a message in this conversation.');}
      else if(action==='status'){requireOwner();if(!['Open','Waiting','Resolved'].includes(body.status))fail(400,'Choose a conversation status.');setConversationStatus(db,c,user,body.status);}
      else fail(405,'Method not allowed.');
