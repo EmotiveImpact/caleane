@@ -22,7 +22,7 @@ export function setupDom(url='http://localhost/'){
 // Bundle app components (CSS omitted, packages external) and import the result.
 export async function bundle(contents,tag){
  const compiled=fileURLToPath(new URL(`.${tag}-${process.pid}.mjs`,import.meta.url));
- const output=await build({stdin:{contents,resolveDir:fileURLToPath(new URL('..',import.meta.url)),loader:'jsx'},bundle:true,packages:'external',format:'esm',platform:'node',write:false,plugins:[{name:'omit-css',setup(builder){builder.onLoad({filter:/\.css$/},()=>({contents:'',loader:'js'}));}}]});
+ const output=await build({stdin:{contents,resolveDir:fileURLToPath(new URL('..',import.meta.url)),loader:'jsx'},bundle:true,packages:'external',format:'esm',platform:'node',write:false,plugins:[{name:'omit-css',setup(builder){builder.onResolve({filter:/\.css$/},args=>({path:args.path,namespace:'omit-css'}));builder.onLoad({filter:/.*/,namespace:'omit-css'},()=>({contents:'',loader:'js'}));}}]});
  await writeFile(compiled,output.outputFiles[0].text);
  return {module:await import(pathToFileURL(compiled)),remove:()=>unlink(compiled)};
 }
