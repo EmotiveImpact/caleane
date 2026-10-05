@@ -19,7 +19,6 @@ import {AuthScenes} from './auth-scenes';
 import './aetheria.css';
 import './folio-shell.css';
 import './folio-settings.css';
-import './folio-work.css';
 import {FolioCRM} from './components/FolioCRM';
 import {PipelineCRM,CRMTasks} from './components/PipelineCRM';
 import {PortalCorrespondence} from './components/PortalCorrespondence';
@@ -66,6 +65,7 @@ import './settings-tabs.css';
 import {StudioProjects,BriefsIndex,ApprovalsIndex} from './components/StudioViews';
 import {References} from './components/References';
 import {NewProject} from './components/NewProject';
+import './design-system.css';
 const fmt=value=>new Date(value).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 const initials=name=>name.split(' ').map(x=>x[0]).slice(0,2).join('');
 async function request(url,method='GET',body){const r=await fetch(url,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'Please try again.');if(method==='POST'&&['/api/login','/api/logout'].includes(url)){try{localStorage.setItem('caleane-session-change',crypto.randomUUID());}catch{}}return data;}
