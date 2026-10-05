@@ -1,18 +1,17 @@
-import {SettingsWorkspace} from './components/SettingsWorkspace';
-import {FormsWorkspace} from './components/FormsWorkspace';
-import {HostedForm,PublicForm} from './components/PublicForm';
-import {PublicBooking} from './components/PublicBooking';
+import './components/accent-picker.css';
+import './components/calendar-sync.css';
+import './folio-stripe-connect.css';
+import './studio-commerce.css';
 import {QuestionInput,intakeFormValues,answerText} from './components/QuestionInput';
 import './forms.css';
-import {ProjectDocuments} from './components/ProjectDocuments';
-import {AccountSecurity} from './components/AccountSecurity';
-import {TaskWorkspace} from './components/TaskWorkspace';
-import {ProjectChat} from './components/ProjectChat';
-import {ProjectContracts} from './components/ProjectEngagements';
-import {Proposals} from './components/Proposals';
-import React,{useEffect,useState,useRef} from 'react';
+import './components/agreement-document.css';
+import './components/collection-filter.css';
+import './components/project-image.css';
+import './components/task-workspace.css';
+import './components/project-chat.css';
+import './project-delivery.css';
+import React,{lazy,Suspense,useEffect,useState,useRef} from 'react';
 import {createRoot} from 'react-dom/client';
-import * as Dialog from '@radix-ui/react-dialog';
 import * as Tabs from '@radix-ui/react-tabs';
 import '@fontsource-variable/inter/wght.css';
 import './style.css';
@@ -20,32 +19,29 @@ import {AuthScenes} from './auth-scenes';
 import './aetheria.css';
 import './folio-shell.css';
 import './folio-settings.css';
-import {FolioCRM} from './components/FolioCRM';
-import {PipelineCRM,CRMTasks} from './components/PipelineCRM';
-import {PortalCorrespondence} from './components/PortalCorrespondence';
+import './components/relationship-workspace.css';
+import './folio.css';
+import './folio-crm-growth.css';
+import './relationship-people.css';
 import {AdminSidebar} from './components/aetheria/AdminSidebar';
 import {Dashboard} from './components/Dashboard';
 import {NotificationBell} from './components/NotificationBell';
 import {NotificationDrawer} from './components/NotificationDrawer';
 import {ClientWelcome} from './components/Onboarding';
 import {notificationDestination} from './lib/notifications';
-import {ProjectPlan} from './components/ProjectPlan';
-import {ProjectDelivery} from './components/ProjectDelivery';
-import {ProjectOverview,ProjectDecisions} from './components/ProjectWorkspace';
-import {workflowFor,workflowOptions,workflowOptionsFor,DEFAULT_WORKFLOW,projectTypesFor,briefFieldsFor,demoCoverFor} from './lib/workflows';
-import {Estimates} from './components/Estimates';
-import {Billing,StudioBilling} from './components/Billing';
-import {Pipeline,Calendar,Library} from './components/Operations';
-import {DesignReview} from './components/DesignReview';
-import {StudioMembers} from './components/StudioMembers';
-import {ComponentGallery} from './components/workspace/ComponentGallery';
+import './project-phases.css';
+import './folio-journey.css';
+import {workflowFor,workflowOptions,workflowOptionsFor,projectTypesFor,briefFieldsFor} from './lib/workflows';
+import './folio-billing.css';
+import './folio-operations.css';
+import './components/calendar-workspace.css';
+import './components/design-discussion.css';
 import {WorkspaceButton,WorkspaceHeading,WorkspaceUIProvider,WorkspaceSelect,WorkspaceField} from './components/workspace/WorkspaceUI';
 import {usableAccent} from './lib/accent-theme.js';
-import {IntakeQuestionEditor} from './components/IntakeQuestionEditor';
 import {WorkspaceSearch} from './components/WorkspaceSearch';
 import './workspace-search.css';
 import './intake-questions.css';
-import {StudioViewer} from './components/StudioViewer';
+import './staff-project.css';
 import {questionIsVisible} from './lib/intake-visibility.js';
 import './folio-type-grid.css';
 import './studio-design.css';
@@ -64,9 +60,43 @@ import './workspace-layout.css';
 import './components/pipeline-workspace.css';
 import './settings-tabs.css';
 import {StudioProjects,BriefsIndex,ApprovalsIndex} from './components/StudioViews';
-import {References} from './components/References';
-import {NewProject} from './components/NewProject';
+import './spatial-references.css';
 import './design-system.css';
+const screen=(load,name)=>lazy(()=>load().then(module=>({default:module[name]})));
+const SettingsWorkspace=screen(()=>import('./components/SettingsWorkspace'),'SettingsWorkspace');
+const FormsWorkspace=screen(()=>import('./components/FormsWorkspace'),'FormsWorkspace');
+const loadPublicFormModule=()=>import('./components/PublicForm');
+const HostedForm=screen(loadPublicFormModule,'HostedForm');
+const PublicForm=screen(loadPublicFormModule,'PublicForm');
+const PublicBooking=screen(()=>import('./components/PublicBooking'),'PublicBooking');
+const ProjectDocuments=screen(()=>import('./components/ProjectDocuments'),'ProjectDocuments');
+const AccountSecurity=screen(()=>import('./components/AccountSecurity'),'AccountSecurity');
+const TaskWorkspace=screen(()=>import('./components/TaskWorkspace'),'TaskWorkspace');
+const ProjectChat=screen(()=>import('./components/ProjectChat'),'ProjectChat');
+const ProjectContracts=screen(()=>import('./components/ProjectEngagements'),'ProjectContracts');
+const Proposals=screen(()=>import('./components/Proposals'),'Proposals');
+const FolioCRM=screen(()=>import('./components/FolioCRM'),'FolioCRM');
+const PipelineCRM=screen(()=>import('./components/PipelineCRM'),'PipelineCRM');
+const PortalCorrespondence=screen(()=>import('./components/PortalCorrespondence'),'PortalCorrespondence');
+const ProjectPlan=screen(()=>import('./components/ProjectPlan'),'ProjectPlan');
+const ProjectDelivery=screen(()=>import('./components/ProjectDelivery'),'ProjectDelivery');
+const loadProjectWorkspaceModule=()=>import('./components/ProjectWorkspace');
+const ProjectOverview=screen(loadProjectWorkspaceModule,'ProjectOverview');
+const ProjectDecisions=screen(loadProjectWorkspaceModule,'ProjectDecisions');
+const Estimates=screen(()=>import('./components/Estimates'),'Estimates');
+const loadBillingModule=()=>import('./components/Billing');
+const Billing=screen(loadBillingModule,'Billing');
+const StudioBilling=screen(loadBillingModule,'StudioBilling');
+const loadOperationsModule=()=>import('./components/Operations');
+const Pipeline=screen(loadOperationsModule,'Pipeline');
+const Calendar=screen(loadOperationsModule,'Calendar');
+const Library=screen(loadOperationsModule,'Library');
+const DesignReview=screen(()=>import('./components/DesignReview'),'DesignReview');
+const StudioMembers=screen(()=>import('./components/StudioMembers'),'StudioMembers');
+const ComponentGallery=screen(()=>import('./components/workspace/ComponentGallery'),'ComponentGallery');
+const StudioViewer=screen(()=>import('./components/StudioViewer'),'StudioViewer');
+const References=screen(()=>import('./components/References'),'References');
+const NewProject=screen(()=>import('./components/NewProject'),'NewProject');
 const fmt=value=>new Date(value).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 const initials=name=>name.split(' ').map(x=>x[0]).slice(0,2).join('');
 async function request(url,method='GET',body){const r=await fetch(url,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'Please try again.');if(method==='POST'&&['/api/login','/api/logout'].includes(url)){try{localStorage.setItem('caleane-session-change',crypto.randomUUID());}catch{}}return data;}
@@ -74,6 +104,7 @@ function Icon({name,...props}){const paths={grid:'M3 3h7v7H3z M14 3h7v7h-7z M3 1
 function Button({children,secondary=false,className='',type='submit',...props}){return <WorkspaceButton variant={secondary?'secondary':'primary'} type={type} className={(secondary?'button secondary ':'button ')+className} {...props}>{children}</WorkspaceButton>}
 function Field({label,children,...props}){return <label className="field"><span>{label}</span>{children||<input {...props}/>}</label>}
 function Badge({value}){return <span className={'badge '+value.toLowerCase().replaceAll(' ','-')}>{value}</span>}
+function ScreenLoading(){return <div className="loading-panel" role="status">Opening…</div>}
 function Empty({title,children}){return <div className="empty"><Icon name="file"/><h3>{title}</h3><p>{children}</p></div>}
 function App(){
  const [info,setInfo]=useState(()=>import.meta.env.VITE_HOSTED_DEMO==='1'?{demo:true,hostedDemo:true,signup:false}:{}),[session,setSession]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[studioId,setStudioId]=useState(''),[projects,setProjects]=useState([]),[selected,setSelected]=useState(()=>new URLSearchParams(location.search).get('project')),[clientId,setClientId]=useState(()=>new URLSearchParams(location.search).get('client')),[opportunityId,setOpportunityId]=useState(()=>new URLSearchParams(location.search).get('deal')),[view,setView]=useState(()=>new URLSearchParams(location.search).get('view')||'overview'),[tab,setTab]=useState(()=>new URLSearchParams(location.search).get('tab')||'Overview'),[search,setSearch]=useState(''),[filter,setFilter]=useState('All'),[projectMode,setProjectMode]=useState('list'),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
@@ -128,15 +159,15 @@ function App(){
  if(location.pathname==='/join-studio'&&location.hash)return <JoinStudio session={session} onDone={()=>{location.href='/';}}/>;
  if(!session)return <Auth info={info} run={run} busy={busy} error={error} onDone={loadSession}/>;
  if(!studio)return <div className="join"><p className="eyebrow">WORKSPACE ACCESS</p><h1>No studio is connected to this account.</h1><p>Ask the studio owner for a current invitation if you still need access.</p><Button onClick={()=>run(async()=>{await request('/api/logout','POST',{});setSession(null);location.href='/';})}>Sign out</Button></div>;
- if(studio?.role==='staff_viewer')return <div className="app staff-mode"><AdminSidebar studio={studio} session={session} owner={false} staffViewer view={view} navigate={navigate} studioId={studioId} onStudioChange={id=>{setStudioId(id);setSelected(null);}} signOut={()=>run(async()=>{await request('/api/logout','POST',{});setProjects([]);setSelected(null);setSession(null);})}/><main className="workspace folio-workspace"><header className="topbar"><div className="topbar-context"><span className="topbar-studio">{studio.name}</span><span className="topbar-separator">/</span><strong className="topbar-current">{selected&&view==='projects'?'Project':view==='projects'?'Projects':'Overview'}</strong></div><div className="topbar-actions"><NotificationDrawer studio={studio} request={request} onOpen={openNotification}/><span className="demo-tag">{selected&&projects.find(item=>item.id===selected)?.canContribute?'Project contributor':'Read only'}</span></div></header>{error&&<div className="alert" role="alert">{error}</div>}<StudioViewer studio={studio} projects={projects} selected={view==='projects'?selected:null} tab={tab} onTabChange={setTab} onSelect={id=>routeTo('projects',id,null,id&&projects.find(item=>item.id===id)?.canContribute?'Brief':'Overview')} request={request} onUpdate={refresh}/></main></div>;
+ if(studio?.role==='staff_viewer')return <div className="app staff-mode"><AdminSidebar studio={studio} session={session} owner={false} staffViewer view={view} navigate={navigate} studioId={studioId} onStudioChange={id=>{setStudioId(id);setSelected(null);}} signOut={()=>run(async()=>{await request('/api/logout','POST',{});setProjects([]);setSelected(null);setSession(null);})}/><main className="workspace folio-workspace"><header className="topbar"><div className="topbar-context"><span className="topbar-studio">{studio.name}</span><span className="topbar-separator">/</span><strong className="topbar-current">{selected&&view==='projects'?'Project':view==='projects'?'Projects':'Overview'}</strong></div><div className="topbar-actions"><NotificationDrawer studio={studio} request={request} onOpen={openNotification}/><span className="demo-tag">{selected&&projects.find(item=>item.id===selected)?.canContribute?'Project contributor':'Read only'}</span></div></header>{error&&<div className="alert" role="alert">{error}</div>}<Suspense fallback={<ScreenLoading/>}><StudioViewer studio={studio} projects={projects} selected={view==='projects'?selected:null} tab={tab} onTabChange={setTab} onSelect={id=>routeTo('projects',id,null,id&&projects.find(item=>item.id===id)?.canContribute?'Brief':'Overview')} request={request} onUpdate={refresh}/></Suspense></main></div>;
  return <div className={"app"+(!owner?" client-mode":"")+(p&&view==='projects'?" project-open":"")} style={{'--accent':studio?.accent||'#181925'}}>
   <AdminSidebar studio={studio} session={session} owner={owner} view={view} navigate={navigate} studioId={studioId} onStudioChange={id=>{setStudioId(id);setSelected(null);setClientId(null);}} signOut={()=>run(async()=>{await request('/api/logout','POST',{});setProjects([]);setSelected(null);setSession(null);})}/>
   <main className={"workspace folio-workspace "+(owner&&["clients","inbox"].includes(view)?"has-client-record":"")}><header className="topbar"><div className="topbar-context"><span className="topbar-studio">{studio.name}</span><span className="topbar-separator">/</span>{view==='projects'&&p?<><button className="topbar-crumb" onClick={()=>navigate('projects')}>Projects</button><span className="topbar-separator">/</span><strong className="topbar-current" title={p.title}>{p.title}</strong></>:view==='clients'&&clientId?<><button className="topbar-crumb" onClick={()=>navigate('clients')}>Clients</button><span className="topbar-separator">/</span><strong className="topbar-current">Client record</strong></>:<strong className="topbar-current">{sectionLabel}</strong>}</div><div className="topbar-actions">{owner&&<WorkspaceSearch studio={studio} section={view} request={request} onOpenResult={item=>{if(item.type==='project')routeTo('projects',item.id);else if(item.type==='client')openClient(item.id);else if(item.type==='opportunity')openOpportunity(item.id,item.clientId);else if(item.type==='invoice')routeTo('projects',item.projectId,null,'Billing',null,item.id);else if(item.type==='task')routeTo('tasks',null,null,'Overview',null,null,null,item.id);}}/>}<NotificationBell studio={studio} owner={owner} projects={projects} request={request} openNotification={openNotification} openProject={openProject} openMail={id=>routeTo('inbox',null,id||null)} openTasks={()=>navigate('tasks')} openOverview={()=>navigate('overview')}/></div></header>{!owner&&<ClientWelcome key={studio.id} studio={studio} request={request} onOpenProject={project=>routeTo('projects',project.id)}/>}{error&&<div className="alert" role="alert">{error}<button onClick={()=>setError('')} aria-label="Dismiss error">×</button></div>}{notice&&<div className="notice" role="status">{notice}</div>}
-   {owner&&['clients','inbox'].includes(view)?<FolioCRM key={studio.id} mode={view} studio={studio} projects={projects} request={request} run={run} busy={busy} user={session.user} openProject={openProject} clientId={clientId} projectId={selected} onSelect={(id,manual)=>{setClientId(id);if(manual)setSelected(null);}} openOpportunity={openOpportunity} onProjectUpdate={project=>{projectWriteVersion.current++;setProjects(prev=>prev.map(p=>p.id===project.id?project:p));}} renderNewProject={client=><NewProject client={client} studio={studio} request={request} busy={busy} onOpenPipeline={()=>openOpportunity(null,client?.id||null)} onCreate={project=>{projectWriteVersion.current++;setProjects(prev=>[project,...prev]);openProject(project);}}/>}/>:<div className="workspace-body">{view==='inbox'&&!owner?<PortalCorrespondence studio={studio} request={request} run={run} busy={busy} projects={projects} projectId={selected} openProject={openProject} user={session.user} onThreadSelect={()=>setSelected(null)}/>:view==='overview'?<Dashboard openSetup={openSetup} user={session.user} request={request} openClient={openClient} openPipeline={()=>navigate('pipeline')} openTasks={id=>routeTo('tasks',null,null,'Overview',null,null,null,id)} openCalendar={()=>navigate('calendar')} openMail={id=>routeTo('inbox',null,id||null)} projects={projects} owner={owner} studio={studio} openProject={openProject} showProjects={f=>{setFilter(f);navigate('projects');}}/>:view==='forms'&&owner?<FormsWorkspace key={studio.id} studio={studio} request={request} openProject={async(project,nextTab)=>{await run(async()=>{const data=await request('/api/projects?studio='+studio.id);setProjects(data.projects);openProject(data.projects.find(p=>p.id===project.id)||project,nextTab);});}} openClient={openClient} projects={projects} navigate={navigate}/>:view==='briefs'?<BriefsIndex projects={projects} studio={studio} openProject={openProject}/>:view==='approvals'?<ApprovalsIndex projects={projects} studio={studio} openProject={openProject}/>:view==='pipeline'&&owner?<PipelineCRM openTask={id=>routeTo('tasks',null,null,'Overview',null,null,null,id)} studio={studio} request={request} run={run} busy={busy} openClient={openClient} openProject={openProject} onReviewChange={(id,at)=>{projectWriteVersion.current++;setProjects(prev=>prev.map(p=>p.id===id?{...p,enquiryReviewedAt:at}:p));}} onProjectCreated={project=>{projectWriteVersion.current++;setProjects(prev=>[project,...prev.filter(p=>p.id!==project.id)]);openProject(project);}} opportunityId={opportunityId} initialClientId={clientId} onSelectOpportunity={setOpportunityId}/>:view==='tasks'&&owner?<TaskWorkspace studio={studio} projects={projects} request={request} openClient={openClient} openOpportunity={openOpportunity} openProject={openProject} onProjectUpdate={project=>{projectWriteVersion.current++;setProjects(prev=>prev.map(p=>p.id===project.id?project:p));}} taskId={taskRoute.id} navigationKey={taskRoute}/>:view==='calendar'&&owner?<Calendar projects={projects} openProject={openProject} studio={studio} request={request} openTasks={id=>routeTo('tasks',null,null,'Overview',null,null,null,id)}/>:view==='library'&&owner?<Library projects={projects} studio={studio} openProject={openProject}/>:view==='finances'&&owner?<StudioBilling projects={projects} studio={studio} request={request} run={run} openProject={openProject}/>:view==='members'&&owner?<StudioMembers studio={studio} request={request} projects={projects}/>:view==='settings'&&owner?<SettingsWorkspace key={studio.id} studio={studio} request={request} run={run} busy={busy} reload={loadSession} navigate={navigate}/>:p?<>
+   <Suspense fallback={<ScreenLoading/>}>{owner&&['clients','inbox'].includes(view)?<FolioCRM key={studio.id} mode={view} studio={studio} projects={projects} request={request} run={run} busy={busy} user={session.user} openProject={openProject} clientId={clientId} projectId={selected} onSelect={(id,manual)=>{setClientId(id);if(manual)setSelected(null);}} openOpportunity={openOpportunity} onProjectUpdate={project=>{projectWriteVersion.current++;setProjects(prev=>prev.map(p=>p.id===project.id?project:p));}} renderNewProject={client=><NewProject client={client} studio={studio} request={request} busy={busy} onOpenPipeline={()=>openOpportunity(null,client?.id||null)} onCreate={project=>{projectWriteVersion.current++;setProjects(prev=>[project,...prev]);openProject(project);}}/>}/>:<div className="workspace-body">{view==='inbox'&&!owner?<PortalCorrespondence studio={studio} request={request} run={run} busy={busy} projects={projects} projectId={selected} openProject={openProject} user={session.user} onThreadSelect={()=>setSelected(null)}/>:view==='overview'?<Dashboard openSetup={openSetup} user={session.user} request={request} openClient={openClient} openPipeline={()=>navigate('pipeline')} openTasks={id=>routeTo('tasks',null,null,'Overview',null,null,null,id)} openCalendar={()=>navigate('calendar')} openMail={id=>routeTo('inbox',null,id||null)} projects={projects} owner={owner} studio={studio} openProject={openProject} showProjects={f=>{setFilter(f);navigate('projects');}}/>:view==='forms'&&owner?<FormsWorkspace key={studio.id} studio={studio} request={request} openProject={async(project,nextTab)=>{await run(async()=>{const data=await request('/api/projects?studio='+studio.id);setProjects(data.projects);openProject(data.projects.find(p=>p.id===project.id)||project,nextTab);});}} openClient={openClient} projects={projects} navigate={navigate}/>:view==='briefs'?<BriefsIndex projects={projects} studio={studio} openProject={openProject}/>:view==='approvals'?<ApprovalsIndex projects={projects} studio={studio} openProject={openProject}/>:view==='pipeline'&&owner?<PipelineCRM openTask={id=>routeTo('tasks',null,null,'Overview',null,null,null,id)} studio={studio} request={request} run={run} busy={busy} openClient={openClient} openProject={openProject} onReviewChange={(id,at)=>{projectWriteVersion.current++;setProjects(prev=>prev.map(p=>p.id===id?{...p,enquiryReviewedAt:at}:p));}} onProjectCreated={project=>{projectWriteVersion.current++;setProjects(prev=>[project,...prev.filter(p=>p.id!==project.id)]);openProject(project);}} opportunityId={opportunityId} initialClientId={clientId} onSelectOpportunity={setOpportunityId}/>:view==='tasks'&&owner?<TaskWorkspace studio={studio} projects={projects} request={request} openClient={openClient} openOpportunity={openOpportunity} openProject={openProject} onProjectUpdate={project=>{projectWriteVersion.current++;setProjects(prev=>prev.map(p=>p.id===project.id?project:p));}} taskId={taskRoute.id} navigationKey={taskRoute}/>:view==='calendar'&&owner?<Calendar projects={projects} openProject={openProject} studio={studio} request={request} openTasks={id=>routeTo('tasks',null,null,'Overview',null,null,null,id)}/>:view==='library'&&owner?<Library projects={projects} studio={studio} openProject={openProject}/>:view==='finances'&&owner?<StudioBilling projects={projects} studio={studio} request={request} run={run} openProject={openProject}/>:view==='members'&&owner?<StudioMembers studio={studio} request={request} projects={projects}/>:view==='settings'&&owner?<SettingsWorkspace key={studio.id} studio={studio} request={request} run={run} busy={busy} reload={loadSession} navigate={navigate}/>:p?<>
     <div className="project-heading"><div className="project-title"><div><p className="eyebrow">{p.demo?'SAMPLE PROJECT · ':''}{workflow.name.toUpperCase()} · {p.id.slice(0,8).toUpperCase()}</p><h1>{p.title}</h1><p>{p.brief.name} <span>·</span> {p.brief.date?fmt(p.brief.date):workflow.date+' to be decided'} <span>·</span> {p.brief.venue||workflow.place+' to be decided'}</p></div><div className="project-actions"><Badge value={p.status}/>{!owner&&<span className="project-access-role">{p.accessRole} access</span>}{owner&&<InviteButton mutate={mutate} busy={busy}/>}</div></div></div>
     <Tabs.Root value={tab} onValueChange={showProjectTab} activationMode="manual"><nav className="project-area-nav" aria-label="Project areas">{PROJECT_AREAS.map(area=><button type="button" key={area.name} aria-current={area.tabs.includes(tab)?'page':undefined} onClick={()=>showProjectTab(area.tabs[0])}>{area.name}</button>)}</nav><Tabs.List ref={projectTabsRef} className="project-tabs" aria-label="Project sections">{(PROJECT_AREAS.find(area=>area.tabs.includes(tab))||PROJECT_AREAS[0]).tabs.filter(t=>owner||!['Billing','Contract','Documents'].includes(t)||p.accessRole==='Approver').map(t=><Tabs.Trigger key={t} value={t} data-tab={t} className={tab===t?'active':''}>{t==='Inspiration'?'References':t==='Designs'?'Versions':t==='Conversation'?'Messages':t}{t==='Designs'&&p.designs.length>0&&<small>{p.designs.length}</small>}{t==='Conversation'&&p.messages.length>0&&<small>{p.messages.length}</small>}</Tabs.Trigger>)}</Tabs.List>
-    <Tabs.Content value={tab} className="project-body" key={p.id+tab}>{tab==='Conversation'?<ProjectChat key={p.id} p={p} studio={studio} request={request} owner={owner} user={session.user}/>:tab==='Overview'?<ProjectOverview p={p} studio={studio} owner={owner} onNavigate={showProjectTab} request={request}/>:tab==='Decisions'?<ProjectDecisions p={p} studio={studio} owner={owner} mutate={mutate} busy={busy} onNavigate={showProjectTab}/>:tab==='Brief'?<Brief p={p} studio={studio} owner={owner} mutate={mutate} busy={busy}/>:tab==='Plan'?<ProjectPlan request={request} p={p} studio={studio} owner={owner} mutate={mutate} busy={busy} onNavigate={showProjectTab}/>:tab==='Delivery'?<ProjectDelivery p={p} studio={studio} owner={owner} request={request} onProjectChange={project=>{projectWriteVersion.current++;setProjects(previous=>previous.map(item=>item.id===project.id?project:item));}}/>:tab==='Documents'?<ProjectDocuments p={p} studio={studio} owner={owner} request={request}/>:tab==='Contract'?<ProjectContracts p={p} studio={studio} owner={owner} request={request} userName={session.user.name}/>:tab==='Proposal'?<Proposals p={p} owner={owner} mutate={mutate} busy={busy} onNavigate={showProjectTab}/>:tab==='Estimate'?<Estimates p={p} studio={studio} owner={owner} mutate={mutate} busy={busy}/>:tab==='Billing'?<Billing p={p} studio={studio} owner={owner} request={request} run={run} mutate={mutate} busy={busy} onNavigate={showProjectTab} onInvoiceChange={syncInvoice}/>:tab==='Inspiration'?<References p={p} studio={studio} mutate={mutate} busy={busy} onNavigate={showProjectTab}/>:tab==='Designs'?<DesignReview p={p} studio={studio} owner={owner} mutate={mutate} busy={busy} request={request} onShared={project=>{projectWriteVersion.current++;setProjects(previous=>previous.map(item=>item.id===project.id?project:item));}}/>:<Activity p={p}/>}</Tabs.Content></Tabs.Root>
-   </>:<StudioProjects projects={projects} studio={studio} owner={owner} openProject={openProject} initialFilter={filter} createAction={owner?<NewProject studio={studio} request={request} busy={busy} onOpenPipeline={()=>openOpportunity()} onCreate={project=>{projectWriteVersion.current++;setProjects(prev=>[project,...prev]);openProject(project);}}/>:null} board={visible=><Pipeline projects={visible} openProject={openProject} busy={busy} move={(id,status)=>run(async()=>{projectWriteVersion.current++;try{const d=await request(`/api/projects/${id}/status?studio=${studio.id}`,'POST',{status});setProjects(prev=>prev.map(p=>p.id===id?d.project:p));}finally{projectWriteVersion.current++;}})}/>}/>}</div>}
+    <Tabs.Content value={tab} className="project-body" key={p.id+tab}><Suspense fallback={<ScreenLoading/>}>{tab==='Conversation'?<ProjectChat key={p.id} p={p} studio={studio} request={request} owner={owner} user={session.user}/>:tab==='Overview'?<ProjectOverview p={p} studio={studio} owner={owner} onNavigate={showProjectTab} request={request}/>:tab==='Decisions'?<ProjectDecisions p={p} studio={studio} owner={owner} mutate={mutate} busy={busy} onNavigate={showProjectTab}/>:tab==='Brief'?<Brief p={p} studio={studio} owner={owner} mutate={mutate} busy={busy}/>:tab==='Plan'?<ProjectPlan request={request} p={p} studio={studio} owner={owner} mutate={mutate} busy={busy} onNavigate={showProjectTab}/>:tab==='Delivery'?<ProjectDelivery p={p} studio={studio} owner={owner} request={request} onProjectChange={project=>{projectWriteVersion.current++;setProjects(previous=>previous.map(item=>item.id===project.id?project:item));}}/>:tab==='Documents'?<ProjectDocuments p={p} studio={studio} owner={owner} request={request}/>:tab==='Contract'?<ProjectContracts p={p} studio={studio} owner={owner} request={request} userName={session.user.name}/>:tab==='Proposal'?<Proposals p={p} owner={owner} mutate={mutate} busy={busy} onNavigate={showProjectTab}/>:tab==='Estimate'?<Estimates p={p} studio={studio} owner={owner} mutate={mutate} busy={busy}/>:tab==='Billing'?<Billing p={p} studio={studio} owner={owner} request={request} run={run} mutate={mutate} busy={busy} onNavigate={showProjectTab} onInvoiceChange={syncInvoice}/>:tab==='Inspiration'?<References p={p} studio={studio} mutate={mutate} busy={busy} onNavigate={showProjectTab}/>:tab==='Designs'?<DesignReview p={p} studio={studio} owner={owner} mutate={mutate} busy={busy} request={request} onShared={project=>{projectWriteVersion.current++;setProjects(previous=>previous.map(item=>item.id===project.id?project:item));}}/>:<Activity p={p}/>}</Suspense></Tabs.Content></Tabs.Root>
+   </>:<StudioProjects projects={projects} studio={studio} owner={owner} openProject={openProject} initialFilter={filter} createAction={owner?<NewProject studio={studio} request={request} busy={busy} onOpenPipeline={()=>openOpportunity()} onCreate={project=>{projectWriteVersion.current++;setProjects(prev=>[project,...prev]);openProject(project);}}/>:null} board={visible=><Pipeline projects={visible} openProject={openProject} busy={busy} move={(id,status)=>run(async()=>{projectWriteVersion.current++;try{const d=await request(`/api/projects/${id}/status?studio=${studio.id}`,'POST',{status});setProjects(prev=>prev.map(p=>p.id===id?d.project:p));}finally{projectWriteVersion.current++;}})}/>}/>}</div>}</Suspense>
   </main></div>;
 }
 const PROJECT_AREAS=[
@@ -165,5 +196,5 @@ function Intake({slug}){const [publishedForm,setPublishedForm]=useState(null),[s
 function EmbedDemo(){const q=new URLSearchParams(location.search),studio=q.get('studio')||'nay-decor',form=q.get('form')||'',mode=['popup','inline','floating'].includes(q.get('mode'))?q.get('mode'):'popup';useEffect(()=>{const script=document.createElement('script');script.src='/embed.js';script.dataset.studio=studio;if(form)script.dataset.form=form;script.dataset.mode=mode;script.dataset.label='Begin your brief';document.querySelector('#embed-example').append(script);return()=>script.remove();},[studio,form,mode]);return <div className="embed-example"><h1>The first conversation<br/>belongs on your website.</h1><p>This example uses the same widget code you can install on your site. A submitted enquiry connects to the studio’s workspace.</p><div id="embed-example"/><a href="/?view=forms">Return to Forms</a></div>}
 const root=createRoot(document.getElementById('root'));
 const showComponents=['localhost','127.0.0.1'].includes(location.hostname)&&new URLSearchParams(location.search).get('view')==='components';
-root.render(<WorkspaceUIProvider>{showComponents?<ComponentGallery/>:<App/>}</WorkspaceUIProvider>);
+root.render(<WorkspaceUIProvider><Suspense fallback={<div className="loading">Opening your workspace…</div>}>{showComponents?<ComponentGallery/>:<App/>}</Suspense></WorkspaceUIProvider>);
 if(import.meta.hot)import.meta.hot.dispose(()=>root.unmount());
