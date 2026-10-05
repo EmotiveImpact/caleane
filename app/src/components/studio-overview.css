@@ -4,3 +4,5 @@
 .studio-day-date{align-items:center}.studio-day-date .studio-calendar-tile{display:flex;flex-direction:column;align-items:center;flex:0 0 48px;min-width:48px;width:48px;overflow:hidden;border-radius:5px;background:var(--studio-surface);box-shadow:inset 0 0 0 1px var(--studio-rule);text-align:center}.studio-calendar-month{display:block;width:100%;padding:4px 0 3px;background:var(--studio-accent-hover);color:#fff;font-size:10px;font-weight:600;line-height:14px;letter-spacing:.07em;text-transform:uppercase}.studio-calendar-number{display:block;padding:4px 0 6px;color:var(--studio-ink);font-size:23px;line-height:27px;font-weight:550;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.studio-day-date>span{min-width:0}
 
 .studio-day-action-label:hover{background:var(--studio-accent-hover)}
+
+.studio-day-more{display:block;margin:14px 0 0;padding:6px 0;font-size:12px}
