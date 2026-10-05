@@ -104,8 +104,9 @@ export function saveInvoiceDesign(db,studioId,body){
  if(!invoiceFonts.some(([key])=>key===body.font))fail(400,'Choose an invoice typeface.');
  if(body.accent&&!/^#[0-9a-f]{6}$/i.test(body.accent))fail(400,'Use a colour like #1f2a24, or leave it blank to use your studio colour.');
  if(typeof body.showLogo!=='boolean')fail(400,'Choose whether to show your logo.');
+ if(body.showItems!==undefined&&typeof body.showItems!=='boolean')fail(400,'Choose whether to list the project items.');
  const thankYou=text(body.thankYou,300,'the closing line',false),footer=text(body.footer,500,'the footer',false);
- return writeSetting(db,studioId,'invoice_design',normaliseInvoiceDesign({layout:body.layout,font:body.font,accent:body.accent||'',showLogo:body.showLogo,thankYou,footer}));
+ return writeSetting(db,studioId,'invoice_design',normaliseInvoiceDesign({layout:body.layout,font:body.font,accent:body.accent||'',showLogo:body.showLogo,showItems:body.showItems!==false,thankYou,footer}));
 }
 
 export async function handleStudioCommerce({db,req,route,body,studio,owner,reply}){

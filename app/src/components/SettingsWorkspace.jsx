@@ -6,10 +6,11 @@ import {CalendarSyncSettings} from './CalendarSyncSettings';
 import {DataGovernanceSettings} from './DataGovernanceSettings';
 import {OperationsReadiness} from './OperationsReadiness';
 import {StripeConnectSettings} from './StripeConnectSettings';
+import {BrandKitSettings} from './BrandKitSettings';
 import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
-const sections=[['studio','Studio'],['appearance','Appearance'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['connections','Connections'],['data','Data'],['status','Status']];
+const sections=[['studio','Studio'],['appearance','Appearance'],['brand','Brand kit'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['connections','Connections'],['data','Data'],['status','Status']];
 export function settingsSection(search){
   const params=new URLSearchParams(search);
   if(params.has('calendar_callback')||['pending','connected'].includes(params.get('stripe')))return 'connections';
@@ -84,6 +85,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
       </div>)}
 
       {panel('bookings',section==='bookings'&&<BookingSettings studio={studio} request={request}/>)}
+      {panel('brand',section==='brand'&&<BrandKitSettings studio={studio} request={request}/>)}
       {panel('pricing',section==='pricing'&&<PricingSettings studio={studio} request={request}/>)}
       {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}
       {panel('templates',section==='templates'&&<TemplateSettings studio={studio} request={request}/>)}

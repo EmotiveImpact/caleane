@@ -225,3 +225,11 @@ This section supersedes earlier Waiting bullets for features listed below. The w
 - Studios choose how invoices look in Settings, Pricing & billing: three layouts (Classic, Minimal, Bold), two typefaces, their studio colour or a custom one, their logo, a closing line and a footer for company or VAT details. A live A4 preview uses a sample invoice built from their saved details.
 - One renderer (`src/lib/invoice-design.js`) draws the invoice for the project billing view, the client's view and Print or save PDF, so all three match. The design is stored per studio (`/api/invoice-design`, owner to change) and applies to every invoice, including ones already issued. Amounts and details stay as issued.
 - The archived record PDF in Documents is unchanged and stays plain.
+
+## 5 October: brand kit and richer invoices
+
+- **Brand kit** (Settings, Brand kit): main logo, light logo for dark backgrounds and an icon; primary, secondary, text and background colours; heading and body fonts from 12 presets (Google Fonts plus the bundled Instrument Sans) or the studio's own WOFF2, WOFF, TTF or OTF up to 4 MB. Logos up to 2 MB (PNG, JPG, WebP, SVG). File types are checked from their contents, not the name. Code: `brand-kit.mjs`, `src/lib/brand-kit.js`, `BrandKitSettings.jsx`.
+- Files are stored in `brand_assets` (SQLite blob, max 16 per studio) and served publicly at `/api/brand-assets/:id` with a locked-down CSP and sandbox so clients can see them. Changing the kit is owner only.
+- **Invoices** now have six layouts (Atelier, Studio, Editorial, Bold, Classic, Minimal), use the brand kit's logos, fonts and colours, and list the estimate's items with quantities, unit prices and the project total, followed by the deposit line. Paid, refunded and credited invoices carry a stamp.
+- The preview renders in a sandboxed frame, so the same HTML drives the settings preview, the studio and client views and Print or save PDF.
+- **Not yet:** the brand kit on proposals, contracts and emails; the archived Documents PDF stays plain.
