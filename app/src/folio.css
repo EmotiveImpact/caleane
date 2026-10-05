@@ -18,3 +18,19 @@
 .folio-invite-link{padding:15px 0 20px;border-bottom:1px solid #e6e6ea}.folio-invite-link>strong{font-size:12px;font-weight:550;color:#343640}.folio-invite-link p{font-size:11px;line-height:1.55;color:#777985;margin:8px 0 13px}.folio-invite-link input{width:100%;padding:10px;border:1px solid #dddfe4;border-radius:4px;color:#555762;background:#f9f9fa;font-size:11px}.folio-invite-link .folio-text-button{margin-top:11px;font-size:11px}
 .folio-directory>header{gap:8px}.folio-directory>header h1{min-width:0;max-width:calc(100% - 36px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(18px,1.7vw,25px)}.folio-directory>header .folio-icon-button{flex-shrink:0}
 .folio-project-cover-empty{display:grid;place-items:center;background:#eceef0;color:#8b9098}
+/* Client messages on phones: no sideways overflow, a compact conversation picker and a taller timeline. */
+@media(max-width:760px){
+ .portal-correspondence .portal-correspondence-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+ .portal-correspondence .page-heading{margin-bottom:14px}.portal-correspondence .page-heading h1{font-size:30px}.portal-correspondence .page-heading p:not(.eyebrow){display:none}
+ .portal-correspondence-grid>nav{display:flex;gap:8px;overflow-x:auto;border-top:0;scrollbar-width:none;margin:0 -2px;padding:2px}
+ .portal-correspondence-grid>nav>button{flex:none;width:auto;max-width:78%;border:1px solid #e5e5eb;border-radius:8px;padding:10px 12px}
+ .portal-correspondence-grid>nav>button small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+ .portal-correspondence-grid>nav>button>svg{display:none}
+ .portal-correspondence .folio-correspondence{min-width:0;padding:14px 0 0}
+ .portal-correspondence .folio-subject{padding:0 14px 10px}.portal-correspondence .folio-subject h2{font-size:20px;margin:4px 0 0}.portal-correspondence .folio-subject .folio-text-button{margin-top:6px}
+ .portal-correspondence .project-chat .project-project-talk-head{display:none}
+ .portal-correspondence .project-chat .project-talk-search{margin:8px 12px}
+ .portal-correspondence .project-chat .project-talk-pins{margin:0 12px 6px}
+ .portal-correspondence .project-chat .project-talk-timeline{height:calc(100dvh - 330px);min-height:300px}
+ .portal-correspondence .project-chat .project-talk-composer textarea{field-sizing:content;min-height:40px;max-height:140px;font-size:16px;resize:none}
+}

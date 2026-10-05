@@ -8,7 +8,15 @@ export function installConversationFeatures(db){db.exec(`
  CREATE INDEX IF NOT EXISTS conversation_files_scope ON conversation_files(conversation_id);
  CREATE TABLE IF NOT EXISTS conversation_pins(conversation_id TEXT NOT NULL REFERENCES conversations(id),message_id TEXT NOT NULL REFERENCES conversation_messages(id),user_id TEXT NOT NULL REFERENCES users(id),created_at TEXT NOT NULL,PRIMARY KEY(conversation_id,message_id));
  CREATE TABLE IF NOT EXISTS conversation_asks(conversation_id TEXT NOT NULL REFERENCES conversations(id),message_id TEXT NOT NULL REFERENCES conversation_messages(id),task_kind TEXT NOT NULL CHECK(task_kind IN ('project','crm')),task_id TEXT NOT NULL,created_by TEXT NOT NULL REFERENCES users(id),created_at TEXT NOT NULL,PRIMARY KEY(conversation_id,message_id));
+ CREATE TABLE IF NOT EXISTS conversation_scheduled(id TEXT PRIMARY KEY,studio_id TEXT NOT NULL REFERENCES studios(id),conversation_id TEXT NOT NULL REFERENCES conversations(id),user_id TEXT NOT NULL REFERENCES users(id),role TEXT NOT NULL CHECK(role IN ('owner','client')),text TEXT NOT NULL,details TEXT NOT NULL DEFAULT '{}',send_at TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'scheduled' CHECK(state IN ('scheduled','sending','sent','cancelled','failed')),message_id TEXT,last_error TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+ CREATE INDEX IF NOT EXISTS conversation_scheduled_due ON conversation_scheduled(state,send_at);
+ CREATE INDEX IF NOT EXISTS conversation_scheduled_mine ON conversation_scheduled(conversation_id,user_id,state);
 `);}
+/** The current person's own scheduled messages. Nobody else sees them until they are posted. */
+export function scheduledDTO(db,c,user){
+ return db.prepare("SELECT * FROM conversation_scheduled WHERE conversation_id=? AND user_id=? AND state IN ('scheduled','failed') ORDER BY send_at").all(c.id,user.id)
+  .map(row=>{const details=JSON.parse(row.details);return {id:row.id,text:row.text,sendAt:row.send_at,state:row.state,error:row.last_error||'',parentId:details.parentId||null,attachmentIds:details.attachmentIds||[],mentionIds:details.mentionIds||[]};});
+}
 const studioSide=role=>role!=='client';
 export function isStudioOwner(db,studioId,userId){return !!db.prepare("SELECT 1 FROM memberships WHERE studio_id=? AND user_id=? AND role='owner'").get(studioId,userId);}
 // Triage fields are derived from the message history so existing conversations need no migration.
@@ -22,7 +30,7 @@ export function conversationExtras(db,c,user,rows,messages,seen,participants){
  return {lastSide,needsReply:open&&lastSide==='client',waitingSince:open&&lastSide==='studio'?last.created_at:null,
   firstUnreadId:rows.find(m=>m.seq>seen&&!mine(m))?.id||null,
   mentionsMe:messages.filter((m,i)=>rows[i].seq>myLast&&m.mentionIds.includes(user.id)).length,
-  seenBy,pins,asks};
+  seenBy,pins,asks,scheduled:scheduledDTO(db,c,user)};
 }
 // Open asks are real tasks: project tasks for project conversations, CRM tasks for direct ones.
 export function conversationAsks(db,c){

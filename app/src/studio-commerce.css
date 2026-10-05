@@ -220,3 +220,7 @@
 .commerce-pill-options span.is-brand { font-weight: 600; }
 @media(max-width:760px){ .brand-logo-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .brand-colour-grid { grid-template-columns: minmax(0,1fr); } }
 @media(max-width:640px){ .commerce-layout-options { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.commerce-follow-ups { margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--studio-rule, #e2e2df); }
+.commerce-follow-ups h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.commerce-follow-ups p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--studio-muted, #6f7378); }
+.commerce-follow-ups + .commerce-reminder-fields { margin-top: 16px; }

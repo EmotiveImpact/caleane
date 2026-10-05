@@ -1,10 +1,10 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {Bell,Inbox,MessageSquare,FileText,UserCheck,Sparkles} from 'lucide-react';
-import {WorkspaceDialog,WorkspaceButton,WorkspaceEmpty,WorkspaceFilters,WorkspaceTabs} from './workspace/WorkspaceUI';
+import {Bell,Inbox,MessageSquare,FileText,UserCheck,Sparkles,Clock} from 'lucide-react';
+import {WorkspaceDialog,WorkspaceButton,WorkspaceEmpty,WorkspaceFilters,WorkspaceTabs,WorkspaceSwitch} from './workspace/WorkspaceUI';
 import {NOTIFICATION_KIND_LABEL,notificationAge} from '../lib/notifications';
 import './notification-drawer.css';
 
-const ICONS={enquiry:Sparkles,message:MessageSquare,project_update:FileText,task_assigned:UserCheck};
+const ICONS={enquiry:Sparkles,message:MessageSquare,project_update:FileText,task_assigned:UserCheck,follow_up:Clock};
 const FILTERS=[{value:'all',label:'All'},{value:'unread',label:'Unread'}];
 
 // One bell for both views: live work still waiting (attention, worked out by the caller) and the saved history of updates.
@@ -20,6 +20,10 @@ export function NotificationDrawer({studio,request,onOpen,attention=null}){
 
  useEffect(()=>{setItems([]);setUnread(0);setByKind({});setCursor(null);reload();const timer=setInterval(()=>{if(document.visibilityState==='visible')reload();},30000);return()=>{generation.current++;clearInterval(timer);};},[reload]);
  useEffect(()=>{if(open)reload();},[open,reload]);
+ // Each person chooses whether new messages also reach them by email.
+ const [email,setEmail]=useState(null);
+ useEffect(()=>{if(!open)return;let active=true;request('/api/notifications/preferences?studio='+studio.id).then(data=>{if(active&&typeof data?.messageEmail==='boolean')setEmail(data);}).catch(()=>{});return()=>{active=false;};},[open,studio.id,request]);
+ async function chooseEmail(messageEmail){const previous=email;setEmail({...email,messageEmail});try{setEmail(await request('/api/notifications/preferences?studio='+studio.id,'POST',{messageEmail}));}catch{setEmail(previous);setError('Your email choice could not be saved. Try again.');}}
  useEffect(()=>{if(open)setView(attention&&(attention.items.length||!unread)?'attention':'updates');},[open]);
 
  async function loadOlder(){if(!cursor||loading)return;setLoading(true);const mine=generation.current;try{const data=await request(base+'&before='+encodeURIComponent(cursor));if(mine!==generation.current)return;apply(data,true);setCursor(data.nextCursor);}catch{setError('Older notifications could not be loaded.');}finally{setLoading(false);}}
@@ -29,7 +33,7 @@ export function NotificationDrawer({studio,request,onOpen,attention=null}){
 
  const shown=filter==='unread'?items.filter(item=>!item.read):items,waiting=attention?attention.items.length:0;
  // Unread messages and enquiries already appear under Needs attention, so the badge counts them once.
- const total=attention?waiting+(byKind.project_update||0)+(byKind.task_assigned||0):unread;
+ const total=attention?waiting+(byKind.project_update||0)+(byKind.task_assigned||0)+(byKind.follow_up||0):unread;
  const label=attention?`Notifications, ${waiting} need${waiting===1?'s':''} attention, ${unread} unread`:`Notifications, ${unread} unread`;
  const updates=<>
    <div className="notification-drawer-toolbar">
@@ -61,6 +65,7 @@ export function NotificationDrawer({studio,request,onOpen,attention=null}){
   <button ref={trigger} type="button" className="folio-attention-trigger" aria-label={label} title="Notifications" onClick={()=>setOpen(true)}><Bell size={18} strokeWidth={1.6}/>{total>0&&<span className="folio-attention-count">{total>9?'9+':total}</span>}</button>
   <WorkspaceDialog open={open} onOpenChange={setOpen} drawer title="Notifications" description={attention?'Work waiting for you and recent updates.':'Updates from your projects and team.'} className="notification-drawer" returnFocusRef={trigger}>
    {attention?<WorkspaceTabs className="notification-drawer-tabs" label="Notification views" value={view} onChange={setView} items={[{value:'attention',label:`Needs attention${waiting?` (${waiting})`:''}`,content:waitingList},{value:'updates',label:`Updates${unread?` (${unread})`:''}`,content:updates}]}/>:updates}
+   {email&&<div className="notification-drawer-email"><WorkspaceSwitch label="Email me about new messages" description={email.emailActive?'Sent a few minutes after a message arrives, unless you have already read it.':'Email is not switched on for this workspace yet. Your choice is saved for when it is.'} checked={email.messageEmail} onCheckedChange={chooseEmail}/></div>}
   </WorkspaceDialog>
  </>;
 }

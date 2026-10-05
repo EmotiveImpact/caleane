@@ -25,8 +25,10 @@ test('notification destinations follow each role and never send clients to studi
  assert.deepEqual(notificationDestination(enquiry,{owner:true}),{view:'pipeline',opportunityId:'o1',clientId:'c1'});
  assert.equal(notificationDestination(enquiry,{owner:false}),null);
  assert.deepEqual(notificationDestination({kind:'message',projectId:'p1',clientId:'c1'},{owner:false}),{view:'projects',projectId:'p1',tab:'Conversation'});
- assert.deepEqual(notificationDestination({kind:'message',projectId:null,clientId:'c1'},{owner:true}),{view:'inbox',clientId:'c1'});
- assert.deepEqual(notificationDestination({kind:'message',projectId:null,clientId:'c1'},{owner:false}),{view:'inbox',clientId:null});
+ assert.deepEqual(notificationDestination({kind:'message',projectId:null,clientId:'c1',conversationId:'t1'},{owner:true}),{view:'inbox',clientId:'c1',conversationId:'t1'});
+ assert.deepEqual(notificationDestination({kind:'message',projectId:null,clientId:'c1',conversationId:'t1'},{owner:false}),{view:'inbox',clientId:null,conversationId:null});
+ assert.deepEqual(notificationDestination({kind:'follow_up',projectId:'p1',clientId:'c1',conversationId:'t1'},{owner:true}),{view:'inbox',clientId:'c1',conversationId:'t1'});
+ assert.equal(notificationDestination({kind:'follow_up',conversationId:'t1'},{owner:false}),null);
  assert.deepEqual(notificationDestination({kind:'message',projectId:'p1'},{staff:true}),{view:'projects',projectId:'p1'});
  assert.deepEqual(notificationDestination({kind:'project_update',projectId:'p1'},{owner:false}),{view:'projects',projectId:'p1',tab:'Activity'});
  assert.deepEqual(notificationDestination({kind:'task_assigned',taskId:'project:p1:t1',projectId:'p1'},{owner:true}),{view:'tasks',taskId:'project:p1:t1'});
@@ -101,4 +103,16 @@ test('one bell shows waiting work and saved updates in two tabs with a single ba
  await u.click(within(dialog).getByRole('tab',{name:'Needs attention (1)'}));await u.keyboard('{Enter}');
  await u.click(await within(dialog).findByRole('button',{name:/New client message/}));
  assert.deepEqual(opened,[['attention','a1']]);
+});
+
+test('everyone can turn message emails on or off from the bell, and is told when email is not switched on yet',async()=>{
+ const calls=[];let saved={messageEmail:true,emailActive:false};
+ const request=async(url,method='GET',body)=>{calls.push([method,url,body]);if(url.startsWith('/api/notifications/preferences')){if(method==='POST')saved={...saved,messageEmail:body.messageEmail};return saved;}return {notifications:[],unread:0,unreadByKind:{},nextCursor:null};};
+ render(h(NotificationDrawer,{studio:{id:'s1'},request,onOpen:()=>{}}));
+ const u=user();await u.click(await screen.findByRole('button',{name:'Notifications, 0 unread'}));const dialog=await screen.findByRole('dialog',{name:'Notifications'});
+ const toggle=await within(dialog).findByRole('switch',{name:/Email me about new messages/});
+ assert.equal(toggle.getAttribute('aria-checked'),'true');assert.ok(within(dialog).getByText(/Email is not switched on for this workspace yet/));
+ await u.click(toggle);
+ await waitFor(()=>assert.equal(toggle.getAttribute('aria-checked'),'false'));
+ assert.ok(calls.some(([method,url,body])=>method==='POST'&&url==='/api/notifications/preferences?studio=s1'&&body.messageEmail===false));
 });

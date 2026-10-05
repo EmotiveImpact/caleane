@@ -2,13 +2,14 @@ import {id,now,transaction,materializeProjectConversation,appendConversationMess
 import {readSetting,writeSetting} from './studio-commerce.mjs';
 import {getPlan} from './payment-plans.mjs';
 import {projectClientId} from './relationships.mjs';
+import {recordFollowUp,conversationRecipients} from './notification-feed.mjs';
 
 // Automatic reminders. Client reminders are posted from the studio into the
 // project conversation, so they are visible and unread in the client portal.
 // When the email outbox is configured they are queued there too. Payment plan
 // reminders are for the owner and become private follow-ups.
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
-export const defaultReminderSettings={enabled:false,invoiceBeforeDueDays:3,invoiceOverdue:true,overdueRepeatDays:7,overdueMaxReminders:3,proposalBeforeExpiryDays:3,contractBeforeExpiryDays:3,approvalAfterDays:5,planStepTasks:true};
+export const defaultReminderSettings={enabled:false,invoiceBeforeDueDays:3,invoiceOverdue:true,overdueRepeatDays:7,overdueMaxReminders:3,proposalBeforeExpiryDays:3,contractBeforeExpiryDays:3,approvalAfterDays:5,planStepTasks:true,quietClientDays:3,unansweredDays:1};
 const dayNumber=value=>Math.floor(Date.parse(value.slice(0,10)+'T12:00:00Z')/86400000);
 const money=(minor,currency)=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(minor/100);}catch{return `${(minor/100).toFixed(2)} ${currency}`;}};
 const longDate=value=>new Date(value.slice(0,10)+'T12:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
@@ -18,7 +19,7 @@ export function installReminders(db){db.exec('CREATE TABLE IF NOT EXISTS reminde
 export function reminderSettings(db,studioId){return {...defaultReminderSettings,...readSetting(db,studioId,'reminders',{})};}
 export function saveReminderSettings(db,studioId,input){
  const result={enabled:input.enabled===true,invoiceOverdue:input.invoiceOverdue!==false,planStepTasks:input.planStepTasks!==false};
- for(const [key,min,max] of [['invoiceBeforeDueDays',0,30],['overdueRepeatDays',1,60],['overdueMaxReminders',0,10],['proposalBeforeExpiryDays',0,30],['contractBeforeExpiryDays',0,30],['approvalAfterDays',0,60]]){
+ for(const [key,min,max] of [['invoiceBeforeDueDays',0,30],['overdueRepeatDays',1,60],['overdueMaxReminders',0,10],['proposalBeforeExpiryDays',0,30],['contractBeforeExpiryDays',0,30],['approvalAfterDays',0,60],['quietClientDays',0,30],['unansweredDays',0,30]]){
   const value=input[key]??defaultReminderSettings[key];if(!Number.isInteger(value)||value<min||value>max)fail(400,`Use a whole number between ${min} and ${max}.`);result[key]=value;
  }
  return writeSetting(db,studioId,'reminders',result);
@@ -68,6 +69,41 @@ export function dueReminders(db,studioId,today,settings=reminderSettings(db,stud
 
 function hasPortalClient(db,studioId,projectId){return !!db.prepare('SELECT 1 FROM crm_project_stakeholders WHERE studio_id=? AND project_id=? AND portal_access=1').get(studioId,projectId);}
 
+// Quiet conversations, for the studio only. Each quiet stretch is reminded once: the key is the last message,
+// so a new message from either side starts a fresh stretch. These run even when client reminders are off.
+const DAY_MS=86400000;
+const shortDay=value=>new Date(value).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'Europe/London'});
+export function quietConversations(db,studioId,settings=reminderSettings(db,studioId)){
+ const items=[],owners=new Set(db.prepare("SELECT user_id FROM memberships WHERE studio_id=? AND role='owner'").all(studioId).map(row=>row.user_id));
+ for(const c of db.prepare("SELECT c.*,cl.name AS client_name FROM conversations c JOIN clients cl ON cl.id=c.client_id WHERE c.studio_id=? AND c.status<>'Resolved'").all(studioId)){
+  const last=db.prepare('SELECT id,role,created_at FROM conversation_messages WHERE conversation_id=? ORDER BY seq DESC LIMIT 1').get(c.id);
+  if(!last)continue;
+  const project=c.project_id?JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(c.project_id,studioId)?.data||'null'):null;
+  if(project&&['Archived','Complete'].includes(project.status))continue;
+  const topic=project?.title||c.subject,since=Date.parse(last.created_at),client=c.client_name.split(' ')[0];
+  if(last.role==='client'&&settings.unansweredDays>0)items.push({key:`unanswered:${c.id}:${last.id}`,kind:'Reply waiting',conversation:c,project,dueAt:since+settings.unansweredDays*DAY_MS,
+   title:`${client} is waiting for your reply`,summary:`${topic} · waiting since ${shortDay(last.created_at)}`});
+  // Only worth chasing when the client can actually read the conversation.
+  if(last.role!=='client'&&settings.quietClientDays>0&&conversationRecipients(db,c).some(userId=>!owners.has(userId)&&db.prepare("SELECT 1 FROM memberships WHERE user_id=? AND studio_id=? AND role='client'").get(userId,studioId)))
+   items.push({key:`quiet:${c.id}:${last.id}`,kind:'Client gone quiet',conversation:c,project,dueAt:since+settings.quietClientDays*DAY_MS,
+    title:`No reply from ${client} yet`,summary:`${topic} · quiet since ${shortDay(last.created_at)}. Worth a nudge?`});
+ }
+ return items;
+}
+function runQuietFollowUps(db,studioId,settings,clock){
+ const sent=[],at=clock();
+ for(const item of quietConversations(db,studioId,settings)){
+  // A stretch that went quiet more than a month before it fell due is old history, not a follow-up.
+  if(item.dueAt>at||at-item.dueAt>30*DAY_MS||db.prepare('SELECT 1 FROM reminder_log WHERE studio_id=? AND key=?').get(studioId,item.key))continue;
+  transaction(db,()=>{
+   recordFollowUp(db,{studioId,conversationId:item.conversation.id,sourceKey:'follow-up:'+item.key,title:item.title,detail:item.summary});
+   db.prepare('INSERT INTO reminder_log VALUES(?,?,?,?,?,?,?)').run(studioId,item.key,item.conversation.project_id,item.kind,'studio',item.title+' · '+item.summary,now());
+  });
+  sent.push({key:item.key,kind:item.kind,audience:'studio',projectId:item.conversation.project_id,conversationId:item.conversation.id,summary:item.summary});
+ }
+ return sent;
+}
+
 export function upcomingReminders(db,studioId,today=now().slice(0,10)){
  const settings=reminderSettings(db,studioId),sent=new Set(db.prepare('SELECT key FROM reminder_log WHERE studio_id=?').all(studioId).map(row=>row.key));
  const result=[];
@@ -75,15 +111,17 @@ export function upcomingReminders(db,studioId,today=now().slice(0,10)){
   const day=new Date(Date.parse(today+'T12:00:00Z')+offset*86400000).toISOString().slice(0,10);
   for(const item of dueReminders(db,studioId,day,settings))if(!sent.has(item.key)&&!result.some(other=>other.key===item.key))result.push({key:item.key,on:day,kind:item.kind,audience:item.audience,projectId:item.project.id,projectTitle:item.project.title,summary:item.summary,deliverable:item.audience==='studio'||hasPortalClient(db,studioId,item.project.id)});
  }
- return result;
+ for(const item of quietConversations(db,studioId,settings))if(!sent.has(item.key)&&Date.parse(today+'T00:00:00Z')-item.dueAt<=30*DAY_MS&&item.dueAt<Date.parse(today+'T00:00:00Z')+14*DAY_MS)
+  result.push({key:item.key,on:new Date(Math.max(item.dueAt,Date.parse(today+'T00:00:00Z'))).toISOString().slice(0,10),kind:item.kind,audience:'studio',projectId:item.conversation.project_id,projectTitle:item.project?.title||item.conversation.subject,summary:item.title,deliverable:true});
+ return result.sort((a,b)=>a.on.localeCompare(b.on));
 }
 
 export function recentReminders(db,studioId){return db.prepare('SELECT * FROM reminder_log WHERE studio_id=? ORDER BY sent_at DESC LIMIT 30').all(studioId).map(row=>({key:row.key,kind:row.kind,audience:row.audience,projectId:row.project_id,summary:row.summary,sentAt:row.sent_at}));}
 
-export function runReminders(db,{studioId,today=now().slice(0,10),outbox=null}){
- const settings=reminderSettings(db,studioId);if(!settings.enabled)return [];
+export function runReminders(db,{studioId,today=now().slice(0,10),outbox=null,clock=Date.now}){
+ const settings=reminderSettings(db,studioId),quiet=runQuietFollowUps(db,studioId,settings,clock);if(!settings.enabled)return quiet;
  const owner=db.prepare("SELECT u.* FROM users u JOIN memberships m ON m.user_id=u.id WHERE m.studio_id=? AND m.role='owner' ORDER BY u.rowid LIMIT 1").get(studioId);if(!owner)return [];
- const sent=[];
+ const sent=[...quiet];
  for(const item of dueReminders(db,studioId,today,settings)){
   if(db.prepare('SELECT 1 FROM reminder_log WHERE studio_id=? AND key=?').get(studioId,item.key))continue;
   if(item.audience==='client'&&!hasPortalClient(db,studioId,item.project.id))continue;
@@ -99,7 +137,7 @@ export function runReminders(db,{studioId,today=now().slice(0,10),outbox=null}){
    }
    db.prepare('INSERT INTO reminder_log VALUES(?,?,?,?,?,?,?)').run(studioId,item.key,item.project.id,item.kind,item.audience,item.summary,now());
   });
-  if(messageId&&outbox){try{outbox.enqueueProjectActivity({studioId,projectId:item.project.id,actorUserId:owner.id,eventId:messageId});}catch{/* In-app delivery has already happened. */}}
+  if(messageId&&outbox){try{outbox.enqueueMessage({studioId,conversationId:materializeProjectConversation(db,item.project).id,messageId,actorUserId:owner.id});}catch{/* In-app delivery has already happened. */}}
   sent.push({key:item.key,kind:item.kind,audience:item.audience,projectId:item.project.id,summary:item.summary});
  }
  return sent;

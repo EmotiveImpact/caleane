@@ -145,6 +145,11 @@ export function ReminderSettings({studio,request}){
     {number('approvalAfterDays','Design waiting for review',0,60,'Days after sharing. Use 0 to switch off')}
    </div>
    <WorkspaceSwitch label="Remind me when a planned payment is due to be invoiced" description="Adds a private follow-up for you. Nothing is sent to the client." checked={form.planStepTasks} onCheckedChange={planStepTasks=>set({planStepTasks})}/>
+   <div className="commerce-follow-ups"><h3>Follow-ups for you</h3><p>Private nudges in your notifications when a conversation goes quiet. Clients never see these, and they run even when client reminders are off.</p></div>
+   <div className="settings-fields commerce-reminder-fields">
+    {number('quietClientDays','Client has not replied',0,30,'Days after your last message. Use 0 to switch off')}
+    {number('unansweredDays','Client is waiting for you',0,30,'Days after their message. Use 0 to switch off')}
+   </div>
    {error&&<p className="commerce-error" role="alert">{error}</p>}
    <footer className="settings-save-row"><WorkspaceButton type="submit" disabled={busy}>{busy?'Saving…':'Save reminders'}</WorkspaceButton>{saved&&<span role="status">Saved.</span>}{data.settings.enabled&&<WorkspaceButton variant="secondary" disabled={busy} onClick={async()=>{const result=await send({action:'run'});if(result)setRan(result.sent.length);}}>Send due reminders now</WorkspaceButton>}{ran!==null&&<span role="status">{ran?`${ran} reminder${ran===1?'':'s'} sent.`:'Nothing was due.'}</span>}</footer>
   </form>

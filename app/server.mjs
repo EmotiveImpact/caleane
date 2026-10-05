@@ -7,6 +7,7 @@ import {installTaskCollaboration,handleTaskCollaboration} from './task-collabora
 import {assertQuota,cleanupUnattachedUploads} from './uploads.mjs';
 import {handleConversationFileUpload} from './conversation-features.mjs';
 import {handleConversationOrganiser} from './conversation-organiser.mjs';
+import {handleScheduledMessages,sendDueScheduled} from './conversation-scheduled.mjs';
 import {createAccountSecurity} from './account-security.mjs';
 import {installEngagements,getEngagements,changeEngagements,projectCalendar} from './engagements.mjs';
 import http from 'node:http';
@@ -21,7 +22,7 @@ import {clientErasurePreview,eraseClient} from './client-erasure.mjs';
 import {bindInvitedContact,conversationAccess,ensurePrimaryContact,listClientContacts,listStakeholders,projectAccess,projectClientId} from './relationships.mjs';
 import {installStripePayments,activeStripeCheckout,createStripeCheckout,expireStripeCheckout,processStripeWebhook,listStripeCheckoutAttempts} from './stripe-payments.mjs';
 import {installStripeOnboarding,startStripeOnboarding,refreshStripeOnboarding,returnFromStripeOnboarding,stripeOnboardingStatus} from './stripe-onboarding.mjs';
-import {installNotifications,createNotificationOutbox} from './notifications.mjs';
+import {installNotifications,createNotificationOutbox,createResendDelivery,messageEmailEnabled,setMessageEmail} from './notifications.mjs';
 import {installOnboarding,handleOnboarding} from './onboarding.mjs';
 import {installNotificationFeed,recordProjectEvent,recordMessage,recordEnquiry,handleNotificationFeed} from './notification-feed.mjs';
 import {saveReferenceLayout} from './reference-layout.mjs';
@@ -65,7 +66,7 @@ function previewAuthorized(header,userDigest,passDigest){
  const userMatches=timingSafeEqual(suppliedUser,userDigest),passMatches=timingSafeEqual(suppliedPass,passDigest);
  return userMatches&&passMatches;
 }
-export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,trustProxy=process.env.TRUST_PROXY||0}={}){
+export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,trustProxy=process.env.TRUST_PROXY||0,emailDelivery=null,emailIntervalMs=60000,scheduledIntervalMs=60000}={}){
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
@@ -76,6 +77,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  // Account mail has its own key when CALEANE_ACCOUNT_MAIL_KEY is set; the shared notification key still opens older queued mail.
  const accountSecurity=createAccountSecurity(db,{origin,encryptionKey:accountMailKey||notificationKey,previousKeys:[notificationKey]});
  const queueProjectEvent=(studioId,projectId,actorUserId,eventId)=>{if(!eventId)return;recordProjectEvent(db,{studioId,projectId,actorUserId,eventId});if(outbox)outbox.enqueueProjectActivity({studioId,projectId,actorUserId,eventId});};
+ // Messages reach the bell at once; their email waits in the outbox and is dropped if the message is read first.
+ const queueMessage=(studioId,c,actorUserId,messageId)=>{if(!messageId)return;recordMessage(db,{studioId,conversationId:c.id,messageId,actorUserId});if(outbox)try{outbox.enqueueMessage({studioId,conversationId:c.id,messageId,actorUserId});}catch(error){console.error('Message email could not be queued:',error.message);}};
  // With TRUST_PROXY=N, N reverse proxies each append the peer they saw to X-Forwarded-For; the client is the right-most entry they did not add.
  const secureOrigin=origin.startsWith('https://');
  // Production pages only: Vite dev serves inline scripts. 'unsafe-inline' styles cover React style props and the print preview frame.
@@ -223,11 +226,17 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(route==='/api/studio-export'&&req.method==='GET')return await streamStudioExport(db,{studioId:studio.id,userId:user.id},res,{includeFiles:url.searchParams.get('files')==='1'});
     if(route==='/api/operations'&&req.method==='GET')return reply(200,await operationalReadiness(db,{studioId:studio.id,userId:user.id,backupReceiptPath:process.env.CALEANE_BACKUP_RECEIPT||'',emailConfigured:!!(process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1'),offsiteBackupsConfigured:false}));
     if(await handleCalendarSync({db,req,url,route,body,user,studio,owner,reply,origin}))return;
+    if(route==='/api/notifications/preferences'){
+     if(req.method==='POST'){if(typeof body.messageEmail!=='boolean')fail(400,'Choose whether to receive message emails.');setMessageEmail(db,user.id,studio.id,body.messageEmail);}
+     else if(req.method!=='GET')fail(405,'Method not allowed.');
+     return reply(200,{messageEmail:messageEmailEnabled(db,user.id,studio.id),emailActive:!!deliver});
+    }
     if(handleNotificationFeed({db,req,url,route,body,user,studio,owner,reply}))return;
     if(handleOnboarding({db,req,route,body,user,studio,reply}))return;
     if(await handleTaskCollaboration({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
     if(await handleConversationFileUpload({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
     if(await handleConversationOrganiser({db,req,route,body,user,studio,owner,reply}))return;
+    if(handleScheduledMessages({db,req,route,body,user,studio,owner,reply,afterSend:queueMessage}))return;
     if(await handleStudioCommerce({db,req,route,body,studio,owner,reply}))return;
     if(handleBrandKit({db,req,route,body,studio,owner,reply}))return;
     if(await handleReminders({db,req,route,body,studio,owner,reply,outbox}))return;
@@ -420,6 +429,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     if(route==='/api/conversations'){
      if(req.method==='GET'){
+      // Hosts that pause between requests may miss the timer, so anything due goes out before the list is read.
+      sendDueScheduled(db,{afterSend:queueMessage});
       const rows=db.prepare('SELECT c.* FROM conversations c WHERE c.studio_id=? ORDER BY c.updated_at DESC,c.id').all(studio.id).filter(c=>owner||conversationAccess(db,c,user.id));
       return reply(200,{conversations:rows.map(c=>conversationDTO(db,c,user))});
      }
@@ -431,7 +442,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       let created=false;const conversation=transaction(db,()=>{
        let c=project?materializeProjectConversation(db,JSON.parse(project.data)):null;
        if(!c){created=true;const cid=id(),at=now();db.prepare('INSERT INTO conversations VALUES(?,?,?,?,?,?,?,?)').run(cid,studio.id,client.id,null,subject,'Open',at,at);c=db.prepare('SELECT * FROM conversations WHERE id=?').get(cid);}
-       if(text){const messageId=appendConversationMessage(db,c,user,studio.role,text);if(c.project_id)queueProjectEvent(studio.id,c.project_id,user.id,messageId);else recordMessage(db,{studioId:studio.id,conversationId:c.id,messageId,actorUserId:user.id});}
+       if(text){const messageId=appendConversationMessage(db,c,user,studio.role,text);queueMessage(studio.id,c,user.id,messageId);}
        return conversationDTO(db,db.prepare('SELECT * FROM conversations WHERE id=?').get(c.id),user);
       });return reply(created?201:200,{conversation});
      }
@@ -443,7 +454,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      const accessRole=c&&(owner?'Owner':conversationAccess(db,c,user.id));if(!accessRole)fail(404,'Conversation not found.');const action=conversationMatch[2];
      if(!action&&req.method==='GET')return reply(200,{conversation:conversationDTO(db,c,user)});
      if(req.method!=='POST')fail(405,'Method not allowed.');
-     if(action==='messages'){if(accessRole==='Viewer')fail(403,'This participant has view-only access.');const text=str(body.text||'',5000),clientKey=body.clientMessageId?str(body.clientMessageId,120):null;transaction(db,()=>{const messageId=appendConversationMessage(db,c,user,staffViewer?'owner':studio.role,text,clientKey,body);if(c.project_id)queueProjectEvent(studio.id,c.project_id,user.id,messageId);else recordMessage(db,{studioId:studio.id,conversationId:c.id,messageId,actorUserId:user.id});});}
+     if(action==='messages'){if(accessRole==='Viewer')fail(403,'This participant has view-only access.');const text=str(body.text||'',5000),clientKey=body.clientMessageId?str(body.clientMessageId,120):null;transaction(db,()=>{const messageId=appendConversationMessage(db,c,user,staffViewer?'owner':studio.role,text,clientKey,body);queueMessage(studio.id,c,user.id,messageId);});}
      else if(action==='seen'){if(!markConversationSeen(db,c,user,str(body.lastMessageId,100)))fail(400,'Choose a message in this conversation.');}
      else if(action==='status'){requireOwner();if(!['Open','Waiting','Resolved'].includes(body.status))fail(400,'Choose a conversation status.');setConversationStatus(db,c,user,body.status);}
      else fail(405,'Method not allowed.');
@@ -756,7 +767,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }else if(action==='brief'){
      if(body.revision!==p.briefRevision)fail(409,'The brief changed while you were editing. Refresh before saving.');const b=brief({...body.brief,email:p.clientEmail,workflowType:owner?body.brief.workflowType||p.brief.workflowType:p.brief.workflowType,intakeAnswers:updateIntakeAnswers(p.brief.intakeAnswers,body.brief.intakeAnswers)});if(p.briefLocked){p.changeRequests.unshift({id:id(),brief:b,baseRevision:p.briefRevision,note:str(body.note||'Requested an update to the agreed brief.',1000),status:'Pending',by:user.name,at:now()});event(p,user,'Requested a change to the approved brief');}
      else{p.briefHistory.unshift({revision:p.briefRevision,brief:p.brief,at:now(),by:user.name});p.brief=b;p.briefRevision++;event(p,user,'Updated the brief');}
-    }else if(action==='messages'){const text=str(body.text,5000);if(!text)fail(400,'Write a message first.');transaction(db,()=>{const messageId=appendConversationMessage(db,materializeProjectConversation(db,p),user,studio.role,text,body.clientMessageId?str(body.clientMessageId,120):null);queueProjectEvent(studio.id,p.id,user.id,messageId);});return reply(200,{project:decorate(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(p.id).data))});
+    }else if(action==='messages'){const text=str(body.text,5000);if(!text)fail(400,'Write a message first.');transaction(db,()=>{const c=materializeProjectConversation(db,p),messageId=appendConversationMessage(db,c,user,studio.role,text,body.clientMessageId?str(body.clientMessageId,120):null);queueMessage(studio.id,c,user.id,messageId);});return reply(200,{project:decorate(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(p.id).data))});
     }else if(action==='inspiration'){const title=str(body.title,200),note=str(body.note||'',3000),link=safeURL(body.url||'');if(!title)fail(400,'Add a title.');if(!link&&!note)fail(400,'Add a link or a note.');p.inspiration.unshift({id:id(),title,note,url:link,category:str(body.category||'',80),source:str(body.source||'',300),comments:[],by:user.name,byUserId:user.id,at:now()});event(p,user,'Added inspiration');
     }else if(action==='reference-layout'){
      requireOwner();p.referenceLayout=saveReferenceLayout(p,body);event(p,user,'Arranged the reference board');
@@ -787,12 +798,23 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  // Bound slow clients: headers within 20 s, a whole request (including an 8.5 MB upload) within 2 minutes.
  server.headersTimeout=20000;server.requestTimeout=120000;
  // Reminders run hourly in a long-lived server. The hosted demo and tests pass reminderIntervalMs:0.
+ // Email stays off until CALEANE_EMAIL_ENABLED=1 and the Resend key and sender are set. The demo never sends.
+ let deliver=emailDelivery;
+ if(!deliver&&process.env.CALEANE_EMAIL_ENABLED==='1'&&!disableExternalServices&&!demo){
+  const missing=['CALENNE_NOTIFICATION_KEY','RESEND_API_KEY','RESEND_FROM'].filter(key=>!process.env[key]);
+  if(missing.length)console.warn('Email is switched on but not configured, so nothing will be sent. Set '+missing.join(', ')+'.');
+  else deliver=createResendDelivery({apiKey:process.env.RESEND_API_KEY,from:process.env.RESEND_FROM});
+ }
+ let emailRunning=false;
+ async function sendQueuedEmail(){if(emailRunning||!deliver)return;emailRunning=true;try{for(let count=0;count<20;count++){const result=await accountSecurity.dispatchOne(deliver)||(outbox&&await outbox.dispatchOne(deliver));if(!result)break;}}catch(error){console.error('Email delivery run failed:',error.message);}finally{emailRunning=false;}}
+ const emailTimer=deliver&&emailIntervalMs>0?setInterval(sendQueuedEmail,emailIntervalMs):null;emailTimer?.unref();
+ const scheduledTimer=scheduledIntervalMs>0?setInterval(()=>{try{sendDueScheduled(db,{afterSend:queueMessage});}catch(error){console.error('Scheduled messages could not be sent:',error.message);}},scheduledIntervalMs):null;scheduledTimer?.unref();
  const reminderTimer=reminderIntervalMs>0?setInterval(()=>{runAllReminders(db,{outbox});syncAllPipelines(db,{outbox});},reminderIntervalMs):null;reminderTimer?.unref();
  // Uploads never attached to a message or task are removed at start-up and then hourly.
  const cleanUploads=()=>{try{cleanupUnattachedUploads(db);}catch(error){console.error('Upload cleanup failed:',error?.stack||error);}};cleanUploads();
  const uploadTimer=uploadCleanupIntervalMs>0?setInterval(cleanUploads,uploadCleanupIntervalMs):null;uploadTimer?.unref();
- server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);});
- return {server,db};
+ server.on('close',()=>{vite?.close();if(emailTimer)clearInterval(emailTimer);if(scheduledTimer)clearInterval(scheduledTimer);if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);});
+ return {server,db,sendQueuedEmail};
 }
 // The demo seeds accounts with a published password, so a production process needs an explicit opt-in to run it.
 export function assertSafeStartup(env=process.env){if(env.WORKSPACE_DEMO==='1'&&env.NODE_ENV==='production'&&env.ALLOW_PUBLIC_DEMO!=='1')throw new Error('WORKSPACE_DEMO=1 seeds accounts with a known password. Set ALLOW_PUBLIC_DEMO=1 to run the demo with NODE_ENV=production.');}

@@ -8,13 +8,14 @@ export function notificationDestination(item,{owner=false,staff=false}={}){
  }
  if(item.kind==='message'){
   if(item.projectId)return staff?{view:'projects',projectId:item.projectId}:{view:'projects',projectId:item.projectId,tab:'Conversation'};
-  return {view:'inbox',clientId:owner?item.clientId:null};
+  return {view:'inbox',clientId:owner?item.clientId:null,conversationId:owner?item.conversationId:null};
  }
+ if(item.kind==='follow_up')return owner?{view:'inbox',clientId:item.clientId,conversationId:item.conversationId}:null;
  if(item.kind==='project_update'&&item.projectId)return {view:'projects',projectId:item.projectId,tab:'Activity'};
  return null;
 }
 
-export const NOTIFICATION_KIND_LABEL={enquiry:'Enquiry',message:'Message',project_update:'Project update',task_assigned:'Assigned to you'};
+export const NOTIFICATION_KIND_LABEL={enquiry:'Enquiry',message:'Message',project_update:'Project update',task_assigned:'Assigned to you',follow_up:'Follow up'};
 
 export function notificationAge(createdAt,now=Date.now()){
  const at=Date.parse(createdAt);if(!Number.isFinite(at))return '';

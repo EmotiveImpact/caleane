@@ -1,6 +1,7 @@
 import {createCipheriv,createDecipheriv,randomBytes,randomUUID,createHash} from 'node:crypto';
-import {projectAccess} from './relationships.mjs';
-import {transaction} from './store.mjs';
+import {projectAccess,conversationAccess} from './relationships.mjs';
+import {transaction,conversationUnreadCount} from './store.mjs';
+import {conversationRecipients} from './notification-feed.mjs';
 
 const EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVITE_TOKEN=/^[a-f0-9]{64}$/;
@@ -8,6 +9,9 @@ const MAX_ATTEMPTS=5;
 const LEASE_MS=60_000;
 // Resend currently retains idempotency keys for 24 hours. Leave a margin for clock skew.
 const IDEMPOTENCY_WINDOW_MS=23*60*60*1000;
+// Message emails wait a little, so someone already reading in Caleane is not emailed as well.
+export const MESSAGE_EMAIL_DELAY_MS=10*60*1000;
+const OUTBOX_KINDS=['invitation','project_activity','message'];
 
 function fail(status,message){throw Object.assign(new Error(message),{status});}
 function digest(value){return createHash('sha256').update(value).digest('hex');}
@@ -35,10 +39,10 @@ function open(key,encoded){
  return JSON.parse(Buffer.concat([decipher.update(value),decipher.final()]).toString('utf8'));
 }
 
-export function installNotifications(db){
+function createOutbox(db){
  db.exec(`CREATE TABLE IF NOT EXISTS notification_outbox(
   id TEXT PRIMARY KEY,studio_id TEXT NOT NULL REFERENCES studios(id),
-  kind TEXT NOT NULL CHECK(kind IN ('invitation','project_activity')),
+  kind TEXT NOT NULL CHECK(kind IN (${OUTBOX_KINDS.map(kind=>`'${kind}'`).join(',')})),
   dedupe_key TEXT NOT NULL,recipient_email TEXT NOT NULL,recipient_user_id TEXT,
   project_id TEXT,invitation_digest TEXT,
   payload TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'pending'
@@ -46,12 +50,40 @@ export function installNotifications(db){
   attempts INTEGER NOT NULL DEFAULT 0,next_attempt_at INTEGER NOT NULL,
   lease_token TEXT,lease_until INTEGER,first_attempt_at INTEGER,
   created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,sent_at INTEGER,
-  provider_id TEXT,last_error TEXT,
+  provider_id TEXT,last_error TEXT,conversation_id TEXT,
   UNIQUE(studio_id,dedupe_key),
   FOREIGN KEY(project_id,studio_id) REFERENCES projects(id,studio_id));
  CREATE INDEX IF NOT EXISTS notification_outbox_ready ON notification_outbox(state,next_attempt_at,lease_until);
  CREATE INDEX IF NOT EXISTS notification_outbox_invite ON notification_outbox(studio_id,invitation_digest);
+ CREATE TABLE IF NOT EXISTS notification_preferences(
+  user_id TEXT NOT NULL REFERENCES users(id),studio_id TEXT NOT NULL REFERENCES studios(id),
+  message_email INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL,PRIMARY KEY(user_id,studio_id));
  `);
+}
+
+export function installNotifications(db){
+ // Older databases allow fewer kinds and have no conversation column. Rebuild once, keeping every queued row.
+ const existing=db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='notification_outbox'").get()?.sql||'';
+ if(existing&&!OUTBOX_KINDS.every(kind=>existing.includes(`'${kind}'`)))transaction(db,()=>{
+  const columns=db.prepare('PRAGMA table_info(notification_outbox)').all().map(column=>column.name).join(',');
+  db.exec('DROP INDEX IF EXISTS notification_outbox_ready;DROP INDEX IF EXISTS notification_outbox_invite;ALTER TABLE notification_outbox RENAME TO notification_outbox_old;');
+  createOutbox(db);
+  db.exec(`INSERT INTO notification_outbox(${columns}) SELECT ${columns} FROM notification_outbox_old;DROP TABLE notification_outbox_old;`);
+ });
+ createOutbox(db);
+}
+
+/** Whether someone wants an email when a message arrives. On unless they turned it off. */
+export function messageEmailEnabled(db,userId,studioId){
+ installNotifications(db);
+ const row=db.prepare('SELECT message_email FROM notification_preferences WHERE user_id=? AND studio_id=?').get(userId,studioId);
+ return row?!!row.message_email:true;
+}
+export function setMessageEmail(db,userId,studioId,enabled){
+ installNotifications(db);
+ db.prepare(`INSERT INTO notification_preferences(user_id,studio_id,message_email,updated_at) VALUES(?,?,?,?)
+  ON CONFLICT(user_id,studio_id) DO UPDATE SET message_email=excluded.message_email,updated_at=excluded.updated_at`).run(userId,studioId,enabled?1:0,new Date().toISOString());
+ return enabled;
 }
 
 /**
@@ -62,12 +94,12 @@ export function createNotificationOutbox(db,{encryptionKey,origin,clock=Date.now
  const key=keyBuffer(encryptionKey),site=originURL(origin);
  installNotifications(db);
  const stamp=()=>Number(clock());
- function insert({studioId,kind,dedupeKey,to,recipientUserId=null,projectId=null,invitationDigest=null,payload}){
+ function insert({studioId,kind,dedupeKey,to,recipientUserId=null,projectId=null,invitationDigest=null,conversationId=null,delayMs=0,payload}){
   const time=stamp(),identifier=randomUUID();
   db.prepare(`INSERT INTO notification_outbox
-   (id,studio_id,kind,dedupe_key,recipient_email,recipient_user_id,project_id,invitation_digest,payload,next_attempt_at,created_at,updated_at)
-   VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(studio_id,dedupe_key) DO NOTHING`)
-   .run(identifier,studioId,kind,dedupeKey,to,recipientUserId,projectId,invitationDigest,seal(key,payload),time,time,time);
+   (id,studio_id,kind,dedupe_key,recipient_email,recipient_user_id,project_id,invitation_digest,conversation_id,payload,next_attempt_at,created_at,updated_at)
+   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(studio_id,dedupe_key) DO NOTHING`)
+   .run(identifier,studioId,kind,dedupeKey,to,recipientUserId,projectId,invitationDigest,conversationId,seal(key,payload),time+delayMs,time,time);
   return db.prepare('SELECT id,state FROM notification_outbox WHERE studio_id=? AND dedupe_key=?').get(studioId,dedupeKey);
  }
 
@@ -115,6 +147,32 @@ export function createNotificationOutbox(db,{encryptionKey,origin,clock=Date.now
    payload:{subject:'A project update in Caleane',text:`There is a new update in your Caleane project.\n\nView the project: ${link.href}\n\nSign in to see the details.`}})));
  }
 
+ // One email per conversation until the recipient catches up: later messages ride on the one already waiting.
+ function enqueueMessage({studioId,conversationId,messageId,actorUserId,delayMs=MESSAGE_EMAIL_DELAY_MS}){
+  const c=db.prepare('SELECT * FROM conversations WHERE id=? AND studio_id=?').get(conversationId,studioId);
+  const message=c&&db.prepare('SELECT * FROM conversation_messages WHERE id=? AND conversation_id=?').get(messageId,c.id);
+  if(!message)fail(404,'Message not found.');
+  const studio=db.prepare('SELECT name FROM studios WHERE id=?').get(studioId),project=c.project_id?JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(c.project_id,studioId)?.data||'null'):null;
+  const author=message.author_name.replace(/\s+/g,' ').trim(),topic=(project?.title||c.subject).replace(/\s+/g,' ').trim(),studioName=studio.name.replace(/\s+/g,' ').trim();
+  const owners=new Set(db.prepare("SELECT user_id FROM memberships WHERE studio_id=? AND role='owner'").all(studioId).map(row=>row.user_id));
+  const waiting=db.prepare(`SELECT 1 FROM notification_outbox WHERE studio_id=? AND kind='message' AND conversation_id=? AND recipient_user_id=? AND state IN ('pending','sending')`);
+  const queued=[];
+  return transaction(db,()=>{
+   for(const userId of new Set(conversationRecipients(db,c))){
+    if(!userId||userId===actorUserId||!messageEmailEnabled(db,userId,studioId)||waiting.get(studioId,c.id,userId))continue;
+    const user=db.prepare('SELECT id,email FROM users WHERE id=?').get(userId);
+    let to;try{to=cleanEmail(user?.email);}catch{continue;}
+    const link=new URL('/',site);
+    if(c.project_id){link.searchParams.set('view','projects');link.searchParams.set('project',c.project_id);link.searchParams.set('tab','Conversation');}
+    else{link.searchParams.set('view','inbox');if(owners.has(userId)){link.searchParams.set('client',c.client_id);link.searchParams.set('conversation',c.id);}}
+    insert({studioId,kind:'message',dedupeKey:`message:${message.id}:user:${userId}`,to,recipientUserId:userId,projectId:c.project_id,conversationId:c.id,delayMs,
+     payload:{subject:`${author} sent you a message`,text:`${author} wrote to you about “${topic}” in ${studioName}'s Caleane workspace.\n\nRead and reply: ${link.href}\n\nSign in to see the message. To stop these emails, open the bell in Caleane and turn off message emails.`}});
+    queued.push(userId);
+   }
+   return queued;
+  });
+ }
+
  function stillAuthorized(job){
   const user=db.prepare('SELECT email FROM users WHERE id=?').get(job.recipient_user_id);
   if(job.kind==='invitation'){
@@ -122,6 +180,14 @@ export function createNotificationOutbox(db,{encryptionKey,origin,clock=Date.now
    return !!invite&&invite.email===job.recipient_email&&!invite.used&&invite.expires>stamp();
   }
   if(!user||user.email!==job.recipient_email)return false;
+  if(job.kind==='message'){
+   const c=db.prepare('SELECT * FROM conversations WHERE id=? AND studio_id=?').get(job.conversation_id,job.studio_id);
+   if(!c||!messageEmailEnabled(db,job.recipient_user_id,job.studio_id))return false;
+   const role=db.prepare('SELECT role FROM memberships WHERE user_id=? AND studio_id=?').get(job.recipient_user_id,job.studio_id)?.role;
+   if(role!=='owner'&&!conversationAccess(db,c,job.recipient_user_id))return false;
+   // Already read in Caleane: nothing left to tell them.
+   return conversationUnreadCount(db,c,{id:job.recipient_user_id,name:db.prepare('SELECT name FROM users WHERE id=?').get(job.recipient_user_id).name})>0;
+  }
   if(!db.prepare('SELECT 1 FROM projects WHERE id=? AND studio_id=?').get(job.project_id,job.studio_id))return false;
   const role=db.prepare('SELECT role FROM memberships WHERE user_id=? AND studio_id=?').get(job.recipient_user_id,job.studio_id)?.role;
   return role==='owner'||(role==='client'&&!!projectAccess(db,job.studio_id,job.project_id,job.recipient_user_id));
@@ -178,7 +244,7 @@ export function createNotificationOutbox(db,{encryptionKey,origin,clock=Date.now
   }
  }
 
- return {enqueueInvitation,enqueueProjectActivity,dispatchOne};
+ return {enqueueInvitation,enqueueProjectActivity,enqueueMessage,dispatchOne};
 }
 
 /** Opt-in Resend transport. Creating this function never sends a message. */

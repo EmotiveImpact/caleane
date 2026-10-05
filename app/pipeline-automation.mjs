@@ -106,7 +106,7 @@ function sendFollowUp(db,{studioId,opp,p,proposal,owner,studio,settings,index,ou
   mark(db,studioId,`follow:${proposal.id}:${index}`,opp.id,messageId);
   activity(db,studioId,opp,owner,`Follow-up ${index+1} sent`,reason);
  });
- if(messageId&&outbox){try{outbox.enqueueProjectActivity({studioId,projectId:p.id,actorUserId:owner.id,eventId:messageId});}catch{/* The message is already in the project conversation. */}}
+ if(messageId&&outbox){try{outbox.enqueueMessage({studioId,conversationId:materializeProjectConversation(db,p).id,messageId,actorUserId:owner.id});}catch{/* The message is already in the project conversation. */}}
  return messageId;
 }
 
