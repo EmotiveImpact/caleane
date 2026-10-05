@@ -26,6 +26,11 @@ import {getProjectOperations,changeProjectOperations} from './studio-operations.
 import {DEFAULT_WORKFLOW,isWorkflowId,projectTypesFor,briefFieldsFor} from './src/lib/workflows.js';
 import {validateIntakeQuestions,captureIntakeAnswers,updateIntakeAnswers,normalizeIntakeAnswers} from './intake-questions.mjs';
 import {searchWorkspace} from './workspace-search.mjs';
+import {installStudioCommerce,handleStudioCommerce,billingDefaults} from './studio-commerce.mjs';
+import {installInvoiceAdjustments,invoiceAdjustments,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
+import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
+import {installConsultations,handleConsultations,publicBooking,bookConsultation} from './consultations.mjs';
+import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function fail(status,message){throw Object.assign(new Error(message),{status});}
@@ -39,9 +44,10 @@ function designDraftDTO(db,projectId,row){const assetIds=JSON.parse(row.asset_id
 function staffProjectDTO(p){return {id:p.id,title:p.title,status:p.status,briefRevision:p.briefRevision,briefLocked:!!p.briefLocked,brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,venue:p.brief.venue,vision:p.brief.vision,colours:p.brief.colours||[],customColours:p.brief.customColours||'',pinterest:p.brief.pinterest||'',workflowType:p.brief.workflowType,details:p.brief.details||{},intakeAnswers:p.brief.intakeAnswers||[]},tasks:(p.tasks||[]).map(task=>({...task})),references:(p.inspiration||[]).map(ref=>({id:ref.id,title:ref.title,note:ref.note||'',url:ref.url||'',category:ref.category||'',source:ref.source||'',by:ref.by,at:ref.at})),messages:(p.messages||[]).map(message=>({id:message.id,by:message.by,role:message.role,text:message.text,at:message.at}))};}
 function invoiceDTO(db,row){
  const payments=db.prepare('SELECT * FROM invoice_payments WHERE studio_id=? AND invoice_id=? ORDER BY recorded_at,id').all(row.studio_id,row.id).map(payment=>({id:payment.id,amountMinor:payment.amount_minor,method:payment.method,reference:payment.reference,receivedAt:payment.received_at,note:payment.note,recordedAt:payment.recorded_at,recordedBy:payment.recorded_by,source:payment.source}));
- const paidMinor=payments.reduce((sum,payment)=>sum+payment.amountMinor,0);
+ const grossPaidMinor=payments.reduce((sum,payment)=>sum+payment.amountMinor,0),adjustments=invoiceAdjustments(db,row.studio_id,row.id);
+ const state=invoiceState({amountMinor:row.amount_minor,grossPaidMinor,creditedMinor:adjustments.creditedMinor,refundedMinor:adjustments.refundedMinor,cancelled:!!row.cancelled_at}),paidMinor=state.paidMinor;
  const checkout=activeStripeCheckout(db,{studioId:row.studio_id,invoiceId:row.id});
- return {id:row.id,number:row.number,projectId:row.project_id,estimateId:row.estimate_id,estimateVersion:row.estimate_version,kind:row.kind,currency:row.currency,amountMinor:row.amount_minor,netMinor:row.net_minor,taxMinor:row.tax_minor,taxRate:row.tax_rate,dueDate:row.due_date,note:row.note,paymentInstructions:row.payment_instructions,snapshot:JSON.parse(row.snapshot),status:row.cancelled_at?'Cancelled':paidMinor===row.amount_minor?'Paid':paidMinor?'Partially paid':'Issued',issuedAt:row.issued_at,issuedBy:row.issued_by,cancelledAt:row.cancelled_at||'',cancelledBy:row.cancelled_by||'',cancelReason:row.cancel_reason||'',paidMinor,payments,checkout:checkout?{status:checkout.status,url:checkout.checkout_url||null}:null};
+ return {id:row.id,number:row.number,projectId:row.project_id,estimateId:row.estimate_id,estimateVersion:row.estimate_version,kind:row.kind,label:row.label||'',currency:row.currency,amountMinor:row.amount_minor,netMinor:row.net_minor,taxMinor:row.tax_minor,taxRate:row.tax_rate,dueDate:row.due_date,note:row.note,paymentInstructions:row.payment_instructions,snapshot:JSON.parse(row.snapshot),status:state.status,dueMinor:state.dueMinor,balanceMinor:state.balanceMinor,refundDueMinor:state.refundDueMinor,grossPaidMinor,creditedMinor:adjustments.creditedMinor,refundedMinor:adjustments.refundedMinor,credits:adjustments.credits,refunds:adjustments.refunds,issuedAt:row.issued_at,issuedBy:row.issued_by,cancelledAt:row.cancelled_at||'',cancelledBy:row.cancelled_by||'',cancelReason:row.cancel_reason||'',paidMinor,payments,checkout:checkout?{status:checkout.status,url:checkout.checkout_url||null}:null};
 }
 function invoiceRows(db,studioId,projectId=null){return projectId?db.prepare('SELECT * FROM invoices WHERE studio_id=? AND project_id=? ORDER BY issued_at DESC,number DESC').all(studioId,projectId):db.prepare('SELECT * FROM invoices WHERE studio_id=? ORDER BY issued_at DESC,number DESC').all(studioId);}
 function previewAuthorized(header,userDigest,passDigest){
@@ -53,11 +59,11 @@ function previewAuthorized(header,userDigest,passDigest){
  const userMatches=timingSafeEqual(suppliedUser,userDigest),passMatches=timingSafeEqual(suppliedPass,passDigest);
  return userMatches&&passMatches;
 }
-export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',disableExternalServices=false}={}){
+export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000}={}){
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);const limits=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);const limits=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
@@ -127,6 +133,13 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     rate(req,'intake',30);if(body.website)fail(400,'Please leave the website field empty.');const publicBrand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(publicStudio.id)?.data||'{}');const questions=validateIntakeQuestions(publicBrand.intakeQuestions||[]);const b=brief({...body,workflowType:publicBrand.profession||DEFAULT_WORKFLOW,intakeAnswers:captureIntakeAnswers(body.intakeAnswers,questions)});const key=str(req.headers['idempotency-key']||'',120);if(!key)fail(400,'An enquiry reference is required.');const digest=hash(JSON.stringify(b));const previous=db.prepare('SELECT * FROM receipts WHERE studio_id=? AND key=?').get(publicStudio.id,key);if(previous){if(previous.digest!==digest)fail(409,'This enquiry reference has already been used.');return reply(200,{ok:true,reference:previous.project_id.slice(0,8).toUpperCase()});}
     const p=makeProject(publicStudio.id,b,{name:b.name});db.exec('BEGIN');try{insertProject(db,p);db.prepare('INSERT INTO receipts VALUES(?,?,?,?)').run(publicStudio.id,key,digest,p.id);recordEnquiry(db,{studioId:publicStudio.id,projectId:p.id});db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return reply(201,{ok:true,reference:p.id.slice(0,8).toUpperCase()});
    }
+   const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)$/);
+   if(bookingMatch){
+    const bookingStudio=db.prepare('SELECT * FROM studios WHERE slug=?').get(bookingMatch[1]);if(!bookingStudio)fail(404,'Studio not found.');
+    if(req.method==='GET')return reply(200,publicBooking(db,bookingStudio));
+    if(req.method==='POST'){rate(req,'booking',20);const result=bookConsultation(db,{studio:bookingStudio,body,key:req.headers['idempotency-key']});return reply(result.status,result.data);}
+    fail(405,'Method not allowed.');
+   }
    function startSession(user){const token=randomBytes(32).toString('hex');db.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now());db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token),user.id,Date.now()+7*86400000);res.setHeader('Set-Cookie',`studio_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${origin.startsWith('https:')?'; Secure':''}`);}
    const cookie=req.headers.cookie?.match(/(?:^|;\s*)studio_session=([a-f0-9]+)/)?.[1];
    const user=cookie?db.prepare('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?').get(hash(cookie),Date.now()):null;
@@ -193,6 +206,9 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(handleOnboarding({db,req,route,body,user,studio,reply}))return;
     if(await handleTaskCollaboration({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
     if(await handleConversationFileUpload({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
+    if(await handleStudioCommerce({db,req,route,body,studio,owner,reply}))return;
+    if(await handleReminders({db,req,route,body,studio,owner,reply,outbox}))return;
+    if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin}))return;
     if(route==='/api/stripe/connect/status'&&req.method==='GET'){
      requireOwner();if(!stripe) return reply(200,{onboarding:{studioId:studio.id,status:'unavailable',chargesEnabled:false,detailsSubmitted:false,payoutsEnabled:false,country:''}});
      return reply(200,{onboarding:await stripeOnboardingStatus(db,stripe,{studioId:studio.id,ownerUserId:user.id})});
@@ -480,13 +496,63 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(req.method==='POST'&&operationsMatch[2]){const result=transaction(db,()=>{const changed=changeProjectOperations(db,{...args,action:operationsMatch[2],body});queueProjectEvent(studio.id,changed.project.id,user.id,changed.project.activity?.[0]?.id);return changed;});return reply(200,{project:decorate(result.project),operations:result.operations});}
      fail(405,'Method not allowed.');
     }
-    const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/([a-f0-9-]+)(?:\/(payments|cancel|checkout(?:\/expire)?|attempts))?)?$/);
+    const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/(plan|[a-f0-9-]+)(?:\/(payments|cancel|credit-notes|refunds|checkout(?:\/expire)?|attempts))?)?$/);
     if(invoiceMatch){
      const projectRow=db.prepare('SELECT * FROM projects WHERE id=? AND studio_id=?').get(invoiceMatch[1],studio.id);
      const accessRole=projectRow&&(owner?'Owner':projectAccess(db,studio.id,projectRow.id,user.id));
      if(!accessRole)fail(404,'Project not found.');
      if(!owner&&accessRole!=='Approver')fail(403,'Only the project approver can see billing.');
      const project=JSON.parse(projectRow.data),invoiceId=invoiceMatch[2],subaction=invoiceMatch[3];
+     const issueInvoice=(project,body,afterInsert)=>{
+      const estimate=project.estimates?.find(item=>item.id===body.estimateId);
+      if(!estimate||estimate.id!==project.estimates.at(-1)?.id||estimate.status!=='Budget confirmed'||estimate.briefRevision!==project.briefRevision)fail(409,'Ask the client to confirm the latest estimate before issuing an invoice.');
+      const existing=db.prepare('SELECT estimate_id,amount_minor,net_minor FROM invoices WHERE studio_id=? AND project_id=? AND cancelled_at IS NULL').all(studio.id,project.id);
+      if(existing.some(item=>item.estimate_id!==estimate.id))fail(409,'An earlier estimate has active invoices. Review those bills before invoicing a new version.');
+      const billedMinor=existing.reduce((sum,item)=>sum+item.amount_minor,0),remainingMinor=estimate.total-billedMinor;
+      if(!Number.isSafeInteger(remainingMinor)||remainingMinor<=0)fail(409,'This project has no uninvoiced estimate balance.');
+      const kind=body.kind;if(!['Deposit','Balance','Full'].includes(kind))fail(400,'Choose a deposit, balance or full invoice.');const label=str(body.label||'',60);
+      if(kind==='Full'&&existing.length)fail(409,'Issue a balance invoice for the remaining amount.');
+      if(kind==='Balance'&&!existing.length)fail(409,'Issue a full invoice or a deposit first.');
+      let amountMinor=remainingMinor;
+      if(kind==='Deposit'){amountMinor=body.amountMinor;if(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remainingMinor)fail(400,'Enter an amount smaller than the remaining estimate total.');}
+      const saved=billingDefaults(db,studio.id),dueDate=date(body.dueDate,'invoice due date'),supplyDate=date(body.supplyDate||project.brief?.date||'','service date'),paymentInstructions=str(body.paymentInstructions||saved.paymentInstructions||'',1000),note=str(body.note||'',3000);
+      const sellerAddress=str(body.sellerAddress||saved.sellerAddress||'',500),sellerContact=str(body.sellerContact||saved.sellerContact||'',300),customerAddress=str(body.customerAddress||'',500),taxRegistration=str(body.taxRegistration||saved.taxRegistration||'',100);
+      if(!dueDate||!supplyDate||!sellerAddress||!sellerContact||!customerAddress||!paymentInstructions)fail(400,'Add the billing addresses, contact, service date, due date and payment instructions.');
+      if(dueDate<now().slice(0,10))fail(400,'Choose an invoice due date today or later.');
+      return transaction(db,()=>{
+       const year=Number(now().slice(0,4));db.prepare('INSERT OR IGNORE INTO invoice_counters VALUES(?,?,1)').run(studio.id,year);
+       const next=db.prepare('SELECT next_number FROM invoice_counters WHERE studio_id=? AND year=?').get(studio.id,year).next_number;
+       db.prepare('UPDATE invoice_counters SET next_number=next_number+1 WHERE studio_id=? AND year=?').run(studio.id,year);
+       const number=`INV-${year}-${String(next).padStart(4,'0')}`;
+       const netMinor=kind==='Balance'?estimate.subtotal-existing.reduce((sum,item)=>sum+item.net_minor,0):kind==='Full'?estimate.subtotal:Math.round(estimate.subtotal*amountMinor/estimate.total);
+       const taxMinor=amountMinor-netMinor;
+       if(netMinor<0||taxMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
+       const snapshot={sellerName:studio.name,sellerAddress,sellerContact,taxRegistration,billToName:project.brief?.name||'',billToEmail:project.clientEmail,customerAddress,supplyDate,projectTitle:project.title,estimate:{id:estimate.id,version:estimate.version,title:estimate.title,note:estimate.note,items:structuredClone(estimate.items),currency:estimate.currency,taxRate:estimate.taxRate,subtotal:estimate.subtotal,tax:estimate.tax,total:estimate.total,briefRevision:estimate.briefRevision,decidedAt:estimate.decidedAt||'',decidedBy:estimate.decidedBy||''}};
+       const invoiceId=id(),issuedAt=now();
+       db.prepare(`INSERT INTO invoices(id,studio_id,project_id,number,estimate_id,estimate_version,kind,currency,amount_minor,net_minor,tax_minor,tax_rate,due_date,note,payment_instructions,snapshot,issued_at,issued_by)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(invoiceId,studio.id,project.id,number,estimate.id,estimate.version,kind,estimate.currency,amountMinor,netMinor,taxMinor,estimate.taxRate,dueDate,note,paymentInstructions,JSON.stringify(snapshot),issuedAt,user.name);
+       event(project,user,`Issued invoice ${number}`);saveProject(db,project);
+       if(label)db.prepare('UPDATE invoices SET label=? WHERE id=? AND studio_id=?').run(label,invoiceId,studio.id);
+       afterInsert?.(invoiceId);
+       return db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoiceId,studio.id);
+      });
+     };
+     if(invoiceId==='plan'){
+      if(subaction)fail(404,'Not found.');
+      const view=()=>planView(db,studio.id,project,invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row)));
+      if(req.method==='GET')return reply(200,{plan:view(),defaults:owner?billingDefaults(db,studio.id):undefined});
+      if(req.method!=='POST')fail(405,'Method not allowed.');
+      requireOwner();
+      if(body.action==='create')transaction(db,()=>createPlan(db,{studioId:studio.id,project,body}));
+      else if(body.action==='update')transaction(db,()=>updatePlan(db,{studioId:studio.id,project,body}));
+      else if(body.action==='delete')transaction(db,()=>deletePlan(db,{studioId:studio.id,project}));
+      else if(body.action==='issue'){
+       const issued=transaction(db,()=>{const {step,body:planned}=stepInvoice(db,{studioId:studio.id,project,stepId:body.stepId});return issueInvoice(project,{...body,...planned},invoiceId=>markStepInvoiced(db,{studioId:studio.id,projectId:project.id,stepId:step.id,invoiceId}));});
+       await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});
+       return reply(201,{plan:view(),invoice:invoiceDTO(db,issued)});
+      }else fail(400,'Choose a payment plan action.');
+      return reply(200,{plan:view()});
+     }
      const invoice=invoiceId?db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=? AND project_id=?').get(invoiceId,studio.id,project.id):null;
      if(invoiceId&&!invoice)fail(404,'Invoice not found.');
      if(req.method==='GET'&&!invoiceId)return reply(200,{invoices:invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row))});
@@ -505,44 +571,24 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(req.method!=='POST')fail(405,'Method not allowed.');
      requireOwner();
      if(!invoiceId){
-      const estimate=project.estimates?.find(item=>item.id===body.estimateId);
-      if(!estimate||estimate.id!==project.estimates.at(-1)?.id||estimate.status!=='Budget confirmed'||estimate.briefRevision!==project.briefRevision)fail(409,'Ask the client to confirm the latest estimate before issuing an invoice.');
-      const existing=db.prepare('SELECT estimate_id,amount_minor,net_minor FROM invoices WHERE studio_id=? AND project_id=? AND cancelled_at IS NULL').all(studio.id,project.id);
-      if(existing.some(item=>item.estimate_id!==estimate.id))fail(409,'An earlier estimate has active invoices. Review those bills before invoicing a new version.');
-      const billedMinor=existing.reduce((sum,item)=>sum+item.amount_minor,0),remainingMinor=estimate.total-billedMinor;
-      if(!Number.isSafeInteger(remainingMinor)||remainingMinor<=0)fail(409,'This project has no uninvoiced estimate balance.');
-      const kind=body.kind;if(!['Deposit','Balance','Full'].includes(kind))fail(400,'Choose a deposit, balance or full invoice.');
-      if(kind==='Full'&&existing.length)fail(409,'Issue a balance invoice for the remaining amount.');
-      if(kind==='Balance'&&!existing.length)fail(409,'Issue a full invoice or a deposit first.');
-      let amountMinor=remainingMinor;
-      if(kind==='Deposit'){amountMinor=body.amountMinor;if(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remainingMinor)fail(400,'Enter a deposit smaller than the remaining estimate total.');}
-      const dueDate=date(body.dueDate,'invoice due date'),supplyDate=date(body.supplyDate,'service date'),paymentInstructions=str(body.paymentInstructions||'',1000),note=str(body.note||'',3000);
-      const sellerAddress=str(body.sellerAddress||'',500),sellerContact=str(body.sellerContact||'',300),customerAddress=str(body.customerAddress||'',500),taxRegistration=str(body.taxRegistration||'',100);
-      if(!dueDate||!supplyDate||!sellerAddress||!sellerContact||!customerAddress||!paymentInstructions)fail(400,'Add the billing addresses, contact, service date, due date and payment instructions.');
-      if(dueDate<now().slice(0,10))fail(400,'Choose an invoice due date today or later.');
-      const issued=transaction(db,()=>{
-       const year=Number(now().slice(0,4));db.prepare('INSERT OR IGNORE INTO invoice_counters VALUES(?,?,1)').run(studio.id,year);
-       const next=db.prepare('SELECT next_number FROM invoice_counters WHERE studio_id=? AND year=?').get(studio.id,year).next_number;
-       db.prepare('UPDATE invoice_counters SET next_number=next_number+1 WHERE studio_id=? AND year=?').run(studio.id,year);
-       const number=`INV-${year}-${String(next).padStart(4,'0')}`;
-       const netMinor=kind==='Balance'?estimate.subtotal-existing.reduce((sum,item)=>sum+item.net_minor,0):kind==='Full'?estimate.subtotal:Math.round(estimate.subtotal*amountMinor/estimate.total);
-       const taxMinor=amountMinor-netMinor;
-       if(netMinor<0||taxMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
-       const snapshot={sellerName:studio.name,sellerAddress,sellerContact,taxRegistration,billToName:project.brief?.name||'',billToEmail:project.clientEmail,customerAddress,supplyDate,projectTitle:project.title,estimate:{id:estimate.id,version:estimate.version,title:estimate.title,note:estimate.note,items:structuredClone(estimate.items),currency:estimate.currency,taxRate:estimate.taxRate,subtotal:estimate.subtotal,tax:estimate.tax,total:estimate.total,briefRevision:estimate.briefRevision,decidedAt:estimate.decidedAt||'',decidedBy:estimate.decidedBy||''}};
-       const invoiceId=id(),issuedAt=now();
-       db.prepare(`INSERT INTO invoices(id,studio_id,project_id,number,estimate_id,estimate_version,kind,currency,amount_minor,net_minor,tax_minor,tax_rate,due_date,note,payment_instructions,snapshot,issued_at,issued_by)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(invoiceId,studio.id,project.id,number,estimate.id,estimate.version,kind,estimate.currency,amountMinor,netMinor,taxMinor,estimate.taxRate,dueDate,note,paymentInstructions,JSON.stringify(snapshot),issuedAt,user.name);
-       event(project,user,`Issued invoice ${number}`);saveProject(db,project);
-       return db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoiceId,studio.id);
-      });
+      const issued=issueInvoice(project,body);
       await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});return reply(201,{invoice:invoiceDTO(db,issued)});
+     }
+     if(subaction==='credit-notes'||subaction==='refunds'){
+      if(activeStripeCheckout(db,{studioId:studio.id,invoiceId:invoice.id}))fail(409,'Resolve the active Stripe Checkout before adjusting this invoice.');
+      const current=invoiceDTO(db,invoice);
+      if(subaction==='credit-notes'){const number=issueCreditNote(db,{studioId:studio.id,invoice,user,body});event(project,user,`Issued credit note ${number} against invoice ${invoice.number}`);}
+      else if(body.creditNote===true){const number=refundWithCredit(db,{studioId:studio.id,invoice,user,body,grossPaidMinor:current.grossPaidMinor});event(project,user,`Refunded ${invoice.number} and issued credit note ${number}`);}
+      else{recordRefund(db,{studioId:studio.id,invoice,user,body,grossPaidMinor:current.grossPaidMinor});event(project,user,`Recorded a refund on invoice ${invoice.number}`);}
+      saveProject(db,project);
+      return reply(200,{invoice:invoiceDTO(db,db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoice.id,studio.id))});
      }
      if(subaction==='cancel'){
       const reason=str(body.reason||'',1000);if(!reason)fail(400,'Give a reason for cancelling this invoice.');
       const result=transaction(db,()=>{
        if(activeStripeCheckout(db,{studioId:studio.id,invoiceId:invoice.id}))fail(409,'Resolve the active Stripe Checkout before cancelling this invoice.');
        const current=invoiceDTO(db,invoice);if(current.status==='Cancelled')fail(409,'This invoice has already been cancelled.');
-       if(current.paidMinor)fail(409,'An invoice with recorded payments needs a refund or credit note before cancellation.');
+       if(current.grossPaidMinor)fail(409,'An invoice with recorded payments needs a credit note and refund instead of cancellation.');
        db.prepare('UPDATE invoices SET cancelled_at=?,cancelled_by=?,cancel_reason=? WHERE id=? AND studio_id=? AND project_id=? AND cancelled_at IS NULL').run(now(),user.name,reason,invoice.id,studio.id,project.id);
        event(project,user,`Cancelled invoice ${invoice.number}`);saveProject(db,project);
        return db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoice.id,studio.id);
@@ -561,7 +607,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
        const current=invoiceDTO(db,invoice);
        if(clientKey){const previous=db.prepare('SELECT * FROM invoice_payments WHERE invoice_id=? AND client_key=?').get(invoice.id,clientKey);if(previous){if(previous.amount_minor!==amountMinor||previous.method!==method||previous.reference!==reference||previous.received_at!==receivedAt||previous.note!==note)fail(409,'This payment key has already been used.');return invoice;}}
        if(current.status==='Cancelled')fail(409,'This invoice has been cancelled.');
-       if(amountMinor>invoice.amount_minor-current.paidMinor)fail(409,'The payment exceeds the invoice balance.');
+       if(amountMinor>current.balanceMinor)fail(409,'The payment exceeds the invoice balance.');
        db.prepare(`INSERT INTO invoice_payments(id,studio_id,invoice_id,amount_minor,method,reference,received_at,note,recorded_at,recorded_by,source,client_key)
         VALUES(?,?,?,?,?,?,?,?,?,?,'owner_recorded',?)`).run(id(),studio.id,invoice.id,amountMinor,method,reference,receivedAt,note,now(),user.name,clientKey);
        event(project,user,`Recorded an external payment for invoice ${invoice.number}`);saveProject(db,project);
@@ -694,10 +740,12 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(asset){const file=asset[1];const ext=path.extname(file);res.setHeader('Content-Type',({'.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.txt':'text/plain'})[ext]||'application/octet-stream');return res.end(await readFile(path.join(root,'dist',file)));}
    const intakeSlug=route.match(/^\/intake\/([a-z0-9-]+)(?:\/[a-z0-9-]+)?$/)?.[1];
    if(intakeSlug){const s=db.prepare('SELECT origins FROM studios WHERE slug=?').get(intakeSlug);if(!s)fail(404,'Studio not found.');res.setHeader('Content-Security-Policy',`frame-ancestors 'self' ${JSON.parse(s.origins).join(' ')}`);}else res.setHeader('Content-Security-Policy',"frame-ancestors 'none'");
-   if(!['/','/join','/join-studio','/login','/embed-demo','/recover','/reset-password','/verify-email','/account'].includes(route)&&!intakeSlug)fail(404,'Not found.');res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(await readFile(path.join(root,'dist/index.html')));
+   if(!['/','/join','/join-studio','/login','/embed-demo','/recover','/reset-password','/verify-email','/account'].includes(route)&&!intakeSlug&&!/^\/book\/[a-z0-9-]+$/.test(route))fail(404,'Not found.');res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(await readFile(path.join(root,'dist/index.html')));
   }catch(error){if(res.headersSent)return res.end();reply(error.status||500,{error:error.status?error.message:'Something went wrong. Please try again.'});}
  });
- server.on('close',()=>vite?.close());
+ // Reminders run hourly in a long-lived server. The hosted demo and tests pass reminderIntervalMs:0.
+ const reminderTimer=reminderIntervalMs>0?setInterval(()=>runAllReminders(db,{outbox}),reminderIntervalMs):null;reminderTimer?.unref();
+ server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);});
  return {server,db};
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){const port=Number(process.env.PORT||4320),host=process.env.HOST||'127.0.0.1';if(host==='0.0.0.0'&&!process.env.APP_ORIGIN)throw new Error('APP_ORIGIN is required when binding publicly.');const {server}=await createWorkspace({origin:process.env.APP_ORIGIN||`http://127.0.0.1:${port}`,demo:process.env.WORKSPACE_DEMO==='1',dev:process.argv.includes('--dev'),dbFile:process.env.DATABASE_PATH||undefined});server.listen(port,host,()=>console.log(`Caleane listening on ${host}:${port}`));}

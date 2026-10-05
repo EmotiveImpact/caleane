@@ -1,0 +1,135 @@
+/* Pricing, reminders, templates and booking settings, plus the payment plan
+   and refund panels in project Billing. Uses the existing studio tokens. */
+.commerce-stack { display: grid; gap: 56px; }
+.commerce-section { max-width: 1100px; padding-top: 40px; border-top: 1px solid var(--studio-rule); }
+.commerce-subheading { margin-top: 40px; }
+.commerce-muted { font-size: 13px; color: var(--studio-muted); }
+.commerce-error { margin: 16px 0 0; font-size: 13px; color: #a3362b; }
+.commerce-warning { color: #8a5a13 !important; }
+.commerce-small-heading { margin: 32px 0 12px; font-size: 15px; font-weight: 600; }
+
+.commerce-plan-template { display: grid; gap: 12px; }
+.commerce-plan-row { display: grid; grid-template-columns: minmax(0,1.3fr) 96px minmax(0,1.6fr) 88px 40px; gap: 12px; align-items: end; padding: 12px 0; border-bottom: 1px solid var(--studio-rule); }
+.commerce-plan-spacer { display: block; }
+.commerce-plan-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; color: var(--studio-muted); }
+.commerce-plan-foot .is-error { color: #a3362b; font-weight: 600; }
+
+.commerce-item-form { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px 20px; padding: 20px; background: var(--studio-surface); border-radius: 6px; margin-bottom: 24px; }
+.commerce-span-2 { grid-column: span 2; }
+.commerce-span-3 { grid-column: 1/-1; }
+.commerce-form-actions { grid-column: 1/-1; display: flex; gap: 12px; align-items: center; margin-top: 4px; }
+.commerce-template-form { display: grid; gap: 16px; padding: 20px; background: var(--studio-surface); border-radius: 6px; margin-bottom: 24px; }
+.commerce-template-form .commerce-form-actions { margin: 0; }
+
+.commerce-list { list-style: none; margin: 0 0 16px; padding: 0; }
+.commerce-list > li { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 20px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--studio-rule); }
+.commerce-list > li.is-archived { opacity: .55; }
+.commerce-list strong { display: block; font-size: 14px; font-weight: 600; }
+.commerce-list small { display: block; margin-top: 4px; font-size: 12px; color: var(--studio-muted); }
+.commerce-price { text-align: right; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.commerce-price small { font-weight: 400; }
+.commerce-row-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.commerce-template-list > li { grid-template-columns: minmax(0,1fr) auto; align-items: start; }
+.commerce-template-list p { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: var(--studio-muted); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+.commerce-placeholders { margin: 0; display: grid; gap: 10px; }
+.commerce-placeholders div { display: grid; gap: 2px; }
+.commerce-placeholders code { font-size: 12px; background: var(--studio-surface); padding: 2px 6px; border-radius: 3px; }
+.commerce-placeholders dd { margin: 0; font-size: 12px; color: var(--studio-muted); }
+
+.commerce-reminder-fields { margin: 24px 0; }
+.commerce-timeline { list-style: none; margin: 0 0 28px; padding: 0; }
+.commerce-timeline li { display: grid; grid-template-columns: 92px minmax(0,1fr); gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--studio-rule); font-size: 13px; }
+.commerce-timeline li > span { color: var(--studio-muted); font-variant-numeric: tabular-nums; }
+.commerce-timeline strong { display: block; font-weight: 600; }
+.commerce-timeline small { display: block; margin-top: 2px; color: var(--studio-muted); line-height: 1.5; }
+.settings-tabbed .commerce-reminder-aside h3:not(:first-child) { margin-top: 24px; }
+
+.commerce-week { display: grid; border-top: 1px solid var(--studio-rule); }
+.commerce-week-row { display: grid; grid-template-columns: 120px minmax(0,1fr); gap: 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--studio-rule); font-size: 13px; }
+.commerce-week-windows { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.commerce-week-windows > div { display: flex; align-items: center; gap: 8px; }
+.commerce-week-windows small { color: var(--studio-muted); }
+.commerce-week input[type=time] { min-height: 36px; padding: 0 8px; border: 1px solid var(--studio-rule); border-radius: 4px; background: var(--studio-paper); font: inherit; color: var(--studio-ink); }
+.commerce-link { display: block; margin-bottom: 12px; font-size: 13px; overflow-wrap: anywhere; }
+.commerce-bookings { list-style: none; margin: 0 0 20px; padding: 0; }
+.commerce-bookings li { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--studio-rule); font-size: 13px; }
+.commerce-bookings strong { display: block; font-weight: 600; }
+.commerce-bookings small { display: block; margin-top: 2px; color: var(--studio-muted); line-height: 1.5; }
+.commerce-bookings p { margin: 6px 0 0; }
+.commerce-bookings .commerce-row-actions { flex-direction: column; align-items: flex-end; }
+
+/* Project Billing: payment plan and refunds */
+.billing-plan { margin: 0 0 28px; padding: 22px 24px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 6px; background: var(--studio-paper, #fff); }
+.billing-plan-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
+.billing-plan-head h3 { margin: 4px 0 4px; font-size: 18px; }
+.billing-plan-head p { margin: 0; font-size: 13px; color: var(--studio-muted, #6b6b6b); line-height: 1.6; }
+.billing-plan-steps { list-style: none; margin: 0; padding: 0; }
+.billing-plan-steps li { display: grid; grid-template-columns: 28px minmax(0,1fr) auto auto; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--studio-rule, #e4e0d8); font-size: 14px; }
+.billing-plan-steps li > span:first-child { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--studio-surface, #f4f1ea); font-size: 12px; font-weight: 600; }
+.billing-plan-steps li.is-issued > span:first-child { background: var(--studio-accent, #181925); color: #fff; }
+.billing-plan-steps strong { display: block; font-weight: 600; }
+.billing-plan-steps small { display: block; color: var(--studio-muted, #6b6b6b); font-size: 12px; margin-top: 2px; }
+.billing-plan-steps .billing-plan-amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+.billing-plan-edit li { grid-template-columns: 28px minmax(0,1.4fr) 120px 150px; }
+.billing-plan-edit input { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
+.billing-plan-total { display: flex; justify-content: space-between; padding-top: 12px; font-size: 13px; color: var(--studio-muted, #6b6b6b); }
+.billing-plan-total .is-error { color: #a3362b; font-weight: 600; }
+.billing-plan-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.billing-plan-issue { margin-top: 14px; padding: 16px; background: var(--studio-surface, #f4f1ea); border-radius: 4px; display: grid; gap: 12px; }
+.billing-plan-issue label { display: grid; gap: 6px; font-size: 13px; }
+.billing-plan-issue textarea,.billing-plan-issue input { width: 100%; padding: 8px 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
+.billing-refund-form { margin-top: 18px; padding: 18px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 6px; display: grid; gap: 14px; }
+.billing-refund-form h4 { margin: 0; font-size: 16px; }
+.billing-refund-form p { margin: 0; font-size: 13px; color: var(--studio-muted, #6b6b6b); line-height: 1.6; }
+.billing-refund-choice { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.5; }
+.billing-refund-choice input { margin-top: 3px; }
+.billing-adjustment-history { margin-top: 18px; }
+.billing-adjustment-history h4 { margin: 0 0 8px; font-size: 14px; }
+.billing-adjustment-history > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--studio-rule, #e4e0d8); font-size: 13px; }
+.billing-adjustment-history small { display: block; color: var(--studio-muted, #6b6b6b); }
+.billing-status-refunded,.billing-status-credited,.billing-status-partly-refunded { background: #ece9f5; color: #45367a; }
+.billing-status-refund-due { background: #fbe9e5; color: #8b2e22; }
+
+/* Estimate: add from price list */
+.estimate-price-picker { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 4px 0 12px; font-size: 13px; }
+.estimate-price-picker select { min-height: 38px; max-width: 100%; padding: 0 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
+
+/* Conversation: insert a template */
+.template-picker { position: relative; }
+.template-picker-menu { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 30; width: min(340px,80vw); max-height: 320px; overflow: auto; padding: 6px; background: #fff; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 6px; box-shadow: 0 12px 32px rgba(20,20,20,.12); }
+.template-picker-menu button { display: block; width: 100%; padding: 10px 12px; border: 0; background: transparent; text-align: left; font: inherit; font-size: 13px; border-radius: 4px; cursor: pointer; }
+.template-picker-menu button:hover,.template-picker-menu button:focus-visible { background: var(--studio-surface, #f4f1ea); }
+.template-picker-menu small { display: block; color: var(--studio-muted, #6b6b6b); margin-top: 2px; }
+
+@media(max-width:760px) {
+  .commerce-plan-row { grid-template-columns: minmax(0,1fr) 88px 40px; }
+  .commerce-plan-row > :nth-child(3),.commerce-plan-row > :nth-child(4) { grid-column: span 1; }
+  .commerce-plan-row > :nth-child(3) { grid-column: 1/3; }
+  .commerce-item-form { grid-template-columns: minmax(0,1fr); padding: 16px; }
+  .commerce-span-2 { grid-column: auto; }
+  .commerce-list > li { grid-template-columns: minmax(0,1fr) auto; }
+  .commerce-list > li .commerce-row-actions { grid-column: 1/-1; justify-content: flex-start; }
+  .commerce-week-row { grid-template-columns: minmax(0,1fr); gap: 6px; }
+  .billing-plan { padding: 18px 16px; }
+  .billing-plan-head { flex-direction: column; }
+  .billing-plan-steps li { grid-template-columns: 28px minmax(0,1fr) auto; }
+  .billing-plan-steps li > :last-child { grid-column: 2/-1; }
+  .billing-plan-edit li { grid-template-columns: 28px minmax(0,1fr); }
+  .billing-plan-edit li > :nth-child(n+3) { grid-column: 2/-1; }
+}
+/* Inside the project composer the tool buttons are fixed-width icons on a dark
+   footer style; the picker needs its label and a light menu. */
+.folio-workspace .ws-conversation .project-talk-composer-tools .template-picker > .ws-button,.ws-conversation .project-talk-composer-tools .template-picker > .ws-button { width: auto; padding: 6px 8px; gap: 6px; white-space: nowrap; }
+.project-talk-composer footer .template-picker-menu button,.folio-workspace .project-chat .project-talk-composer footer .template-picker-menu button { display: block; width: 100%; padding: 10px 12px; background: transparent; color: var(--studio-ink, #17221d); border-radius: 4px; }
+.project-talk-composer footer .template-picker-menu button:hover,.project-talk-composer footer .template-picker-menu button:focus-visible,.folio-workspace .project-chat .project-talk-composer footer .template-picker-menu button:hover { background: var(--studio-surface, #f4f1ea); }
+/* Refund and credit note fields follow the payment form. */
+.billing-refund-form { background: #fafafa; border-color: #e0e2e5; padding: 24px; }
+.billing-refund-form label:not(.billing-refund-choice) { display: block; min-width: 0; margin: 0 0 17px; }
+.billing-refund-form label:not(.billing-refund-choice) > span { display: block; font-size: 11px; font-weight: 520; color: #535a62; margin: 0 0 7px; }
+.billing-refund-form label:not(.billing-refund-choice) :is(input,select,textarea) { width: 100%; max-width: 100%; box-sizing: border-box; border: 1px solid #d8dbe0; border-radius: 3px; background: #fff; color: #25292e; padding: 10px 11px; min-height: 42px; font: inherit; font-size: 13px; line-height: 1.4; }
+.billing-refund-form textarea { resize: vertical; }
+.billing-refund-choice { margin: 0 0 17px; }
+.billing-refund-choice span { display: block; }
+.billing-refund-form .billing-form-grid { gap: 0 17px; }
+.billing-refund-form > div:last-child { display: flex; gap: 14px; align-items: center; }

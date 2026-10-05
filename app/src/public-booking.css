@@ -1,0 +1,45 @@
+/* Public consultation booking page. Matches the hosted enquiry planner:
+   a studio panel on the left, the choice on the right. */
+.booking-page { --booking-accent: #181925; display: grid; grid-template-columns: minmax(280px,38%) minmax(0,1fr); min-height: 100svh; background: #faf8f4; color: #17221d; font-family: 'Instrument Sans',system-ui,sans-serif; }
+.booking-aside { display: flex; flex-direction: column; gap: 18px; padding: 48px clamp(24px,4vw,56px); background: #1f2420; color: #f4f1eb; }
+.booking-aside > img { max-width: 160px; max-height: 56px; object-fit: contain; align-self: flex-start; filter: brightness(0) invert(1); }
+.booking-studio { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; font-weight: 500; }
+.booking-aside h1 { margin: auto 0 0; font: 400 clamp(34px,4vw,48px)/1.08 Georgia,serif; letter-spacing: -.035em; }
+.booking-aside p { margin: 0; max-width: 420px; font-size: 15px; line-height: 1.65; color: #d8d4cb; }
+.booking-aside ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; font-size: 14px; }
+.booking-aside li { display: flex; gap: 10px; align-items: center; }
+.booking-aside small { font-size: 12px; color: #aaa69d; line-height: 1.6; }
+.booking-main { padding: 56px clamp(20px,5vw,80px); max-width: 860px; }
+.booking-main h2 { margin: 0 0 24px; font: 400 32px/1.15 Georgia,serif; letter-spacing: -.03em; color: #3d413c; }
+.booking-days { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 24px; scrollbar-width: thin; }
+.booking-days button { flex: 0 0 auto; min-width: 104px; padding: 12px 14px; border: 1px solid #dcd8d0; border-radius: 6px; background: #fff; font: inherit; text-align: left; cursor: pointer; color: inherit; }
+.booking-days button strong { display: block; font-size: 14px; font-weight: 600; }
+.booking-days button small { display: block; margin-top: 4px; font-size: 12px; color: #6e7069; }
+.booking-days button[aria-pressed=true] { border-color: var(--booking-accent); box-shadow: inset 0 0 0 1px var(--booking-accent); }
+.booking-slots { display: grid; grid-template-columns: repeat(auto-fill,minmax(110px,1fr)); gap: 10px; }
+.booking-slots button { min-height: 48px; border: 1px solid #dcd8d0; border-radius: 6px; background: #fff; font: inherit; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; color: inherit; }
+.booking-slots button:hover,.booking-slots button:focus-visible { border-color: var(--booking-accent); color: var(--booking-accent); }
+.booking-days button:focus-visible,.booking-slots button:focus-visible,.booking-primary:focus-visible,.booking-back:focus-visible { outline: 2px solid var(--booking-accent); outline-offset: 2px; }
+.booking-form { display: grid; gap: 18px; max-width: 520px; }
+.booking-form h2 { margin-bottom: 4px; }
+.booking-form label { display: grid; gap: 6px; font-size: 13px; color: #4b4e49; }
+.booking-form input,.booking-form textarea { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #dcd8d0; border-radius: 6px; background: #fff; font: inherit; font-size: 15px; color: inherit; box-sizing: border-box; }
+.booking-form textarea { resize: vertical; }
+.booking-honeypot { position: absolute !important; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.booking-back { display: inline-flex; gap: 6px; align-items: center; justify-self: start; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; color: #6e7069; cursor: pointer; }
+.booking-primary { justify-self: start; min-height: 48px; padding: 0 22px; border: 0; border-radius: 6px; background: var(--booking-accent); color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.booking-primary:disabled { opacity: .6; cursor: progress; }
+.booking-muted { font-size: 13px; line-height: 1.6; color: #6e7069; }
+.booking-error { margin: 0 0 16px; padding: 12px 14px; border-radius: 6px; background: #fbe9e5; color: #8b2e22; font-size: 14px; }
+.booking-done { max-width: 520px; }
+.booking-done > svg { color: var(--booking-accent); margin-bottom: 20px; }
+.booking-kicker { font-size: 11px; letter-spacing: .12em; color: #6e7069; }
+.booking-done p { font-size: 15px; line-height: 1.65; }
+@media(max-width:760px) {
+  .booking-page { grid-template-columns: minmax(0,1fr); }
+  .booking-aside { padding: 28px 16px; gap: 12px; }
+  .booking-aside h1 { margin-top: 12px; font-size: 32px; }
+  .booking-main { padding: 28px 16px 48px; }
+  .booking-main h2 { font-size: 26px; }
+  .booking-slots { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}

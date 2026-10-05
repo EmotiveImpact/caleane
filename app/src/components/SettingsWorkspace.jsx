@@ -6,9 +6,10 @@ import {CalendarSyncSettings} from './CalendarSyncSettings';
 import {DataGovernanceSettings} from './DataGovernanceSettings';
 import {OperationsReadiness} from './OperationsReadiness';
 import {StripeConnectSettings} from './StripeConnectSettings';
+import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
-const sections=[['studio','Studio'],['appearance','Appearance'],['website','Website'],['connections','Connections'],['data','Data'],['status','Status']];
+const sections=[['studio','Studio'],['appearance','Appearance'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['connections','Connections'],['data','Data'],['status','Status']];
 export function settingsSection(search){
   const params=new URLSearchParams(search);
   if(params.has('calendar_callback')||['pending','connected'].includes(params.get('stripe')))return 'connections';
@@ -82,6 +83,10 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
         <aside className="settings-support settings-embed"><h3>Add the planner to your site</h3><p>Use this snippet to open the planner from your existing website.</p><pre>{code}</pre><WorkspaceButton variant="secondary" onClick={async()=>{try{await navigator.clipboard.writeText(code);setCopied(true);setCopyError('');}catch{setCopyError('Select the snippet above and copy it manually.');}}}>{copied?'Copied':'Copy embed code'}</WorkspaceButton>{copyError&&<p role="alert">{copyError}</p>}<h3>Or share a direct link</h3><a href={`/intake/${studio.slug}`} target="_blank" rel="noreferrer">{location.origin}/intake/{studio.slug}</a><details><summary>Advanced connection options</summary><p>Already have a form? Send its enquiries to:</p><code>POST /api/public/{studio.slug}/enquiries</code><a href="/embed-demo" target="_blank" rel="noreferrer">See the plugin on an example website</a></details></aside>
       </div>)}
 
+      {panel('bookings',section==='bookings'&&<BookingSettings studio={studio} request={request}/>)}
+      {panel('pricing',section==='pricing'&&<PricingSettings studio={studio} request={request}/>)}
+      {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}
+      {panel('templates',section==='templates'&&<TemplateSettings studio={studio} request={request}/>)}
       {panel('connections',<div className="settings-connections"><CalendarSyncSettings studio={studio} request={request}/><StripeConnectSettings studio={studio} request={request}/></div>)}
       {panel('data',<DataGovernanceSettings studio={studio} request={request} onChanged={reload}/>)}
       {panel('status',<><OperationsReadiness studio={studio} request={request}/>{['localhost','127.0.0.1'].includes(location.hostname)&&<a className="settings-component-link" href="/?view=components">Explore the component gallery</a>}</>)}
