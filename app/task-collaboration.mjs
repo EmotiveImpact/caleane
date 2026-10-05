@@ -7,7 +7,6 @@ export function installTaskCollaboration(db){db.exec(`CREATE TABLE IF NOT EXISTS
 function assignees(db,studioId,projectId){return [...db.prepare("SELECT u.id,u.name FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.studio_id=? AND m.role='owner'").all(studioId),...(projectId?db.prepare('SELECT u.id,u.name FROM studio_project_collaborators c JOIN studio_staff s ON s.user_id=c.user_id AND s.studio_id=c.studio_id JOIN users u ON u.id=c.user_id WHERE c.studio_id=? AND c.project_id=?').all(studioId,projectId):[])];}
 export async function handleTaskCollaboration({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}){
  if(route!=='/api/task-workspace'&&!route.startsWith('/api/task-workspace/'))return false;
- installTaskCollaboration(db);
  if(route==='/api/task-workspace'){
   if(!owner)fail(403,'Only the studio owner can list private task assignments.');if(req.method!=='GET')fail(405,'Method not allowed.');
   const assignments={};for(const row of db.prepare('SELECT task_key,data FROM task_collaboration WHERE studio_id=?').all(studio.id)){const d=JSON.parse(row.data),parts=row.task_key.split(':');if(d.assigneeId){const person=assignees(db,studio.id,parts[0]==='project'?parts[1]:null).find(p=>p.id===d.assigneeId);if(person)assignments[row.task_key]=person.name;}}

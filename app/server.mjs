@@ -3,7 +3,7 @@ import {installDataGovernance,dataGovernance,changeGovernance,exportStudio} from
 import {handleCalendarSync} from './calendar-sync.mjs';
 import {operationalReadiness} from './operational-readiness.mjs';
 import {installDocuments,listDocuments,changeDocument,downloadDocument,syncProjectArchives} from './documents.mjs';
-import {handleTaskCollaboration} from './task-collaboration.mjs';
+import {installTaskCollaboration,handleTaskCollaboration} from './task-collaboration.mjs';
 import {handleConversationFileUpload} from './conversation-features.mjs';
 import {createAccountSecurity} from './account-security.mjs';
 import {installEngagements,getEngagements,changeEngagements,projectCalendar} from './engagements.mjs';
@@ -63,7 +63,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);const limits=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installTaskCollaboration(db);const limits=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
@@ -83,7 +83,6 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
   }
   bindInvitedContact(db,studioId,client.email,client.id);
  }
- for(const row of db.prepare('SELECT data FROM projects').all()){const p=JSON.parse(row.data);let changed=false;for(const d of p.designs){if(d.briefRevision==null){d.briefRevision=1;d.briefSnapshot=p.briefHistory.find(h=>h.revision===1)?.brief||p.brief;changed=true;}}if(changed)saveProject(db,p);}
  const vite=dev?await (await import('vite')).createServer({configFile:path.join(root,'vite.config.js'),server:{middlewareMode:true},appType:'spa'}):null;
  const server=http.createServer(async(req,res)=>{
   let url,route,body={};
