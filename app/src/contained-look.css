@@ -28,6 +28,8 @@
 /* Finances */
 .studio-billing .studio-billing-overview{gap:12px;border-bottom:0}
 .studio-billing .studio-billing-overview>div,.studio-billing .studio-billing-overview>div+div{box-sizing:border-box;min-height:0;padding:20px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule);border-radius:var(--box-radius)}
+.studio-billing .studio-billing-totals{gap:8px;margin:6px 0 8px;border:0}
+.studio-billing .studio-billing-totals>div,.studio-billing .studio-billing-totals>div+div{padding:12px 14px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule);border-radius:var(--box-radius)}
 .studio-billing .studio-billing-ledger-labels{padding:14px 17px 8px}
 .studio-billing .studio-billing-ledger>button{box-sizing:border-box;margin-bottom:8px;padding:16px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule);border-radius:var(--box-radius);transition:border-color .15s,box-shadow .15s}
 .studio-billing .studio-billing-ledger>button:hover:not(:disabled){background:var(--studio-paper,#fff);border-color:var(--box-hover);box-shadow:0 2px 8px #0000000a}
