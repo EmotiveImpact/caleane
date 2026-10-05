@@ -198,3 +198,13 @@ This section supersedes earlier Waiting bullets for features listed below. The w
 - The needs-attention bell and the new history share one bell. It opens the shared Radix drawer with two tabs: **Needs attention** (the same live list the bell always showed, opening first) and **Updates** (saved history with All/Unread, Mark all as read, Mark unread and Show older). Updates open the exact pipeline record, conversation, Activity tab, Messages or task. The badge counts waiting work plus unread project updates and assignments; unread messages and enquiries are already in Needs attention, so they are not counted twice. Contributors, who had no bell, get one with Updates only.
 - Evidence: 116 automated tests pass, including the new API and drawer tests; production build passes. Chromium checks on an isolated demo database at 1280px and 390px showed owner and client feeds, navigation to the project conversation, read count updates, no horizontal overflow and no console errors. Existing records do not create a notification backlog.
 - **Not included:** email or push delivery of these notifications, per-person notification preferences and retention clean-up of old rows.
+
+## 5 October: onboarding — Done
+
+- `onboarding.mjs` adds `GET/POST /api/onboarding`. Owners see a "Get your studio ready" checklist at the top of Overview: brand, enquiry form, first project and client invite, plus optional team and calendar. Each step ticks itself from real records; only "Hide for now" is stored (`restore-setup` exists in the API but has no button yet).
+- Invited clients see a one-time welcome dialog in the studio's own name and welcome text, with a shortcut into their project when they have exactly one.
+
+## 5 October: creatives positioning and kinds of work — Done
+
+- Website copy speaks to creatives: "A considered workspace for creatives and their clients", "For creatives" in the nav and footer, and a wider list of who it is for. The app's account wording still says "studio".
+- Sign-up, Settings and forms offer seven broad groups (Events and experiences, Weddings, Interiors and spaces, Brand and design, Photography and film, Made to order, Other creative work). Older narrow choices (event planning, floral design, balloon styling) remain valid and stay selectable only where already in use. The kind of work changes project wording, types, brief questions, plan stages and delivery milestones, not the dashboard.
