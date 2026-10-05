@@ -238,3 +238,24 @@ button.pl-slot{cursor:pointer}
 .pl-client-deposit{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;padding:14px;border-radius:7px;background:var(--studio-surface,#f2f2f1)}
 .pl-client-deposit small{display:block;margin-top:2px;color:var(--studio-muted,#777);font-size:12px;line-height:1.5}
 .pl-btn.is-disabled{opacity:.55;cursor:default}
+/* Contained look: every enquiry and every block of detail sits in its own box, as in the prototype */
+.pipeline-columns{padding:0 17px 10px}
+.pipeline-group>header{padding:4px 2px 10px;background:none;border-radius:0}
+.pipeline-group>header h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--pl-faint,#8a8a86)}
+.pipeline-group{display:grid;gap:8px;margin-bottom:26px}
+.folio-workspace .pipeline-enquiry:not(.is-board-card){min-height:0;padding:16px;background:var(--studio-paper,#fff);border:1px solid var(--studio-rule,#e3e3e1);border-radius:8px;transition:border-color .15s,box-shadow .15s}
+.folio-workspace .pipeline-enquiry:not(.is-board-card):hover{background:var(--studio-paper,#fff);border-color:color-mix(in srgb,var(--studio-ink,#181925) 28%,transparent);box-shadow:0 2px 8px #0000000a}
+.folio-workspace .pipeline-enquiry:not(.is-board-card):focus-visible{outline:2px solid var(--studio-ink,#181925);outline-offset:2px}
+.pl-dbody{background:var(--studio-surface,#f7f7f6)}
+.pl-dbody .pl-kv,.pl-dbody .pl-fit,.pl-dbody .pipeline-intake,.pl-dbody .pipeline-next-section,.pl-dbody .pipeline-context,.pl-dbody .pipeline-history,.pl-dbody .pl-table,.pl-dbody .pl-steps,.pl-dbody .pl-totals{box-sizing:border-box;padding:16px;background:var(--studio-paper,#fff);border:1px solid var(--studio-rule,#e3e3e1);border-radius:8px}
+.pl-dbody .pipeline-intake>header,.pl-dbody .pipeline-next-section>header,.pl-dbody .pipeline-history>header{margin-bottom:10px}
+.pl-dbody .pipeline-intake h3,.pl-dbody .pipeline-next-section h3,.pl-dbody .pipeline-context h3,.pl-dbody .pipeline-history h3{margin:0}
+.pl-dbody .pipeline-context p{margin:8px 0 14px}
+.pl-dbody .pipeline-context small{margin-top:14px}
+.pl-dbody .pipeline-history>.pl-muted{margin:0 0 12px}
+.pl-fit>div:last-child,.pl-steps li:last-child{border-bottom:0;padding-bottom:0}
+.pl-steps li:first-child{padding-top:0}
+.pl-table{border-collapse:separate;border-spacing:0}
+.pl-table tbody tr:last-child td{border-bottom:0}
+.pl-dbody .pipeline-task:first-of-type{padding-top:4px}
+@media(max-width:700px){.folio-workspace .pipeline-enquiry:not(.is-board-card){padding:14px}.pl-dbody .pl-kv,.pl-dbody .pl-fit,.pl-dbody .pipeline-intake,.pl-dbody .pipeline-next-section,.pl-dbody .pipeline-context,.pl-dbody .pipeline-history,.pl-dbody .pl-steps,.pl-dbody .pl-totals{padding:14px}.pl-dbody .pl-table{padding:10px 12px}}
