@@ -24,6 +24,8 @@ Open http://127.0.0.1:4320. The sign-in panel quietly rotates event, interiors, 
 
 For an empty local workspace, run `npm start` with a new `DATABASE_PATH`, then create a studio through the sign-up screen. `PORT` defaults to 4320; `APP_ORIGIN` defaults to `http://127.0.0.1:4320`. The server binds to loopback.
 
+The quiet helper (draft a reply, recap a project, draft a follow-up) is off until `ANTHROPIC_API_KEY` is set, for example `ANTHROPIC_API_KEY=sk-ant-... npm run dev`. It uses `claude-opus-5-5` unless `CALEANE_AI_MODEL` names another model. It only returns drafts to the studio owner; nothing is sent or saved until they choose to. It stays off in the hosted demo.
+
 The SQLite database and uploaded files live in `data/workspace.sqlite` (uploads are stored as blobs in the database). Data survives reloads and server restarts. `DATABASE_PATH` changes its location. Back up the database with a SQLite-aware backup procedure; do not copy only the main file while WAL writes are active. The app does not use browser storage as its database.
 
 ## What works
