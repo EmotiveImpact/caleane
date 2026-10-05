@@ -17,7 +17,7 @@ const initials=n=>n.split(' ').map(s=>s[0]).slice(0,2).join('');
 const money=q=>new Intl.NumberFormat('en-GB',{style:'currency',currency:q.currency,maximumFractionDigits:0}).format(q.total/100);
 const invoiceMoney=(minor,currency)=>new Intl.NumberFormat('en-GB',{style:'currency',currency:currency||'GBP'}).format((minor||0)/100);
 const cover=p=>p?.inspiration.find(i=>i.sample)?.sample||demoCoverFor(p);
-function Avatar({client,projects,size=''}){const demo=projects.some(p=>p.demo&&p.clientId===client.id&&p.brief.name==='Amelia Taylor');return demo?<img className={'folio-avatar '+size} src="/assets/sample-client-amelia.png" alt=""/>:<span className={'folio-avatar '+size}>{initials(client.name)}</span>}
+function Avatar({client,projects,size=''}){const demo=projects.some(p=>p.demo&&p.clientId===client.id&&p.brief.name==='Amelia Taylor');return demo?<img className={'folio-avatar '+size} src="/assets/sample-client-amelia.webp" alt=""/>:<span className={'folio-avatar '+size}>{initials(client.name)}</span>}
 function ClientFinances({clientProjects,invoices,loading,error,onRetry,openProject}){
  const projectIds=new Set(clientProjects.map(project=>project.id));
  const related=invoices.filter(invoice=>projectIds.has(invoice.projectId));

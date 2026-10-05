@@ -1,4 +1,4 @@
-# Calenne dashboard screen index
+# Caleane dashboard screen index
 
 Read Calenne-Dashboard-Handoff.md first. Upgrade the existing dashboard in place; preserve its capabilities. All PNGs are conceptual visual references, not implemented interfaces.
 

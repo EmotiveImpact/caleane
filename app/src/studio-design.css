@@ -1,5 +1,4 @@
 /* Selected dashboard handoff: one shared studio system, September 2026. */
-@font-face{font-family:'Instrument Sans';src:url('/assets/instrument-sans-latin.woff2') format('woff2');font-style:normal;font-weight:400 700;font-display:swap}
 :root{--studio-paper:#f4f1eb;--studio-surface:#faf8f4;--studio-ink:#17221d;--studio-muted:#6e7069;--studio-rule:#dcd8d0;--studio-stone:#c4b8a8;--studio-sage:#dce2d5;--folio-rail-width:232px;--folio-topbar-height:72px;--folio-content-font:'Instrument Sans',sans-serif;--folio-content-ink:var(--studio-ink);--folio-content-muted:var(--studio-muted);--folio-content-rule:var(--studio-rule);--folio-page-gutter:clamp(24px,2.8vw,44px);--folio-ink:var(--studio-ink);--folio-border:var(--studio-rule);--folio-muted:var(--studio-muted)}
 body:has(.folio-workspace){background:var(--studio-paper)}
 .app:has(.folio-workspace),.workspace.folio-workspace{background:var(--studio-paper);color:var(--studio-ink);font-family:var(--folio-content-font);font-size:15px;line-height:1.5}

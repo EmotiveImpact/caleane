@@ -1,10 +1,10 @@
-# Calenne dashboard design handoff
+# Caleane dashboard design handoff
 
 ## Read this first
 
-Apply the supplied design philosophy to the EXISTING extensive Calenne dashboard. This is an additive visual upgrade, not a replacement product, reduced feature set or new starter application. The user explicitly said: 'its not taking away from what we have but we add certain things in places and design better in others as we already have an extensive dashboard that now needs this design philsphy'. Preserve that intent throughout implementation.
+Apply the supplied design philosophy to the EXISTING extensive Caleane dashboard. This is an additive visual upgrade, not a replacement product, reduced feature set or new starter application. The user explicitly said: 'its not taking away from what we have but we add certain things in places and design better in others as we already have an extensive dashboard that now needs this design philsphy'. Preserve that intent throughout implementation.
 
-The user wants the attached exact Projects screen as the primary visual reference. It has the architectural double-L symbol with tracked uppercase CALENNE, a dark green-black sidebar, ivory workspace, stone/sage accents, natural photographic projects and people, and spacious clean sans typography. Earlier recommendations for a different Shared Frame logo do not override this selected dashboard reference.
+The user wants the attached exact Projects screen as the primary visual reference. It has the architectural double-L symbol with tracked uppercase CALEANE, a dark green-black sidebar, ivory workspace, stone/sage accents, natural photographic projects and people, and spacious clean sans typography. Earlier recommendations for a different Shared Frame logo do not override this selected dashboard reference.
 
 This package contains 20 desktop visual references, including the selected Projects source and five earlier project screens, plus fourteen additional screen concepts. It defines the core workflow's visual treatment. It does not claim to cover every route, feature or state in the existing repository, which was not accessible from this design conversation.
 
@@ -36,7 +36,7 @@ Do not remove existing modules merely because they do not appear here. Additiona
 
 ## Visual system
 
-Primary brand reference: Studio Ligature double-L with CALENNE in capitals, no period. Retain the reference geometry and fixed wordmark spacing rather than inventing a new logo on every page. The symbol in these concept PNGs is not an editable vector master; use the current authorised logo asset or create a reviewed vector master from the selected identity during production. Do not import the earlier Shared Frame symbol accidentally.
+Primary brand reference: Studio Ligature double-L with CALEANE in capitals, no period. Retain the reference geometry and fixed wordmark spacing rather than inventing a new logo on every page. The symbol in these concept PNGs is not an editable vector master; use the current authorised logo asset or create a reviewed vector master from the selected identity during production. Do not import the earlier Shared Frame symbol accidentally.
 
 Colours: green-black #101B17, warm ivory #F4F1EB, stone #C4B8A8, restrained sage near #ADB8A7. Use semantic approval, pending and error tones separately from branding. Text contrast must be checked on the actual implementation. Avoid decorative gradients and glows.
 
@@ -88,4 +88,4 @@ Acceptance requires: no unaccounted removed route or action; consistent typograp
 
 ## Provenance and limits
 
-The fourteen additional screens were generated with built-in image generation, using the exact user-selected Projects image as their attached source. The earlier five project screens were generated using the preceding Calenne homepage's embedded app as reference. All images are conceptual raster output, not editable Figma files or implemented frontends. The selected image came from the user. No access to /Users/augustusedem/Calenne, its localhost preview, current backend or the receiving conversation was available here. The package was prepared for transfer, not posted directly to another chat.
+The fourteen additional screens were generated with built-in image generation, using the exact user-selected Projects image as their attached source. The earlier five project screens were generated using the preceding Caleane homepage's embedded app as reference. All images are conceptual raster output, not editable Figma files or implemented frontends. The selected image came from the user. No access to the app repository, its localhost preview, current backend or the receiving conversation was available here. The package was prepared for transfer, not posted directly to another chat.

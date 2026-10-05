@@ -1,4 +1,4 @@
-# Calenne project journey — design QA
+# Caleane project journey — design QA
 
 final result: passed
 
@@ -6,15 +6,15 @@ final result: passed
 
 No actionable P0, P1 or P2 differences remain. The approved studies established three complementary screens: project overview, shared plan and focused choice. The implemented screens keep the dark project rail, light document canvas, strong next action, two-column context and quiet dividers. The rendered content comes from the selected project and its service area.
 
-**P3 follow-up polish:** The integrated Calenne project header and secondary tabs use about 80 more vertical pixels than the standalone studies. Small rail and supporting text is slightly denser. The key action remains visible in the 1487 × 1058 viewport. A later shell pass could put the project breadcrumb in the top bar and move secondary sections into a compact project menu.
+**P3 follow-up polish:** The integrated Caleane project header and secondary tabs use about 80 more vertical pixels than the standalone studies. Small rail and supporting text is slightly denser. The key action remains visible in the 1487 × 1058 viewport. A later shell pass could put the project breadcrumb in the top bar and move secondary sections into a compact project menu.
 
 ## Comparison target and evidence
 
 | Screen | Source visual truth | Browser-rendered implementation | Combined comparison |
 | --- | --- | --- | --- |
-| Overview | `/Users/augustusedem/.codex/generated_images/01a0ead5-2cf8-7652-9c62-69179d274922/exec-249daea5-9d5f-4db9-bd11-732605248be3.png` | `docs/design-qa/calenne-qa-overview-final-1487.png` | `docs/design-qa/calenne-qa-overview-final-comparison.png` |
-| Plan | `/Users/augustusedem/.codex/generated_images/01a0ead5-2cf8-7652-9c62-69179d274922/exec-f1cc95fb-66b3-4f66-89b4-dc09a79fe305.png` | `docs/design-qa/calenne-qa-plan-final-1487.png` | `docs/design-qa/calenne-qa-plan-final-comparison.png` |
-| Decision | `/Users/augustusedem/.codex/generated_images/01a0ead5-2cf8-7652-9c62-69179d274922/exec-5a2f7876-2b6e-42ce-a035-1597209d023f.png` | `docs/design-qa/calenne-qa-interior-choice-selected-1487.png` | `docs/design-qa/calenne-qa-decisions-final-comparison.png` |
+| Overview | Generated concept image (kept locally, not in the repository) | `docs/design-qa/calenne-qa-overview-final-1487.png` | `docs/design-qa/calenne-qa-overview-final-comparison.png` |
+| Plan | Generated concept image (kept locally, not in the repository) | `docs/design-qa/calenne-qa-plan-final-1487.png` | `docs/design-qa/calenne-qa-plan-final-comparison.png` |
+| Decision | Generated concept image (kept locally, not in the repository) | `docs/design-qa/calenne-qa-interior-choice-selected-1487.png` | `docs/design-qa/calenne-qa-decisions-final-comparison.png` |
 
 The decision comparison intentionally uses an interior material choice against the study's wedding venue choice. The structure and selection state match; the subject and comparison facts change with the profession. The overview and plan compare the NAY DÉCOR event styling sample against the studies' Rowan Studio planning sample. Fake documents and milestones from the studies were replaced by recorded messages, references, tasks and dates.
 
@@ -22,7 +22,7 @@ All three source images and browser captures are 1487 × 1058 pixels. The browse
 
 ## Fidelity review
 
-- **Typography:** Instrument Sans keeps the modern sans hierarchy of the studies. Journey headings, timeline milestones and choice titles were enlarged after comparison. The existing serif Calenne wordmark remains the product identity.
+- **Typography:** Instrument Sans keeps the modern sans hierarchy of the studies. Journey headings, timeline milestones and choice titles were enlarged after comparison. The existing serif Caleane wordmark remains the product identity.
 - **Spacing and layout:** Main and context columns, dividers and option rows follow the studies. The existing project header adds vertical space as noted above. The mobile choice screen stacks option facts and has no horizontal overflow (`scrollWidth = innerWidth = 390`).
 - **Color:** The journey uses near-black, white and neutral greys. Selected and disabled states remain distinguishable; no profession is assigned an arbitrary color theme.
 - **Imagery:** The overview uses the actual sample project's candlelit table reference. The study's sunlit venue image belongs to a different project; using it here would misrepresent the saved inspiration. Other screens rely on typography and real project data.

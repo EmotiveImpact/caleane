@@ -67,7 +67,7 @@
 .journey-radio[data-state="checked"]{border-color:#20252b!important}
 .journey-radio-dot{width:10px;height:10px;border-radius:50%;background:#20252b}
 .journey-radio:focus-visible,.project-tabs button:focus-visible{outline:2px solid #53657c;outline-offset:5px}
-.choice-dialog{font-family:'Inter Variable',sans-serif;width:min(720px,calc(100vw - 32px));max-height:calc(100dvh - 48px);overflow-y:auto;color:#20252b}
+.choice-dialog{font-family:var(--folio-content-font,'Instrument Sans',sans-serif);width:min(720px,calc(100vw - 32px));max-height:calc(100dvh - 48px);overflow-y:auto;color:#20252b}
 .choice-dialog .journey-add-choice{margin:24px 0 0;padding:0;border:0;background:transparent}
 .choice-dialog h2{font-size:28px;font-weight:510;letter-spacing:-.025em;padding-right:24px}
 .choice-dialog p{line-height:1.6;font-size:14px;color:#626973}

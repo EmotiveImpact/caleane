@@ -1,6 +1,6 @@
 # Profession-aware project experience
 
-Calenne serves small, service-led studios that need an enquiry, a shared project space, client communication and clear decisions. A studio chooses its **practice** in Settings. Every new project inherits that practice, and the owner can choose another **service area** when starting or editing a project. Existing projects retain their saved project details. The service area changes the client's language and prompts, while the underlying records and permissions stay consistent.
+Caleane serves small, service-led studios that need an enquiry, a shared project space, client communication and clear decisions. A studio chooses its **practice** in Settings. Every new project inherits that practice, and the owner can choose another **service area** when starting or editing a project. Existing projects retain their saved project details. The service area changes the client's language and prompts, while the underlying records and permissions stay consistent.
 
 | Service area | Enquiry choices | Extra brief questions | Plan guide |
 | --- | --- | --- | --- |
