@@ -29,6 +29,10 @@ test('notification destinations follow each role and never send clients to studi
  assert.deepEqual(notificationDestination({kind:'message',projectId:null,clientId:'c1'},{owner:false}),{view:'inbox',clientId:null});
  assert.deepEqual(notificationDestination({kind:'message',projectId:'p1'},{staff:true}),{view:'projects',projectId:'p1'});
  assert.deepEqual(notificationDestination({kind:'project_update',projectId:'p1'},{owner:false}),{view:'projects',projectId:'p1',tab:'Activity'});
+ assert.deepEqual(notificationDestination({kind:'project_update',projectId:'p1',title:'Shared design Table plan'},{owner:false}),{view:'projects',projectId:'p1',tab:'Designs'});
+ assert.deepEqual(notificationDestination({kind:'project_update',projectId:'p1',title:'Issued invoice INV-2026-0002'},{owner:true}),{view:'projects',projectId:'p1',tab:'Billing'});
+ assert.deepEqual(notificationDestination({kind:'project_update',projectId:'p1',title:'Sent the estimate'},{owner:false}),{view:'projects',projectId:'p1',tab:'Estimate'});
+ assert.deepEqual(notificationDestination({kind:'project_update',projectId:'p1',title:'Signed the contract'},{owner:false}),{view:'projects',projectId:'p1',tab:'Contract'});
  assert.deepEqual(notificationDestination({kind:'task_assigned',taskId:'project:p1:t1',projectId:'p1'},{owner:true}),{view:'tasks',taskId:'project:p1:t1'});
  assert.deepEqual(notificationDestination({kind:'task_assigned',taskId:'project:p1:t1',projectId:'p1'},{staff:true}),{view:'projects',projectId:'p1'});
 });
