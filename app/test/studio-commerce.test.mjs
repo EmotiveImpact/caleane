@@ -174,3 +174,22 @@ test('slot times follow the studio time zone across daylight saving',()=>{
  assert.equal(new Date(localToUtc('2026-07-01','10:00','America/New_York')).toISOString(),'2026-07-01T14:00:00.000Z');
  assert.equal(typeof availableSlots,'function');
 });
+
+test('a credit note is not kept when its project event cannot be saved',async t=>{
+ const {ws,call,suffix,project}=await workspace(t);
+ await call('/api/billing-defaults'+suffix,'POST',{sellerAddress:'1 Studio Lane, London',sellerContact:'hello@studio.test',taxRegistration:'',paymentInstructions:'Bank transfer.',paymentTermsDays:14,plan:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}]},'owner');
+ const route=`/api/projects/${project.id}/invoices`;
+ await confirmEstimate(call,suffix,project,100000);
+ const plan=(await call(route+'/plan'+suffix,'POST',{action:'create'},'owner')).data.plan;
+ const deposit=(await call(route+'/plan'+suffix,'POST',{action:'issue',stepId:plan.steps[0].id,customerAddress:'Client Street, London'},'owner')).data.invoice;
+ const errors=t.mock.method(console,'error',()=>{});
+ ws.db.exec("CREATE TRIGGER block_project_save BEFORE UPDATE ON projects BEGIN SELECT RAISE(ABORT,'project save failed'); END;");
+ const failed=await call(`${route}/${deposit.id}/credit-notes${suffix}`,'POST',{amountMinor:5000,reason:'Reduced scope'},'owner');
+ assert.equal(failed.status,500);assert.doesNotMatch(JSON.stringify(failed.data),/project save failed/);
+ assert.equal(ws.db.prepare('SELECT COUNT(*) AS n FROM invoice_credit_notes').get().n,0,'the credit note rolled back with the event');
+ assert.match(String(errors.mock.calls[0].arguments[0]),/POST \/api\/projects\/.+\/credit-notes/);
+ assert.match(String(errors.mock.calls[0].arguments[1]),/project save failed/);
+ ws.db.exec('DROP TRIGGER block_project_save');
+ const saved=await call(`${route}/${deposit.id}/credit-notes${suffix}`,'POST',{amountMinor:5000,reason:'Reduced scope'},'owner');
+ assert.equal(saved.status,200);assert.equal(saved.data.invoice.credits.length,1);
+});

@@ -59,7 +59,7 @@ function previewAuthorized(header,userDigest,passDigest){
  const userMatches=timingSafeEqual(suppliedUser,userDigest),passMatches=timingSafeEqual(suppliedPass,passDigest);
  return userMatches&&passMatches;
 }
-export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000}={}){
+export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,trustProxy=process.env.TRUST_PROXY||0}={}){
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
@@ -69,7 +69,13 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
  const accountSecurity=createAccountSecurity(db,{origin,encryptionKey:notificationKey});
  const queueProjectEvent=(studioId,projectId,actorUserId,eventId)=>{if(!eventId)return;recordProjectEvent(db,{studioId,projectId,actorUserId,eventId});if(outbox)outbox.enqueueProjectActivity({studioId,projectId,actorUserId,eventId});};
- function rate(req,bucket,max=30){const key=bucket+':'+req.socket.remoteAddress;const time=Date.now();for(const [k,v] of limits)if(v.until<time)limits.delete(k);const v=limits.get(key)||{n:0,until:time+600000};if(++v.n>max)fail(429,'Please wait a few minutes before trying again.');limits.set(key,v);}
+ // With TRUST_PROXY=N, N reverse proxies each append the peer they saw to X-Forwarded-For; the client is the right-most entry they did not add.
+ const secureOrigin=origin.startsWith('https://');
+ // Production pages only: Vite dev serves inline scripts. 'unsafe-inline' styles cover React style props and the print preview frame.
+ const appCSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
+ const trustedHops=Math.max(0,Math.floor(Number(trustProxy))||0);
+ const clientIP=req=>{const peer=req.socket?.remoteAddress||'';if(!trustedHops)return peer;const hops=String(req.headers['x-forwarded-for']||'').split(',').map(s=>s.trim()).filter(Boolean);return hops[Math.max(0,hops.length-trustedHops)]||peer;};
+ function rate(req,bucket,max=30,subject=clientIP(req)){const key=bucket+':'+subject;const time=Date.now();for(const [k,v] of limits)if(v.until<time)limits.delete(k);const v=limits.get(key)||{n:0,until:time+600000};if(++v.n>max)fail(429,'Please wait a few minutes before trying again.');limits.set(key,v);}
  if(demo&&!db.prepare('SELECT id FROM studios WHERE slug=?').get('nay-decor')){
   const studioId=id();db.prepare('INSERT INTO studios VALUES(?,?,?,?,?)').run(studioId,'nay-decor','NAY DÉCOR','#181925',JSON.stringify(['http://127.0.0.1:4318','http://127.0.0.1:4317',origin]));
   const owner={id:id(),name:'NAY Studio',email:'studio@example.test'},client={id:id(),name:'Amelia Taylor',email:'amelia@example.test'};
@@ -89,7 +95,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
   const reply=(status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
   try{
    try{url=new URL(req.url,origin);route=url.pathname;}catch{fail(400,'Use a valid request address.');}
-   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');
+   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');if(secureOrigin)res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains');
    if(route==='/api/webhooks/stripe'&&req.method==='POST'){
     if(!stripe||!stripeWebhookSecret)fail(503,'Stripe webhook is not configured.');
     const chunks=[];let bytes=0;
@@ -112,11 +118,17 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    const publicMatch=route.match(/^\/api\/public\/([a-z0-9-]+)(?:\/(enquiries)|\/forms\/([a-z0-9-]+)(?:\/(enquiries))?)?$/);
    let publicStudio;
    if(publicMatch){publicStudio=db.prepare('SELECT * FROM studios WHERE slug=?').get(publicMatch[1]);if(!publicStudio)fail(404,'Studio not found.');const allowed=[origin,...JSON.parse(publicStudio.origins)];if(req.headers.origin&&!allowed.includes(req.headers.origin))fail(403,'This website is not connected to the studio.');if(req.headers.origin){res.setHeader('Access-Control-Allow-Origin',req.headers.origin);res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Headers','Content-Type, Idempotency-Key');res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');}if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}}
+   // Resolve the session before reading a body, so only signed-in people can send upload-sized requests.
+   const cookie=req.headers.cookie?.match(/(?:^|;\s*)studio_session=([a-f0-9]+)/)?.[1];
+   const user=cookie?db.prepare('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?').get(hash(cookie),Date.now()):null;
    if(route.startsWith('/api/')&&!['GET','HEAD','OPTIONS'].includes(req.method)){
     if(!publicMatch&&req.headers.origin!==origin)fail(403,'Please use this workspace to make changes.');
     if(!/^application\/json(?:;|$)/i.test(String(req.headers['content-type']||'')))fail(415,'Use JSON for this request.');
-    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/drafts\/files)$/.test(route),limit=(isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+)$/.test(route))?8500000:65536,chunks=[];let bytes=0;
-    for await(const chunk of req){bytes+=chunk.length;if(bytes>limit)fail(413,isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.');chunks.push(chunk);}
+    // Public form and booking submissions are text only and fit the 64 KB limit; uploads require a session.
+    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/drafts\/files)$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+)$/.test(route);const limit=large?8500000:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
+    // Refusals before the body is read close the connection, so the unread body is discarded rather than parsed as the next request.
+    if((large&&!user)||Number(req.headers['content-length']||0)>limit){res.setHeader('Connection','close');fail(large&&!user?401:413,large&&!user?'Please sign in.':tooLarge);}
+    await new Promise((resolve,reject)=>{let bytes=0;req.on('data',chunk=>{if(bytes<0)return;bytes+=chunk.length;if(bytes>limit){bytes=-1;res.setHeader('Connection','close');reject(Object.assign(new Error(tooLarge),{status:413}));}else chunks.push(chunk);});req.on('end',resolve);req.on('error',reject);});
     try{body=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');if(!body||Array.isArray(body)||typeof body!=='object')throw 0;}catch{fail(400,'We could not read that request.');}
    }
    if(route==='/api/health'&&req.method==='GET')return reply(200,{ok:true});
@@ -140,14 +152,12 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     fail(405,'Method not allowed.');
    }
    function startSession(user){const token=randomBytes(32).toString('hex');db.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now());db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token),user.id,Date.now()+7*86400000);res.setHeader('Set-Cookie',`studio_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${origin.startsWith('https:')?'; Secure':''}`);}
-   const cookie=req.headers.cookie?.match(/(?:^|;\s*)studio_session=([a-f0-9]+)/)?.[1];
-   const user=cookie?db.prepare('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?').get(hash(cookie),Date.now()):null;
    if(route==='/api/account/recovery'&&req.method==='POST'){rate(req,'recovery',8);const mail=email(body.email);accountSecurity.enqueue(db.prepare('SELECT * FROM users WHERE email=?').get(mail),'reset');return reply(200,{ok:true,message:'If an account uses that email, a recovery link will be sent.'});}
    if(route==='/api/account/reset'&&req.method==='POST'){rate(req,'reset',12);accountSecurity.consume(body.token,'reset',body.password);res.setHeader('Set-Cookie','studio_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');return reply(200,{ok:true});}
    if(route==='/api/account/verify'&&req.method==='POST'){rate(req,'verify',12);accountSecurity.consume(body.token,'verify');return reply(200,{ok:true});}
    if(route==='/api/account/security'&&req.method==='GET'){if(!user)fail(401,'Please sign in.');return reply(200,accountSecurity.status(user));}
    if(route==='/api/account/verification'&&req.method==='POST'){if(!user)fail(401,'Please sign in.');rate(req,'verification',8);if(!accountSecurity.status(user).verified)accountSecurity.enqueue(user,'verify');return reply(200,{ok:true,message:'Check your email for a verification link.'});}
-   if(route==='/api/login'&&req.method==='POST'){rate(req,'auth',15);const u=db.prepare('SELECT * FROM users WHERE email=?').get(email(body.email));if(!u||!passwordOK(password(body.password),u.password))fail(401,'Email or password is incorrect.');startSession(u);return reply(200,{ok:true});}
+   if(route==='/api/login'&&req.method==='POST'){rate(req,'auth',15);const mail=email(body.email);rate(req,'auth-email',10,mail);const u=db.prepare('SELECT * FROM users WHERE email=?').get(mail),ok=passwordOK(password(body.password),u?.password);if(!u||!ok)fail(401,'Email or password is incorrect.');startSession(u);return reply(200,{ok:true});}
    if(route==='/api/signup'&&req.method==='POST'){
     rate(req,'signup',5);const mail=email(body.email),name=str(body.name,120),studioName=str(body.studio,120),slug=str(body.slug,80),pass=password(body.password),profession=body.profession??DEFAULT_WORKFLOW;if(!name||!studioName||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))fail(400,'Add your name, studio name and a lowercase studio address.');if(!isWorkflowId(profession))fail(400,'Choose a valid studio practice.');if(db.prepare('SELECT id FROM users WHERE email=?').get(mail)||db.prepare('SELECT id FROM studios WHERE slug=?').get(slug))fail(409,'That email or studio address is already in use.');const u={id:id(),name,email:mail},sid=id();db.exec('BEGIN');try{db.prepare('INSERT INTO users VALUES(?,?,?,?)').run(u.id,mail,name,passwordHash(pass));db.prepare('INSERT INTO studios VALUES(?,?,?,?,?)').run(sid,slug,studioName,'#181925',JSON.stringify([origin]));db.prepare('INSERT INTO memberships VALUES(?,?,?)').run(u.id,sid,'owner');db.prepare('INSERT INTO studio_branding VALUES(?,?)').run(sid,JSON.stringify({portalTitle:studioName,welcome:'Your project, thoughtfully brought together.',logoUrl:'',profession,projectTypes:projectTypesFor(profession)}));db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}startSession(u);return reply(201,{ok:true});
    }
@@ -574,12 +584,15 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});return reply(201,{invoice:invoiceDTO(db,issued)});
      }
      if(subaction==='credit-notes'||subaction==='refunds'){
+      // The adjustment and its project event commit together, or neither does.
+      transaction(db,()=>{
       if(activeStripeCheckout(db,{studioId:studio.id,invoiceId:invoice.id}))fail(409,'Resolve the active Stripe Checkout before adjusting this invoice.');
       const current=invoiceDTO(db,invoice);
       if(subaction==='credit-notes'){const number=issueCreditNote(db,{studioId:studio.id,invoice,user,body});event(project,user,`Issued credit note ${number} against invoice ${invoice.number}`);}
       else if(body.creditNote===true){const number=refundWithCredit(db,{studioId:studio.id,invoice,user,body,grossPaidMinor:current.grossPaidMinor});event(project,user,`Refunded ${invoice.number} and issued credit note ${number}`);}
       else{recordRefund(db,{studioId:studio.id,invoice,user,body,grossPaidMinor:current.grossPaidMinor});event(project,user,`Recorded a refund on invoice ${invoice.number}`);}
       saveProject(db,project);
+      });
       return reply(200,{invoice:invoiceDTO(db,db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoice.id,studio.id))});
      }
      if(subaction==='cancel'){
@@ -738,10 +751,12 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    const asset=route.match(/^\/(app\.(?:js|css)|favicon\.svg|assets\/(?:identity\/)?[a-zA-Z0-9._-]+)$/);
    if(asset){const file=asset[1];const ext=path.extname(file);res.setHeader('Content-Type',({'.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.txt':'text/plain'})[ext]||'application/octet-stream');return res.end(await readFile(path.join(root,'dist',file)));}
    const intakeSlug=route.match(/^\/intake\/([a-z0-9-]+)(?:\/[a-z0-9-]+)?$/)?.[1];
-   if(intakeSlug){const s=db.prepare('SELECT origins FROM studios WHERE slug=?').get(intakeSlug);if(!s)fail(404,'Studio not found.');res.setHeader('Content-Security-Policy',`frame-ancestors 'self' ${JSON.parse(s.origins).join(' ')}`);}else res.setHeader('Content-Security-Policy',"frame-ancestors 'none'");
+   if(intakeSlug){const s=db.prepare('SELECT origins FROM studios WHERE slug=?').get(intakeSlug);if(!s)fail(404,'Studio not found.');res.setHeader('Content-Security-Policy',`${appCSP}; frame-ancestors 'self' ${JSON.parse(s.origins).join(' ')}`);}else res.setHeader('Content-Security-Policy',`${appCSP}; frame-ancestors 'none'`);
    if(!['/','/join','/join-studio','/login','/embed-demo','/recover','/reset-password','/verify-email','/account'].includes(route)&&!intakeSlug&&!/^\/book\/[a-z0-9-]+$/.test(route))fail(404,'Not found.');res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(await readFile(path.join(root,'dist/index.html')));
-  }catch(error){if(res.headersSent)return res.end();reply(error.status||500,{error:error.status?error.message:'Something went wrong. Please try again.'});}
+  }catch(error){if(!error?.status)console.error(`Unexpected error on ${req.method} ${route??'(invalid address)'}:`,error?.stack||error);if(res.headersSent)return res.end();reply(error.status||500,{error:error.status?error.message:'Something went wrong. Please try again.'});}
  });
+ // Bound slow clients: headers within 20 s, a whole request (including an 8.5 MB upload) within 2 minutes.
+ server.headersTimeout=20000;server.requestTimeout=120000;
  // Reminders run hourly in a long-lived server. The hosted demo and tests pass reminderIntervalMs:0.
  const reminderTimer=reminderIntervalMs>0?setInterval(()=>runAllReminders(db,{outbox}),reminderIntervalMs):null;reminderTimer?.unref();
  server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);});
