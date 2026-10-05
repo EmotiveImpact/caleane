@@ -31,6 +31,7 @@ import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
+import {handlePipeline,syncAllPipelines,syncPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation} from './consultations.mjs';
 import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
@@ -214,6 +215,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(await handleStudioCommerce({db,req,route,body,studio,owner,reply}))return;
     if(handleBrandKit({db,req,route,body,studio,owner,reply}))return;
     if(await handleReminders({db,req,route,body,studio,owner,reply,outbox}))return;
+    if(await handlePipeline({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin}))return;
     if(route==='/api/stripe/connect/status'&&req.method==='GET'){
      requireOwner();if(!stripe) return reply(200,{onboarding:{studioId:studio.id,status:'unavailable',chargesEnabled:false,detailsSubmitted:false,payoutsEnabled:false,country:''}});
@@ -341,7 +343,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(staffInviteMatch){requireOwner();if(req.method!=='PATCH'||body.revoke!==true)fail(405,'Method not allowed.');const revoked=db.prepare('UPDATE staff_invitations SET used=1 WHERE studio_id=? AND token=? AND used=0').run(studio.id,staffInviteMatch[1]);if(!revoked.changes)fail(404,'Invitation not found.');return reply(200,{ok:true});}
     if(route==='/api/opportunities'){
      requireOwner();
-     if(req.method==='GET')return reply(200,{opportunities:listOpportunities(db,studio.id)});
+     if(req.method==='GET'){syncPipeline(db,studio.id,{outbox});return reply(200,{opportunities:listOpportunities(db,studio.id)});}
      if(req.method==='POST')return reply(201,{opportunity:createOpportunity(db,studio.id,user,body)});
      fail(405,'Method not allowed.');
     }
@@ -750,7 +752,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
   }catch(error){if(res.headersSent)return res.end();reply(error.status||500,{error:error.status?error.message:'Something went wrong. Please try again.'});}
  });
  // Reminders run hourly in a long-lived server. The hosted demo and tests pass reminderIntervalMs:0.
- const reminderTimer=reminderIntervalMs>0?setInterval(()=>runAllReminders(db,{outbox}),reminderIntervalMs):null;reminderTimer?.unref();
+ const reminderTimer=reminderIntervalMs>0?setInterval(()=>{runAllReminders(db,{outbox});syncAllPipelines(db,{outbox});},reminderIntervalMs):null;reminderTimer?.unref();
  server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);});
  return {server,db};
 }

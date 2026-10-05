@@ -21,7 +21,7 @@ const h=React.createElement,user=()=>userEvent.setup({document:dom.window.docume
 afterEach(cleanup);after(async()=>{await unlink(compiled);dom.window.close();});
 const studio={id:'s',name:'Sample studio',branding:{profession:'floral-design'}};
 const base={id:'o1',clientId:'c1',clientName:'Amelia',title:'Wedding flowers',description:'Ivory flowers.',stage:'Discovery',amountMinor:0,currency:'GBP',probability:20,expectedClose:'',lostReason:'',source:'Website',revision:1,activities:[],tasks:[],projectId:'p1'};
-function fixture({stale=false,count=1,intake=null}={}){
+function fixture({stale=false,count=1,intake=null,pipeline=null}={}){
  let opportunity={...structuredClone(base),...(intake?{intake,formName:intake.formName,projectStatus:'Enquiry',needsReview:true}: {})},tasks=[];const writes=[],opened=[];
  const request=async(path,method,body)=>{
   if(method==='PATCH'&&path.startsWith('/api/opportunities/')){writes.push({path,body});if(stale&&writes.length===2)throw Error('This opportunity changed while you were editing. Refresh and try again.');assert.equal(body.revision,opportunity.revision);opportunity={...opportunity,...body,revision:opportunity.revision+1};return {opportunity:{...opportunity,tasks}};}
@@ -34,10 +34,17 @@ function fixture({stale=false,count=1,intake=null}={}){
   if(path.startsWith('/api/clients'))return {clients:[{id:'c1',name:'Amelia'}]};
   if(path.startsWith('/api/crm/tasks'))return {tasks};
   if(path.startsWith('/api/task-workspace'))return {assignments:{'crm:t1':'Sophie'}};
+  if(pipeline&&method==='POST'&&path.startsWith('/api/pipeline')){writes.push({path,body});return pipeline;}
+  if(pipeline&&path.startsWith('/api/pipeline'))return pipeline;
+  if(pipeline&&path.startsWith('/api/catalogue'))return {items:[{id:'i1',name:'Bridal bouquet',unitAmount:28500,currency:'GBP',unit:'each',archived:false}]};
+  if(pipeline&&method==='POST'&&path.startsWith('/api/projects/p1/estimates')){writes.push({path,body});return {project:{id:'p1'}};}
+  if(pipeline&&method==='POST'&&path.startsWith('/api/projects/p1/messages')){writes.push({path,body});return {project:{id:'p1'}};}
+  if(pipeline&&path.startsWith('/api/projects/p1?'))return {project:pipeline.project||{id:'p1',estimates:[],proposals:[]}};
   throw Error('Unexpected request '+path);
  };
  render(h(PipelineCRM,{studio,request,run:fn=>fn(),openClient:id=>opened.push(['client',id]),openProject:(p,tab)=>opened.push(['project',p.id,tab]),openTask:id=>opened.push(['task',id]),onProjectCreated(){}}));return {writes,opened};
 }
+const stagePath=()=>screen.getByRole('group',{name:'Enquiry stage'});
 async function choose(input,label,option){await input.click(screen.getByRole('combobox',{name:label,exact:true}));await input.click(screen.getByRole('option',{name:option,exact:true}));}
 
 test('attention only includes open enquiries with actionable missing/due steps; currencies remain separate',()=>{
@@ -52,7 +59,7 @@ test('attention only includes open enquiries with actionable missing/due steps; 
 test('drawer prioritises follow-ups and persisted stage change can be undone with latest revision',async()=>{
  const input=user(),{writes}=fixture();await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));
  await screen.findByRole('heading',{name:'Next steps'});assert.equal(screen.queryByRole('textbox',{name:'Enquiry title'}),null);
- await choose(input,'Enquiry status','Awaiting decision');await waitFor(()=>assert.equal(writes.length,1));assert.equal(writes[0].body.stage,'Negotiation');
+ await input.click(within(stagePath()).getByRole('button',{name:'Awaiting decision'}));await waitFor(()=>assert.equal(writes.length,1));assert.equal(writes[0].body.stage,'Negotiation');
  await input.click(screen.getByRole('button',{name:'Undo',exact:true}));await waitFor(()=>assert.equal(writes.length,2));assert.equal(writes[1].body.stage,'Discovery');assert.equal(writes[1].body.revision,2);
 });
 
@@ -68,7 +75,7 @@ test('adding a dated follow-up removes enquiry from attention, supports assignme
 
 test('not proceeding requires an explanation and keeps project accessible; Undo restores previous stage',async()=>{
  const input=user(),{writes}=fixture();await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));await screen.findByRole('heading',{name:'Next steps'});
- await choose(input,'Enquiry status','Not proceeding');assert.ok(screen.getByRole('dialog',{name:'Not proceeding'}));assert.equal(writes.length,0);
+ await input.click(screen.getByRole('button',{name:'Not proceeding',exact:true}));assert.ok(screen.getByRole('dialog',{name:'Not proceeding'}));assert.equal(writes.length,0);
  await input.type(screen.getByRole('textbox',{name:'Reason',exact:true}),'Dates changed');await input.click(screen.getByRole('button',{name:'Mark as not proceeding'}));
  await waitFor(()=>assert.equal(screen.queryByRole('dialog',{name:'Not proceeding'}),null));assert.equal(writes[0].body.lostReason,'Dates changed');assert.ok(screen.getByRole('button',{name:'Open project brief',exact:true}));
  await input.click(screen.getByRole('button',{name:'Undo',exact:true}));await waitFor(()=>assert.equal(writes.length,2));assert.equal(writes[1].body.stage,'Discovery');
@@ -76,7 +83,7 @@ test('not proceeding requires an explanation and keeps project accessible; Undo 
 
 test('stale Undo surfaces conflict and cannot report success or overwrite another edit',async()=>{
  const input=user(),{writes}=fixture({stale:true});await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));await screen.findByRole('heading',{name:'Next steps'});
- await choose(input,'Enquiry status','Confirmed');await input.click(await screen.findByRole('button',{name:'Undo',exact:true}));
+ await input.click(within(stagePath()).getByRole('button',{name:'Confirmed'}));await input.click(await screen.findByRole('button',{name:'Undo',exact:true}));
  await waitFor(()=>assert.match(screen.getByRole('alert').textContent,/changed while you were editing/));assert.equal(writes.length,2);assert.equal(screen.queryByText('Stage change undone.'),null);
 });
 
@@ -121,4 +128,57 @@ test('submitted request is available in context; review is explicit, preserves s
  assert.equal(writes[0].body.reviewed,true);assert.equal(writes[0].body.stage,undefined);assert.equal(screen.getByRole('button',{name:'Start planning'}).disabled,false);
  await input.click(screen.getByRole('button',{name:'Open conversation',exact:true}));assert.deepEqual(opened,[['project','p1','Conversation']]);
  await input.click(screen.getByRole('button',{name:'Mark for review',exact:true}));await screen.findByRole('button',{name:'Mark reviewed',exact:true});assert.equal(writes[1].body.revision,2);assert.equal(writes[1].body.reviewed,false);
+});
+
+test('board keeps every stage reachable on small screens and the enquiry drives its own quote',async()=>{
+ const signal={opportunityId:'o1',projectId:'p1',eventDate:'2027-06-12',venue:'Bath',estimate:null,proposal:null,hold:null,deposit:null,fit:[{kind:'date',ok:false,label:'12 Jun is fully booked'}],flags:[{kind:'clash',tone:'bad',label:'Date full',rank:1}]};
+ const pipeline={settings:{dailyCapacity:1},dates:[],insights:null,signals:{o1:signal}};
+ const input=user(),{writes}=fixture({pipeline});
+ await screen.findByText('Date full');
+ assert.ok(screen.getByRole('heading',{name:'Needs a decision from you'}),'a date clash is surfaced in Today');
+ await input.click(screen.getByRole('radio',{name:'Board'}));
+ const strip=screen.getByRole('group',{name:'Pipeline stages'});
+ assert.equal(within(strip).getByRole('button',{name:/New enquiry/}).getAttribute('aria-pressed'),'true');
+ await input.click(screen.getByRole('button',{name:'Next stage'}));
+ assert.equal(within(strip).getByRole('button',{name:/Discussing the brief/}).getAttribute('aria-pressed'),'true');
+ await input.selectOptions(screen.getByRole('combobox',{name:'Move Amelia to'}),'Qualified');
+ await waitFor(()=>assert.equal(writes.at(-1).body.stage,'Qualified'),'cards can move without dragging');
+ await input.click(screen.getByRole('button',{name:'View Wedding flowers'}));
+ const deal=await screen.findByRole('region',{name:'Quote and booking'});
+ assert.match(deal.textContent,/is full/);
+ await input.click(within(screen.getByRole('tablist',{name:'Enquiry sections'})).getByRole('tab',{name:'Quote'}));
+ await input.selectOptions(await screen.findByRole('combobox',{name:'Add from your price list'}),'i1');
+ await input.click(screen.getByRole('button',{name:'Add line'}));
+ assert.equal(screen.getByRole('textbox',{name:'Line 1 description'}).value,'Bridal bouquet');
+ await input.click(screen.getByRole('button',{name:'Share quote'}));
+ await waitFor(()=>assert.ok(writes.some(w=>w.path.startsWith('/api/projects/p1/estimates'))));
+ const quote=writes.find(w=>w.path.startsWith('/api/projects/p1/estimates')).body;
+ assert.deepEqual(quote.items,[{title:'Bridal bouquet',quantity:1,unitAmount:28500}]);assert.equal(quote.currency,'GBP');
+});
+
+test('follow-ups can be sent early or paused, full dates offer alternatives and the client preview shows the deposit',async()=>{
+ const estimate={id:'e1',version:1,status:'Awaiting review',currency:'GBP',total:100000,items:[{title:'Bridal bouquet',quantity:1,unitAmount:100000}],at:'2026-10-01T10:00:00Z'};
+ const signal={opportunityId:'o1',projectId:'p1',eventDate:'2027-06-12',venue:'Bath',portalClient:true,followUpsSent:0,nextFollowUp:'2026-10-04',alternatives:['2027-06-05','2027-06-19'],
+  estimate:{id:'e1',version:1,status:'Awaiting review',total:100000,currency:'GBP',items:1},proposal:{id:'q1',version:1,title:'Wedding flowers',status:'Awaiting response',expiresOn:'2026-10-20',sharedAt:'2026-10-01T10:00:00Z'},
+  hold:{id:'h1',status:'Held',startDate:'2027-06-12',holdUntil:'2026-10-20'},fit:[],flags:[{kind:'clash',tone:'bad',label:'Date full',rank:1}]};
+ const pipeline={settings:{dailyCapacity:1,followUps:true,followUpDays:[3,7,12],followUpMessages:['Hi','Hi','Hi']},dates:[],insights:null,signals:{o1:signal},planTemplate:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}],project:{id:'p1',estimates:[estimate],proposals:[{id:'q1',title:'Wedding flowers',scope:'Bouquets'}]}};
+ const input=user(),{writes}=fixture({pipeline});
+ await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));
+ const deal=await screen.findByRole('region',{name:'Quote and booking'});
+ assert.match(deal.textContent,/Nearby free dates: Sat 5 Jun and Sat 19 Jun/);
+ await input.click(within(deal).getByRole('button',{name:'Offer other dates'}));
+ const message=screen.getByRole('textbox',{name:'Message'});assert.match(message.value,/Saturday 5 June and Saturday 19 June/);
+ await input.click(screen.getByRole('button',{name:'Send message'}));
+ await waitFor(()=>assert.ok(writes.some(w=>w.path.startsWith('/api/projects/p1/messages'))));
+ const tabs=screen.getByRole('tablist',{name:'Enquiry sections'});
+ await input.click(within(tabs).getByRole('tab',{name:'Follow-ups'}));
+ await input.click(screen.getByRole('button',{name:'Send now'}));
+ await waitFor(()=>assert.deepEqual(writes.at(-1).body,{action:'follow-up',opportunityId:'o1',step:'send'}));
+ await input.click(screen.getByRole('button',{name:'Pause follow-ups'}));
+ await waitFor(()=>assert.equal(writes.at(-1).body.step,'pause'));
+ await input.click(within(tabs).getByRole('tab',{name:'Quote'}));
+ assert.ok(await screen.findByText('Deposit £300.00, to confirm the date'));
+ await input.click(screen.getByRole('button',{name:'See it as the client'}));
+ const preview=await screen.findByRole('dialog',{name:'Wedding flowers'});
+ assert.match(preview.textContent,/£300.00 deposit/);assert.match(preview.textContent,/Balance £700.00 14 days before the event/);
 });
