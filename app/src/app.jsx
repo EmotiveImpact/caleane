@@ -61,6 +61,7 @@ import './settings-tabs.css';
 import {StudioProjects,BriefsIndex,ApprovalsIndex,defaultProjectsView} from './components/StudioViews';
 import './spatial-references.css';
 import './design-system.css';
+import './contained-look.css';
 const screen=(load,name)=>lazy(()=>load().then(module=>({default:module[name]})));
 const SettingsWorkspace=screen(()=>import('./components/SettingsWorkspace'),'SettingsWorkspace');
 const FormsWorkspace=screen(()=>import('./components/FormsWorkspace'),'FormsWorkspace');
