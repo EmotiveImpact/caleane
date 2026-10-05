@@ -19,7 +19,7 @@ export function validateForm(body){
  if(!body||typeof body!=='object'||Array.isArray(body))fail(400,'Check the form settings.');
  const name=text(body.name,120,'the form name'),title=text(body.title,160,'the welcome title');
  if(name.length<3||title.length<3)fail(400,'Give your form a name and welcome title.');
- const profession=body.profession||DEFAULT_WORKFLOW;if(!isWorkflowId(profession))fail(400,'Choose a studio practice.');
+ const profession=body.profession||DEFAULT_WORKFLOW;if(!isWorkflowId(profession))fail(400,'Choose a kind of work.');
  const types=body.projectTypes??projectTypesFor(profession);
  if(!Array.isArray(types)||!types.length||types.length>20)fail(400,'Add one to twenty project types.');
  const projectTypes=types.map(v=>text(v,120,'a project type'));
