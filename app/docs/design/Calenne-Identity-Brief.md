@@ -1,24 +1,24 @@
-# Calenne identity and production brief
+# Caleane identity and production brief
 
 30 September 2026. Recommended direction: Shared Frame. Recommendation for review, not an approved identity or trademark clearance.
 
 ## Brand character
 
-Calenne is attentive, visually literate, composed and dependable. It should feel at home in a studio and sufficiently clear for its clients. Its promise is continuity: from first enquiry to an approved direction, the brief, references, versions and decisions stay in view. Let people and their creative work supply the emotion; the identity supplies recognition and order.
+Caleane is attentive, visually literate, composed and dependable. It should feel at home in a studio and sufficiently clear for its clients. Its promise is continuity: from first enquiry to an approved direction, the brief, references, versions and decisions stay in view. Let people and their creative work supply the emotion; the identity supplies recognition and order.
 
 ## Three directions
 
 | Direction | Wordmark | Symbol | Strength | Limitation |
 | --- | --- | --- | --- | --- |
-| Shared Frame | Calenne, title case, no period | Two opposing solid corner forms around an open centre | Shared view; strong silhouette; works beside portraits and within an app | Frame symbols are a familiar category; distinctiveness must come from fixed proportions and consistent use |
-| Studio Ligature | CALENNE, uppercase, restrained tracking, no period | Joined double-L derived from the two l letters | Architectural; appropriate to interiors, sets and physical materials | Can read as LL, with weaker connection to the full name; more formal |
-| Decision Point | calenne., lowercase with period | Three unequal bars ending beside a circular point | Connects conversations with a decision; approachable | Bars resemble a menu; period adds a small element that can disappear at reduced sizes |
+| Shared Frame | Caleane, title case, no period | Two opposing solid corner forms around an open centre | Shared view; strong silhouette; works beside portraits and within an app | Frame symbols are a familiar category; distinctiveness must come from fixed proportions and consistent use |
+| Studio Ligature | CALEANE, uppercase, restrained tracking, no period | Joined double-L derived from the two l letters | Architectural; appropriate to interiors, sets and physical materials | Can read as LL, with weaker connection to the full name; more formal |
+| Decision Point | caleane., lowercase with period | Three unequal bars ending beside a circular point | Connects conversations with a decision; approachable | Bars resemble a menu; period adds a small element that can disappear at reduced sizes |
 
-Each generated board shows positive and reversed marks, illustrative favicon samples, a homepage header with editorial portrait, a compact sidebar, an app icon and a project document or folder. These are conceptual raster images. Font rendering, pixel dimensions and symbol proportions within them are not authoritative production specifications. No local Calenne site was inspected. Papermark's accessible page content was used for navigation/footer context, not copied as a logo or claimed as a visually inspected screenshot.
+Each generated board shows positive and reversed marks, illustrative favicon samples, a homepage header with editorial portrait, a compact sidebar, an app icon and a project document or folder. These are conceptual raster images. Font rendering, pixel dimensions and symbol proportions within them are not authoritative production specifications. No local Caleane site was inspected. Papermark's accessible page content was used for navigation/footer context, not copied as a logo or claimed as a visually inspected screenshot.
 
 ## Recommendation
 
-Choose Shared Frame with the title-case Calenne wordmark. The two corners suggest keeping an entire direction in view without choosing a single profession's tool as the emblem. Its solid silhouette survives software sizes, and its open centre gives it breathing room beside intimate portraits. The softer wordmark balances the angular symbol. Drop the final period: the symbol already provides a recognisable punctuation-like element, and the name needs no further ornament. Use Calenne consistently in interface and prose. Uppercase may be used for small editorial labels, never as a second competing logo.
+Choose Shared Frame with the title-case Caleane wordmark. The two corners suggest keeping an entire direction in view without choosing a single profession's tool as the emblem. Its solid silhouette survives software sizes, and its open centre gives it breathing room beside intimate portraits. The softer wordmark balances the angular symbol. Drop the final period: the symbol already provides a recognisable punctuation-like element, and the name needs no further ornament. Use Caleane consistently in interface and prose. Uppercase may be used for small editorial labels, never as a second competing logo.
 
 ## Palette
 
@@ -49,7 +49,7 @@ The supplied 16px and 32px favicon PNGs use an intentionally pixel-aligned small
 
 ## Wordmark and lockup production
 
-Set exactly Calenne, with no period, in Instrument Sans 600, normal width, upright. Begin with the font's native kerning, then optically review Ca, al, ll, le, en and ne at 24px, 32px and 120px. Fix the chosen positions in a master; do not set a global negative tracking value as a substitute for pair review. Keep default letter shapes and equal l stem heights. Supply both live-type source and an outlined master after review. No wordmark vector is included because the generated lettering is not an accurate font master.
+Set exactly Caleane, with no period, in Instrument Sans 600, normal width, upright. Begin with the font's native kerning, then optically review Ca, al, ll, le, en and ne at 24px, 32px and 120px. Fix the chosen positions in a master; do not set a global negative tracking value as a substitute for pair review. Keep default letter shapes and equal l stem heights. Supply both live-type source and an outlined master after review. No wordmark vector is included because the generated lettering is not an accurate font master.
 
 For a horizontal lockup, let H equal the outlined wordmark's capital-C height. Symbol height: 1.10H. Gap from symbol's rightmost edge to C's leftmost visible edge: 0.45H. Centre the symbol on the wordmark's visible vertical bounds; make only a small optical adjustment after side-by-side testing. Clear space on every side: at least 0.50H. Wordmark-only is allowed where the full identity is already visible elsewhere. Symbol-only is for collapsed navigation, app icons and favicons.
 
@@ -65,7 +65,7 @@ App icon: green-black or sage field, flat single-colour symbol, approximately 58
 
 Document: green-black mark on ivory; one quiet heading such as Direction review; align to the same left margin. Use white on green-black for a dark cover. Photography may sit below the title, but must not fill or texture the symbol.
 
-Footer: carry the small wordmark once, then clearly grouped Product, Studios, Resources, Company and Legal navigation. Only include real destinations. Papermark is structural context for comprehensive SaaS navigation, not a source of Calenne claims or brand assets.
+Footer: carry the small wordmark once, then clearly grouped Product, Studios, Resources, Company and Legal navigation. Only include real destinations. Papermark is structural context for comprehensive SaaS navigation, not a source of Caleane claims or brand assets.
 
 ## Included artwork and release checks
 
@@ -77,4 +77,4 @@ Final production deliverables: editable master with separate symbol and wordmark
 
 ## Concept-generation record
 
-Built-in image generation was used for three independent 1536 × 1024 requested identity boards. Prompt directions were Shared Frame (title-case Calenne, opposing solid L corners, green-black/ivory/sage, Black woman editorial portrait); Studio Ligature (uppercase CALENNE, architectural double-L, ivory/black/stone, East Asian woman portrait); Decision Point (lowercase calenne. with period, unequal bars and dot, green-black/ivory/sage/clay, mixed-race woman portrait). All requested positive/reversed marks, favicon examples, homepage/header, sidebar/app icon and a project document application, using the supplied headline and supporting sentence. No supplied photographic source or local website screenshot was attached. The generated portraits are conceptual imagery.
+Built-in image generation was used for three independent 1536 × 1024 requested identity boards. Prompt directions were Shared Frame (title-case Caleane, opposing solid L corners, green-black/ivory/sage, Black woman editorial portrait); Studio Ligature (uppercase CALEANE, architectural double-L, ivory/black/stone, East Asian woman portrait); Decision Point (lowercase caleane. with period, unequal bars and dot, green-black/ivory/sage/clay, mixed-race woman portrait). All requested positive/reversed marks, favicon examples, homepage/header, sidebar/app icon and a project document application, using the supplied headline and supporting sentence. No supplied photographic source or local website screenshot was attached. The generated portraits are conceptual imagery.

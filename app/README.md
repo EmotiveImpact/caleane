@@ -96,7 +96,7 @@ The public studio slug is an identifier, not a secret. The public API creates en
 
 ## Independence and extraction
 
-This directory is the Calenne app within `/Users/augustusedem/Calenne/`. It has its own package manifest, lockfile, build, server, database schema, assets and tests. Vite builds from this directory alone and uses the bundled `public/assets`; the NAY website and Calenne front page are separate. Keep those assets and the font licence when moving it. The Node server mounts Vite middleware during development and serves `dist/` after a production build.
+This directory is the Caleane app within `/Users/augustusedem/Calenne/`. It has its own package manifest, lockfile, build, server, database schema, assets and tests. Vite builds from this directory alone and uses the bundled `public/assets`; the NAY website and Caleane front page are separate. Keep those assets and the font licence when moving it. The Node server mounts Vite middleware during development and serves `dist/` after a production build.
 
 `packages/guided-form` in `/Users/augustusedem/Downloads/NayDecor` remains the small controller for NAY’s custom planner. This app is the shared project system. `public/embed.js` is its distribution plugin, and the API is the connection for fully custom planners.
 

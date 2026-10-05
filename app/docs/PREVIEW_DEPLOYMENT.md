@@ -1,4 +1,4 @@
-# Calenne preview deployment
+# Caleane preview deployment
 
 The gated fictional-data preview is at <https://calenne-web-production.up.railway.app>. It runs in the `calenne-preview` project under the signed-in Railway `No Spoilers` workspace. Project ID: `e03e3300-0137-40a5-8f88-d819d821cc42`; service ID: `34329b07-b814-41dd-9dd9-b43beee5076a` (`calenne-web`). This deployment is a local-source upload from this directory, not a GitHub-connected deployment. Local changes do not reach the preview until a new upload.
 

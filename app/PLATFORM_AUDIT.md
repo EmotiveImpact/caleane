@@ -1,4 +1,4 @@
-# Calenne platform audit — 29 September 2026
+# Caleane platform audit — 29 September 2026
 
 **Implementation update:** The relationship-foundation slice described in this audit is now built locally. See [SERVICE_JOURNEY.md](SERVICE_JOURNEY.md) for the current service map, graph, permission rules and remaining gaps. The table and build-order observations below record the pre-slice baseline and explain why this work was prioritised. The current local database has a consistent backup; the new schema has been verified against a copy and backfills on the next start.
 

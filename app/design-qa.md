@@ -1,4 +1,4 @@
-# Calenne project journey — design QA
+# Caleane project journey — design QA
 
 final result: passed
 
@@ -6,7 +6,7 @@ final result: passed
 
 No actionable P0, P1 or P2 differences remain. The approved studies established three complementary screens: project overview, shared plan and focused choice. The implemented screens keep the dark project rail, light document canvas, strong next action, two-column context and quiet dividers. The rendered content comes from the selected project and its service area.
 
-**P3 follow-up polish:** The integrated Calenne project header and secondary tabs use about 80 more vertical pixels than the standalone studies. Small rail and supporting text is slightly denser. The key action remains visible in the 1487 × 1058 viewport. A later shell pass could put the project breadcrumb in the top bar and move secondary sections into a compact project menu.
+**P3 follow-up polish:** The integrated Caleane project header and secondary tabs use about 80 more vertical pixels than the standalone studies. Small rail and supporting text is slightly denser. The key action remains visible in the 1487 × 1058 viewport. A later shell pass could put the project breadcrumb in the top bar and move secondary sections into a compact project menu.
 
 ## Comparison target and evidence
 
@@ -22,7 +22,7 @@ All three source images and browser captures are 1487 × 1058 pixels. The browse
 
 ## Fidelity review
 
-- **Typography:** Instrument Sans keeps the modern sans hierarchy of the studies. Journey headings, timeline milestones and choice titles were enlarged after comparison. The existing serif Calenne wordmark remains the product identity.
+- **Typography:** Instrument Sans keeps the modern sans hierarchy of the studies. Journey headings, timeline milestones and choice titles were enlarged after comparison. The existing serif Caleane wordmark remains the product identity.
 - **Spacing and layout:** Main and context columns, dividers and option rows follow the studies. The existing project header adds vertical space as noted above. The mobile choice screen stacks option facts and has no horizontal overflow (`scrollWidth = innerWidth = 390`).
 - **Color:** The journey uses near-black, white and neutral greys. Selected and disabled states remain distinguishable; no profession is assigned an arbitrary color theme.
 - **Imagery:** The overview uses the actual sample project's candlelit table reference. The study's sunlit venue image belongs to a different project; using it here would misrepresent the saved inspiration. Other screens rely on typography and real project data.
