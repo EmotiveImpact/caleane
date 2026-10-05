@@ -13,7 +13,9 @@ const byPractice={
  'balloon-styling':['Shape','Palette','Backdrop','Installation','Venue'],
  'interior-design':['Spaces','Materials','Lighting','Furniture','Palette'],
  'creative-studio':['Brand','Photography','Digital','Typography','Campaign'],
- 'bespoke-making':['Materials','Form','Finish','Scale','Process']
+ 'bespoke-making':['Materials','Form','Finish','Scale','Process'],
+ 'photo-film':['Mood','Light','Locations','People','Styling'],
+ 'general':['Inspiration','Materials','Palette','Form','Details']
 };
 function categoriesFor(studio,p){return ['Uncategorised',...(byPractice[workflowFor(studio,p).id]||byPractice['event-styling'])]}
 function ReferenceDetail({item,p,studio,owner,canEdit,mutate,busy,close,onNavigate,categories}){

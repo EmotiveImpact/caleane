@@ -1,6 +1,6 @@
 # Calenne
 
-A separate local product for creative studios and their clients. NAY DÉCOR is its first connected studio and keeps its own brand and website in `/Users/augustusedem/Downloads/NayDecor`.
+A separate local product for creatives and their clients. NAY DÉCOR is its first connected studio and keeps its own brand and website in `/Users/augustusedem/Downloads/NayDecor`.
 
 ## Project layout
 

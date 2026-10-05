@@ -7,7 +7,7 @@ import {DataGovernanceSettings} from './DataGovernanceSettings';
 import {OperationsReadiness} from './OperationsReadiness';
 import {StripeConnectSettings} from './StripeConnectSettings';
 import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
-import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptions} from '../lib/workflows';
+import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
 const sections=[['studio','Studio'],['appearance','Appearance'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['connections','Connections'],['data','Data'],['status','Status']];
 export function settingsSection(search){
@@ -57,11 +57,11 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
             <WorkspaceField label="Client portal title" name="portalTitle" value={identity.portalTitle} onChange={event=>updateIdentity('portalTitle',event.target.value)} required maxLength={120}/>
             <WorkspaceField className="settings-field-wide" label="Client welcome message" name="welcome" value={identity.welcome} onChange={event=>updateIdentity('welcome',event.target.value)} maxLength={300}/>
             <WorkspaceField className="settings-field-wide" label="Logo URL (optional)" type="url" name="logoUrl" value={identity.logoUrl} onChange={event=>updateIdentity('logoUrl',event.target.value)}/>
-            <WorkspaceField className="settings-field-wide" label="Studio practice"><WorkspaceSelect label="Studio practice" value={identity.profession} onValueChange={value=>updateIdentity('profession',value)} options={workflowOptions.map(option=>({value:option.id,label:option.label}))}/></WorkspaceField>
+            <WorkspaceField className="settings-field-wide" label="Kind of work"><WorkspaceSelect label="Kind of work" value={identity.profession} onValueChange={value=>updateIdentity('profession',value)} options={workflowOptionsFor(savedSettings(studio).profession).map(option=>({value:option.id,label:option.label}))}/></WorkspaceField>
           </div>
           {saveAction('studio','Save studio details')}
         </form>
-        <aside className="settings-support"><h3>Client portal preview</h3><div className="settings-identity-preview">{identity.logoUrl?<img src={identity.logoUrl} alt="Studio logo preview"/>:<strong>Caleane</strong>}<h4>{identity.portalTitle||identity.name}</h4><p>{identity.welcome}</p></div><p>Your studio practice tailors the language and starting points for new projects.</p></aside>
+        <aside className="settings-support"><h3>Client portal preview</h3><div className="settings-identity-preview">{identity.logoUrl?<img src={identity.logoUrl} alt="Studio logo preview"/>:<strong>Caleane</strong>}<h4>{identity.portalTitle||identity.name}</h4><p>{identity.welcome}</p></div><p>Your kind of work tailors the language and starting points for new projects.</p></aside>
       </div>)}
 
       {panel('appearance',<div className="settings-pane-layout">

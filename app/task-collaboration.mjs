@@ -1,4 +1,5 @@
 import {id,now} from './store.mjs';
+import {recordTaskAssignment} from './notification-feed.mjs';
 import {projectAccess} from './relationships.mjs';
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const text=(v,n)=>{if(typeof v!=='string'||v.length>n)fail(400,'Check the task details.');return v.trim();};
@@ -26,7 +27,7 @@ export async function handleTaskCollaboration({db,req,res,url,route,body,user,st
  if(req.method==='POST'){
   if(access==='Viewer')fail(403,'This participant has view-only access.');
   if(body.action==='assign'){
-   if(!owner)fail(403,'Only the studio owner can assign a task.');const selected=text(body.assigneeId||'',100);if(selected&&!people.some(p=>p.id===selected))fail(400,'Choose a team member with access to this project.');if(kind==='project'&&task.assignee==='client'&&selected)fail(400,'Change responsibility to Studio before assigning a team member.');state.assigneeId=selected;
+   if(!owner)fail(403,'Only the studio owner can assign a task.');const selected=text(body.assigneeId||'',100);if(selected&&!people.some(p=>p.id===selected))fail(400,'Choose a team member with access to this project.');if(kind==='project'&&task.assignee==='client'&&selected)fail(400,'Change responsibility to Studio before assigning a team member.');if(selected!==state.assigneeId)recordTaskAssignment(db,{studioId:studio.id,taskKind:kind,taskId,projectId,title:task.title,assigneeId:selected,actor:user});state.assigneeId=selected;
   }else if(body.action==='comment'){
    const content=text(body.text,4000);if(!content)fail(400,'Write a comment first.');state.comments.push({id:id(),text:content,by:user.name,userId:user.id,at:now()});
   }else if(body.action==='file'){

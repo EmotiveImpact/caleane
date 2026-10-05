@@ -186,8 +186,28 @@ This section supersedes earlier Waiting bullets for features listed below. The w
 - Finished the pipeline intake recommendations: original saved form answers, provenance, explicit reviewed state, separate project/decision dates, enquiry project grouping, exact conversation navigation and protected start-planning action. Historic brief-only records are clearly distinguished from original submissions.
 - Calendar day details now open immediately in a Radix side panel instead of falling beneath the month. Project dates, tasks and private follow-ups have exact destinations; mobile uses a full-screen panel.
 - 24 focused checks passed; production build passed. Desktop and mobile browser checks verified layout, exact task navigation and focus return. Mutations were tested with isolated databases. No business records created or modified during browser QA.
-- **Waiting — implementation:** persisted notification events/read state and its new drawer; server-paged enquiry queries. The existing needs-attention bell remains unchanged.
+- **Waiting — implementation:** server-paged enquiry queries. Persisted notifications are done; see 5 October below.
 - **Waiting — validation:** customer usability sessions. Provider setup/live acceptance and deferred live payments retain the statuses above.
+
+
+## 5 October: persisted notifications — Done (local)
+
+- `notification-feed.mjs` stores one `notification_events` row per recipient with its own read state. Sources: public and form enquiries (owners only), project and client-level messages (everyone else in the conversation, including assigned contributors), project activity (owners and invited clients, not contributors) and task assignments (the assignee, only when the assignee changes). The actor is never notified about their own action, and the email outbox is unchanged.
+- Access is checked again whenever the feed is read, so removing a client or contributor from a project hides its notifications without deleting history. Read state cannot be changed for another person.
+- `GET /api/notifications` pages newest first by insertion order (`before` cursor, up to 50 per page) and returns the visible unread count. `POST /api/notifications/read` accepts `ids` or `all`; `POST /api/notifications/unread` reverses individual items.
+- The needs-attention bell and the new history share one bell. It opens the shared Radix drawer with two tabs: **Needs attention** (the same live list the bell always showed, opening first) and **Updates** (saved history with All/Unread, Mark all as read, Mark unread and Show older). Updates open the exact pipeline record, conversation, Activity tab, Messages or task. The badge counts waiting work plus unread project updates and assignments; unread messages and enquiries are already in Needs attention, so they are not counted twice. Contributors, who had no bell, get one with Updates only.
+- Evidence: 116 automated tests pass, including the new API and drawer tests; production build passes. Chromium checks on an isolated demo database at 1280px and 390px showed owner and client feeds, navigation to the project conversation, read count updates, no horizontal overflow and no console errors. Existing records do not create a notification backlog.
+- **Not included:** email or push delivery of these notifications, per-person notification preferences and retention clean-up of old rows.
+
+## 5 October: onboarding — Done
+
+- `onboarding.mjs` adds `GET/POST /api/onboarding`. Owners see a "Get your studio ready" checklist at the top of Overview: brand, enquiry form, first project and client invite, plus optional team and calendar. Each step ticks itself from real records; only "Hide for now" is stored (`restore-setup` exists in the API but has no button yet).
+- Invited clients see a one-time welcome dialog in the studio's own name and welcome text, with a shortcut into their project when they have exactly one.
+
+## 5 October: creatives positioning and kinds of work — Done
+
+- Website copy speaks to creatives: "A considered workspace for creatives and their clients", "For creatives" in the nav and footer, and a wider list of who it is for. The app's account wording still says "studio".
+- Sign-up, Settings and forms offer seven broad groups (Events and experiences, Weddings, Interiors and spaces, Brand and design, Photography and film, Made to order, Other creative work). Older narrow choices (event planning, floral design, balloon styling) remain valid and stay selectable only where already in use. The kind of work changes project wording, types, brief questions, plan stages and delivery milestones, not the dashboard.
 
 ## 5 October: studio commerce batch (local, draft PR)
 
@@ -197,5 +217,5 @@ This section supersedes earlier Waiting bullets for features listed below. The w
 - **Message templates.** Four starter templates with placeholders, insertable from the project conversation and client record. Settings, Templates.
 - **Automatic reminders.** Off by default. When on, an hourly check posts one in-app message per reminder for invoices due or overdue, proposals and contracts about to expire and designs awaiting approval, and creates studio tasks for plan payments due. Clients without portal access are skipped. Email is still not sent. Code: `reminders.mjs`.
 - **Client-booked consultations.** Off by default. A public page at `/book/:slug` shows free times from the studio's weekly hours, buffer, notice and daily limit. A booking creates a lead and a calendar task. Code: `consultations.mjs`, `PublicBooking.jsx`, Settings, Bookings.
-- 115 tests pass, including 5 new ones in `test/studio-commerce.test.mjs`; production build passes. Browser QA at 1280px and 390px with a throwaway database.
+- Tests pass, including 5 new ones in `test/studio-commerce.test.mjs`; production build passes. Browser QA at 1280px and 390px with a throwaway database.
 - **Waiting:** email delivery for reminders and booking confirmations; Stripe refunds through the provider; calendar sync for bookings.

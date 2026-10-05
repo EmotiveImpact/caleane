@@ -1,7 +1,7 @@
 import React,{useEffect,useId,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {Check,FolderPlus,MessageSquareText,Plus,X} from 'lucide-react';
-import {briefFieldsFor,DEFAULT_WORKFLOW,projectTypesFor,workflowFor,workflowOptions} from '../lib/workflows';
+import {briefFieldsFor,DEFAULT_WORKFLOW,projectTypesFor,workflowFor,workflowOptionsFor} from '../lib/workflows';
 
 const previewImages={
  'event-styling':'/assets/candlelit-table.webp',
@@ -11,7 +11,9 @@ const previewImages={
  'balloon-styling':'/assets/blush-celebration.webp',
  'interior-design':'/assets/interiors-studio.webp',
  'creative-studio':'/assets/campaign-set.webp',
- 'bespoke-making':'/assets/silk-detail.webp'
+ 'bespoke-making':'/assets/silk-detail.webp',
+ 'photo-film':'/assets/campaign-set.webp',
+ 'general':'/assets/silk-detail.webp'
 };
 
 function previewDate(value){if(!value)return 'To be decided';const [year,month,day]=value.split('-').map(Number);return new Date(year,month-1,day).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});}
@@ -93,7 +95,7 @@ export function NewProject({studio,request,busy,onCreate,client,onOpenPipeline})
       </div>
       {client&&mode==='blank'&&<p className="studio-setup-help">This project will stay connected to {client.name}'s client record. Change contact details in Clients.</p>}
       <div className="studio-setup-fields two">
-       <label>Service area<select name="workflowType" value={form.workflowType} onChange={event=>setForm(current=>({...current,workflowType:event.target.value,occasion:mode==='enquiry'?current.occasion:'',details:{}}))}>{workflowOptions.map(option=><option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
+       <label>Service area<select name="workflowType" value={form.workflowType} onChange={event=>setForm(current=>({...current,workflowType:event.target.value,occasion:mode==='enquiry'?current.occasion:'',details:{}}))}>{workflowOptionsFor(form.workflowType).map(option=><option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
        <label>Project type<input name="occasion" list={projectTypesId} value={form.occasion} onChange={event=>setField('occasion',event.target.value)} maxLength="120" required placeholder="Name the work"/><datalist id={projectTypesId}>{projectTypesFor(form.workflowType).map(type=><option key={type} value={type}/>)}</datalist></label>
       </div>
       <div className="studio-setup-fields two">
