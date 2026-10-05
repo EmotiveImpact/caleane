@@ -1,0 +1,27 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {createWorkspace} from '../server.mjs';
+import {exportStudio} from '../data-governance.mjs';
+
+test('the studio export streams records and file content that match the in-memory export',async t=>{
+ const origin='http://127.0.0.1:4320',dir=await mkdtemp(path.join(os.tmpdir(),'caleane-export-stream-'));
+ const ws=await createWorkspace({dbFile:path.join(dir,'workspace.sqlite'),origin,demo:true,reminderIntervalMs:0});
+ await new Promise(resolve=>ws.server.listen(0,'127.0.0.1',resolve));
+ t.after(async()=>{await new Promise(resolve=>ws.server.close(resolve));ws.db.close();await rm(dir,{recursive:true,force:true});});
+ const base=`http://127.0.0.1:${ws.server.address().port}`;let cookie='';
+ const call=async(route,method='GET',body)=>{const response=await fetch(base+route,{method,headers:{Origin:origin,...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});const c=response.headers.get('set-cookie');if(c)cookie=c.split(';')[0];return response;};
+ await call('/api/login','POST',{email:'studio@example.test',password:'StudioDemo2026!'});
+ const me=await (await call('/api/me')).json(),studio=me.studios[0],q='?studio='+studio.id,conversation=(await (await call('/api/conversations'+q)).json()).conversations[0];
+ const content=Buffer.from('%PDF-1.7\n'+'x'.repeat(5000)).toString('base64');
+ const uploaded=(await (await call(`/api/conversations/${conversation.id}/files${q}`,'POST',{name:'brief.pdf',content})).json()).file;
+ const response=await call('/api/studio-export'+q+'&files=1');
+ assert.equal(response.status,200);assert.match(response.headers.get('content-disposition'),/caleane-studio-export\.json/);assert.equal(response.headers.get('cache-control'),'no-store');
+ const streamed=await response.json(),direct=exportStudio(ws.db,{studioId:studio.id,userId:me.user.id},{includeFiles:true});
+ assert.equal(streamed.includesFileContent,true);assert.equal(streamed.files.find(f=>f.id===uploaded.fileId).contentBase64,content);
+ assert.deepEqual({...streamed,exportedAt:null},JSON.parse(JSON.stringify({...direct,exportedAt:null})));
+ const metadata=await (await call('/api/studio-export'+q)).json();
+ assert.equal(metadata.includesFileContent,false);assert.ok(metadata.files.length);assert.ok(metadata.files.every(f=>!('contentBase64' in f)));
+});

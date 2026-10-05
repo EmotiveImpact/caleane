@@ -9,6 +9,8 @@
 .folio-workspace.has-client-record:has(.is-inbox-workspace)>.topbar{margin-left:0;width:100%}.relationship-status{margin-top:9px;border:0!important;background:var(--studio-surface)!important;color:var(--studio-muted);font-size:11px!important;padding:4px 7px;border-radius:4px;box-shadow:none!important}.relationship-inbox :is(button,input,textarea,select):focus-visible{outline:2px solid var(--studio-stone);outline-offset:3px}
 
 .relationship-thread>.studio-image-placeholder{overflow:hidden;flex:0 0 42px!important;padding:0!important}.relationship-thread strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+.studio-client-tools{display:flex;align-items:center;gap:10px;flex:none;min-width:0}.studio-client-sort{min-width:150px}.studio-client-row{cursor:pointer}.studio-client-more{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 0;color:var(--studio-muted);font-size:12px}@media(max-width:700px){.studio-client-tools{flex-wrap:wrap}.studio-client-sort{min-width:0}}
 /* Messages triage: filters, status labels, status switch and the details panel. */
 .folio-workspace .ws-inbox.has-panel .relationship-inbox-grid{grid-template-columns:270px minmax(0,1fr) 270px;gap:24px}
 .folio-workspace .ws-inbox .ws-inbox-filters{display:flex;flex-wrap:wrap;gap:6px;border:0;margin:4px 0 12px}

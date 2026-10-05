@@ -1,6 +1,6 @@
 /* Calenne workspace: one content grid, one page hierarchy, room for dense work. */
 :root {
-  --folio-content-font: 'Inter Variable', Inter, system-ui, sans-serif;
+  --folio-content-font: 'Instrument Sans', system-ui, sans-serif;
   --folio-content-ink: #1b1d22;
   --folio-content-muted: #6e737b;
   --folio-content-rule: #e2e4e7;

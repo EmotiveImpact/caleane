@@ -75,7 +75,7 @@ The project setup preview image is explicitly labelled illustrative. New real pr
 - The general client project DTO no longer includes raw operations data; delivery information comes from its role-filtered endpoint.
 - All 34 tests and the production build passed. Disposable browser checks covered keyboard and pointer arrangement, save/reload persistence, reference discussion, milestone counts and narrow-screen grid fallback without page overflow. Final Shared Frame identity and the existing local project data are retained.
 
-See `/Users/augustusedem/Documents/Codex/Calenne-shared-concepts/REVIEW.md` for the original image critique.
+The original image critique is in `Calenne-shared-concepts/REVIEW.md`, kept outside this repository.
 
 Live payment collection, email delivery and public workspace operations have separate gates in `docs/READINESS.md`; local browser verification here does not close those gates.
 
@@ -133,7 +133,7 @@ Live payment collection, email delivery and public workspace operations have sep
 
 **Waiting — implementation:** individual staff task assignment, task-specific comment threads and attachments. The UI currently assigns studio/client responsibility and links to the actual project conversation.
 
-**Next design upgrades (reviewed against original handoff):** Versions/Review first (selectable assets, asset-specific pinned feedback and reply threads); Contracts/Proposals; Messages; Clients; Overview. These are recommendations, not completed upgrades. Detailed review: /Users/augustusedem/Documents/Codex/caleane-page-upgrade-review.md.
+**Next design upgrades (reviewed against original handoff):** Versions/Review first (selectable assets, asset-specific pinned feedback and reply threads); Contracts/Proposals; Messages; Clients; Overview. These are recommendations, not completed upgrades. Detailed review: `caleane-page-upgrade-review.md`, kept outside this repository.
 
 ## Five-page dark workspace upgrade — 1 October 2026
 

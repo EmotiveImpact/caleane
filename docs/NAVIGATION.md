@@ -1,4 +1,4 @@
-# Calenne navigation proposal
+# Caleane navigation proposal
 
 **29 September 2026 · Design proposal, not implemented**
 
@@ -34,7 +34,7 @@ When a first-class lead object exists, add **Enquiries** before Pipeline or prov
 ### Hierarchy sketch
 
 ```text
-Calenne / [studio name]
+Caleane / [studio name]
   Today
   Inbox
   Clients

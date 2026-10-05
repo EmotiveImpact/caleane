@@ -4,6 +4,9 @@ data
 docs
 test
 *.md
+*.sqlite*
 .env*
 .git
 .railway
+.vercel
+hosted-demo-runtime.mjs
