@@ -86,10 +86,6 @@
       [
         "Try a sample project",
         "get-started.html"
-      ],
-      [
-        "Pricing rationale",
-        "pricing-research.html"
       ]
     ],
     "Caleane": [
@@ -104,10 +100,6 @@
       [
         "Contact",
         "contact.html"
-      ],
-      [
-        "Design reference",
-        "design-reference.html"
       ]
     ]
   }

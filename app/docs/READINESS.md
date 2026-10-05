@@ -50,7 +50,7 @@ Latest implementation: named project-task assignment/discussions/files; real mes
 
 53 tests and build passed. Owner/client/contributor browser paths checked in isolated data. Real email and calendar providers are not connected. Public-workspace infrastructure still needs durable shared DB/files and server-lifecycle adaptation. Backups are not scheduled/offsite. Permanent purge is not implemented. Payments stay disabled.
 
-Email worker: `scripts/mail-worker.mjs` requires explicit CALEANE_EMAIL_ENABLED=1 plus DATABASE_PATH, APP_ORIGIN, CALENNE_NOTIFICATION_KEY, RESEND_API_KEY, RESEND_FROM. Do not activate until sender and recipient delivery has been reviewed. Calendar setup: docs/CALENDAR-SYNC.md. Backup/export limits: docs/operations/.
+Email worker: `scripts/mail-worker.mjs` requires explicit CALEANE_EMAIL_ENABLED=1 plus DATABASE_PATH, APP_ORIGIN, CALENNE_NOTIFICATION_KEY, RESEND_API_KEY, RESEND_FROM. Set CALEANE_ACCOUNT_MAIL_KEY (32 bytes, base64) on both the server and the worker to seal account recovery and verification mail with its own key; without it the notification key is used, and it continues to open mail queued before the change. Do not activate until sender and recipient delivery has been reviewed. Calendar setup: docs/CALENDAR-SYNC.md. Backup/export limits: docs/operations/.
 
 ## 1 October: connected Forms module
 

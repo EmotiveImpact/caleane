@@ -133,6 +133,11 @@ export function createTask(db,studioId,user,input){
   insertActivity(db,{studioId,clientId,opportunityId,kind:'System',title:`Task created: ${title}`,detail:'',user,at});
  });return listTasks(db,studioId).find(t=>t.id===taskId);
 }
+export function deleteTask(db,studioId,user,taskId){
+ const current=db.prepare('SELECT * FROM crm_tasks WHERE id=? AND studio_id=?').get(taskId,studioId);if(!current)error(404,'Task not found.');
+ transaction(db,()=>{db.prepare('DELETE FROM crm_tasks WHERE id=? AND studio_id=?').run(taskId,studioId);insertActivity(db,{studioId,clientId:current.client_id,opportunityId:current.opportunity_id,kind:'System',title:`Task deleted: ${current.title}`,detail:'',user,at:now()});});
+ return {id:taskId};
+}
 export function updateTask(db,studioId,user,taskId,input){
  const current=db.prepare('SELECT * FROM crm_tasks WHERE id=? AND studio_id=?').get(taskId,studioId);if(!current)error(404,'Task not found.');
  const title=string(input.title??current.title,200,'the task title'),detail=string(input.detail??current.detail,2000,'the task detail'),dueDate=date(input.dueDate??current.due_date,'task due date'),priority=input.priority??current.priority,completed=input.completed??!!current.completed;

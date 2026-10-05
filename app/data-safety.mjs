@@ -9,7 +9,7 @@ function checkDatabase(file){
   const result=db.prepare('PRAGMA integrity_check').get();
   if(Object.values(result)[0]!=='ok')throw new Error('Database integrity check failed.');
   const rows=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").all();
-  if(!rows.length)throw new Error('This is not a Calenne database.');
+  if(!rows.length)throw new Error('This is not a Caleane database.');
   return {projects:db.prepare('SELECT COUNT(*) AS count FROM projects').get().count};
  }finally{db.close();}
 }

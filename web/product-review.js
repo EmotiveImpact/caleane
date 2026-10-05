@@ -11,7 +11,7 @@
   let outcome = 'pending';
   let selectedReference = 'reception';
   const references = {
-    reception: ['assets/review-reception.png', 'Candlelit reception with low ivory floral centrepieces'],
+    reception: ['assets/review-reception.webp', 'Candlelit reception with low ivory floral centrepieces'],
     florals: ['assets/candlelit-table.webp', 'Ivory flowers and candlelight: the original floral reference'],
     materials: ['assets/studio-worktable.webp', 'Natural linen, stone and warm wood material references'],
     palette: ['assets/interior-outcome.webp', 'A warm neutral interior palette reference'],

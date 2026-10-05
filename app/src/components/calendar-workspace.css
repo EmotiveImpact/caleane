@@ -56,3 +56,5 @@
  .calendar-workspace .workspace-page-heading>.button{grid-column:2;grid-row:1}
  .calendar-workspace .workspace-page-heading>.button{margin-top:0}
 }
+
+.calendar-scheduled-item.is-static{cursor:default}.folio-calendar-days small.is-booking{background:#e6ece8;color:#2f4a3c}
