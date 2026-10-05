@@ -11,3 +11,34 @@
 .relationship-thread>.studio-image-placeholder{overflow:hidden;flex:0 0 42px!important;padding:0!important}.relationship-thread strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
 .studio-client-tools{display:flex;align-items:center;gap:10px;flex:none;min-width:0}.studio-client-sort{min-width:150px}.studio-client-row{cursor:pointer}.studio-client-more{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 0;color:var(--studio-muted);font-size:12px}@media(max-width:700px){.studio-client-tools{flex-wrap:wrap}.studio-client-sort{min-width:0}}
+/* Messages triage: filters, status labels, status switch and the details panel. */
+.folio-workspace .ws-inbox.has-panel .relationship-inbox-grid{grid-template-columns:270px minmax(0,1fr) 270px;gap:24px}
+.folio-workspace .ws-inbox .ws-inbox-filters{display:flex;flex-wrap:wrap;gap:6px;border:0;margin:4px 0 12px}
+/* Five filters do not fit as underlined tabs in the list column, so they use chips here. */
+.folio-workspace .ws-inbox .ws-inbox-filters>button{border:1px solid var(--studio-rule);border-radius:20px;padding:5px 10px!important;font-size:12px!important;min-height:0;margin:0;color:var(--studio-muted)!important;background:none;display:flex;align-items:center;gap:6px}
+.folio-workspace .ws-inbox .ws-inbox-filters>button:after{display:none}
+.folio-workspace .ws-inbox .ws-inbox-filters>button[data-state=on]{background:var(--studio-ink)!important;border-color:var(--studio-ink);color:var(--studio-paper)!important}
+.folio-workspace .ws-inbox .ws-inbox-filters>button>span{font-size:10.5px;background:none;padding:0;min-width:0;color:inherit;opacity:.75}
+.ws-inbox .relationship-thread.is-unread strong{font-weight:650}
+.ws-triage{display:inline-block;margin-top:6px;padding:2px 6px;border-radius:4px;font-style:normal;font-size:10.5px;font-weight:550;line-height:1.5;white-space:nowrap}
+.relationship-conversation-head h2 .ws-triage{margin:0 0 0 10px;vertical-align:middle;letter-spacing:0}
+.ws-triage--reply{background:#f6ecd9;color:#7a4f0e}.ws-triage--wait{background:#e5ecf6;color:#2c4f7c}.ws-triage--mention{background:#efe7f6;color:#5d3c7c}.ws-triage--done{background:#e6eadd;color:#3f5a3a}
+.ws-inbox-resolved{font-size:11.5px;color:var(--studio-muted);padding:14px 9px}.relationship-inbox .ws-inbox-resolved button{border:0;background:none;padding:0;font:inherit;color:var(--studio-ink);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.ws-status-switch{display:flex;border:1px solid var(--studio-rule);border-radius:6px;overflow:hidden}
+.relationship-inbox .ws-status-switch button{border:0;background:none;padding:7px 11px;font:inherit;font-size:12px;color:var(--studio-muted);cursor:pointer;white-space:nowrap}.relationship-inbox .ws-status-switch button+button{border-left:1px solid var(--studio-rule)}
+.relationship-inbox .ws-status-switch button[aria-checked=true]{background:var(--studio-ink);color:var(--studio-paper)}.relationship-inbox .ws-status-switch button:disabled{cursor:default}
+.ws-inbox .ws-conversation-actions{display:flex;align-items:center;gap:8px}
+.ws-inbox .project-talk-timeline{height:clamp(300px,calc(100vh - 560px),900px)}
+.ws-inbox .project-talk-pins{margin:0 0 10px}
+.ws-inbox-panel{padding-left:22px;max-height:calc(100vh - 230px);overflow:auto;scrollbar-width:thin}
+.ws-conversation-panel section{border-top:1px solid var(--studio-rule);padding:16px 0}.ws-conversation-panel section:first-child{border-top:0;padding-top:0}
+.ws-conversation-panel h4{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--studio-muted)}.ws-conversation-panel h4 span{letter-spacing:0;text-transform:none;font-weight:500}
+.ws-asks{list-style:none;margin:0;padding:0}.ws-asks li{border-bottom:1px solid var(--studio-rule)}.ws-asks label{display:flex;gap:9px;padding:9px 0;font-size:12.5px;line-height:1.45;cursor:pointer}.ws-asks input{margin:2px 0 0;accent-color:var(--studio-ink)}
+.ws-asks small{display:block;font-size:11px;color:var(--studio-muted);margin-top:2px}.ws-asks li.is-done label>span{color:var(--studio-muted);text-decoration:line-through}
+.ws-panel-empty{font-size:12px;line-height:1.6;color:var(--studio-muted);margin:0}
+.ws-panel-pins{list-style:none;margin:0;padding:0}.ws-panel-pins li{font-size:12px;line-height:1.5;padding:6px 0}.ws-panel-pins strong{display:block;font-size:11px;font-weight:550}.ws-panel-pins span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--studio-muted)}
+.ws-panel-files{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.ws-panel-files a{display:block;aspect-ratio:1;border-radius:4px;overflow:hidden;background:var(--studio-surface);color:var(--studio-muted);text-decoration:none}
+.ws-panel-files img{width:100%;height:100%;object-fit:cover;display:block}.ws-panel-files span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:100%;padding:6px;text-align:center}.ws-panel-files small{font-size:9.5px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.ws-panel-project{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}.ws-panel-links{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.ws-dialog .ws-conversation-panel{padding:4px 0}
+@media(max-width:760px){.ws-inbox .relationship-conversation-head h2 .ws-triage{display:table;margin:6px 0 0}.ws-inbox .project-talk-timeline{height:calc(100vh - 380px);min-height:300px}}

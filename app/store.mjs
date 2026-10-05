@@ -1,4 +1,4 @@
-import {installConversationFeatures,messageDetails,messageDetailsDTO,validateMessageDetails,saveMessageDetails} from './conversation-features.mjs';
+import {installConversationFeatures,messageDetails,messageDetailsDTO,validateMessageDetails,saveMessageDetails,conversationExtras} from './conversation-features.mjs';
 import {DatabaseSync} from 'node:sqlite';
 import {randomBytes,scryptSync,timingSafeEqual,createHash,randomUUID} from 'node:crypto';
 import {runMigrations} from './migrations.mjs';
@@ -194,9 +194,9 @@ export function conversationDTO(db,c,user){
  const seen=db.prepare('SELECT message_seq FROM conversation_reads WHERE user_id=? AND conversation_id=?').get(user.id,c.id)?.message_seq||0;
  const project=c.project_id?db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(c.project_id,c.studio_id):null;
  const participants=c.project_id?[...db.prepare("SELECT u.id,u.name,'Studio owner' AS role FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.studio_id=? AND m.role='owner'").all(c.studio_id),...db.prepare("SELECT u.id,u.name,ps.role FROM crm_project_stakeholders ps JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id JOIN users u ON u.id=ct.user_id WHERE ps.studio_id=? AND ps.project_id=? AND ps.portal_access=1").all(c.studio_id,c.project_id),...db.prepare("SELECT u.id,u.name,'Studio contributor' AS role FROM studio_project_collaborators pc JOIN studio_staff ss ON ss.user_id=pc.user_id AND ss.studio_id=pc.studio_id JOIN users u ON u.id=pc.user_id WHERE pc.studio_id=? AND pc.project_id=?").all(c.studio_id,c.project_id)]:[...db.prepare("SELECT u.id,u.name,'Studio owner' AS role FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.studio_id=? AND m.role='owner'").all(c.studio_id),...db.prepare("SELECT u.id,u.name,'Client' AS role FROM crm_client_contacts cc JOIN crm_contacts ct ON ct.id=cc.contact_id AND ct.studio_id=cc.studio_id JOIN users u ON u.id=ct.user_id WHERE cc.studio_id=? AND cc.client_id=? AND cc.account_access=1").all(c.studio_id,c.client_id)];
- return {participants:[...new Map(participants.map(person=>[person.id,person])).values()],id:c.id,subject:c.subject,clientId:c.client_id,clientName:client.name,clientEmail:client.email,projectId:c.project_id,projectTitle:project?JSON.parse(project.data).title:null,status:c.status,createdAt:c.created_at,updatedAt:c.updated_at,
-  messages:rows.map(m=>({id:m.id,userId:m.user_id,by:m.author_name,role:m.role,text:m.text,at:m.created_at,...messageDetailsDTO(db,c,m.id)})),
-  unreadMessages:rows.filter(m=>m.seq>seen&&(m.user_id?m.user_id!==user.id:m.author_name!==user.name)).length};
+ const people=[...new Map(participants.map(person=>[person.id,person])).values()],messages=rows.map(m=>({id:m.id,userId:m.user_id,by:m.author_name,role:m.role,text:m.text,at:m.created_at,...messageDetailsDTO(db,c,m.id)}));
+ return {participants:people,id:c.id,subject:c.subject,clientId:c.client_id,clientName:client.name,clientEmail:client.email,projectId:c.project_id,projectTitle:project?JSON.parse(project.data).title:null,status:c.status,createdAt:c.created_at,updatedAt:c.updated_at,
+  messages,unreadMessages:rows.filter(m=>m.seq>seen&&(m.user_id?m.user_id!==user.id:m.author_name!==user.name)).length,...conversationExtras(db,c,user,rows,messages,seen,people)};
 }
 
 // Project list badges should not load full conversation histories into memory.
