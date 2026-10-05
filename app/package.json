@@ -7,6 +7,7 @@
     "build": "vite build",
     "start": "node --experimental-sqlite server.mjs",
     "demo": "WORKSPACE_DEMO=1 node --experimental-sqlite server.mjs",
+    "pretest": "node scripts/ensure-build.mjs",
     "test": "node --experimental-sqlite --test test/*.test.mjs",
     "dev": "WORKSPACE_DEMO=1 node --experimental-sqlite server.mjs --dev"
   },
