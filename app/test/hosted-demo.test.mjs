@@ -61,3 +61,11 @@ test('demo handler refuses cross-origin calls before processing data', async () 
   assert.equal(response.statusCode, 403);
   assert.match(response.body.error, /Caleane demo/);
 });
+
+test('notification read history survives browser-owned demo snapshots and stays personal to each view',async()=>{
+ const visitor=browser();await visitor('/api/login','POST',{email:'amelia@example.test',password:'StudioDemo2026!'});const studio=(await visitor('/api/me')).data.studios[0].id;
+ const path='/api/notification-centre?studio='+studio;const first=await visitor(path);assert.equal(first.status,200);assert.ok(first.data.updates.length);
+ const entry=first.data.updates[0];assert.equal((await visitor(path,'POST',{action:'read',id:entry.id,read:true})).status,200);
+ const history=await visitor(path+'&filter=all');assert.ok(history.data.updates.find(x=>x.id===entry.id).readAt);
+ await visitor('/api/login','POST',{email:'studio@example.test',password:'StudioDemo2026!'});assert.equal((await visitor(path,'POST',{action:'read',id:entry.id,read:true})).status,404);
+});

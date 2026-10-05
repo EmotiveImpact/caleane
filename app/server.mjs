@@ -1,3 +1,4 @@
+import {installNotificationCentre,notificationCentre,readNotifications} from './notification-centre.mjs';
 import {installForms,listForms,changeForm,publicForm,submitForm,listFormResponses,formResponseCSV} from './forms.mjs';
 import {installDataGovernance,dataGovernance,changeGovernance,exportStudio} from './data-governance.mjs';
 import {handleCalendarSync} from './calendar-sync.mjs';
@@ -55,7 +56,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);const limits=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationCentre(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);const limits=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
@@ -183,6 +184,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(req.method==='POST'&&!action)return reply(formId?200:201,{form:changeForm(db,studio,body,formId)});
      fail(405,'Method not allowed.');
     }
+    if(route==='/api/notification-centre'){const args={studioId:studio.id,userId:user.id};if(req.method==='GET')return reply(200,notificationCentre(db,args,{filter:url.searchParams.get('filter')||'unread',offset:Number(url.searchParams.get('offset')||0)}));if(req.method==='POST')return reply(200,readNotifications(db,args,body));fail(405,'Method not allowed.');}
     if(route==='/api/data-governance'){const args={studioId:studio.id,userId:user.id};if(req.method==='GET')return reply(200,dataGovernance(db,args));if(req.method==='POST')return reply(200,changeGovernance(db,args,body));fail(405,'Method not allowed.');}
     if(route==='/api/studio-export'&&req.method==='GET'){const data=exportStudio(db,{studioId:studio.id,userId:user.id},{includeFiles:url.searchParams.get('files')==='1'});res.setHeader('Content-Disposition','attachment; filename=caleane-studio-export.json');return reply(200,data);}
     if(route==='/api/operations'&&req.method==='GET')return reply(200,await operationalReadiness(db,{studioId:studio.id,userId:user.id,backupReceiptPath:process.env.CALEANE_BACKUP_RECEIPT||'',emailConfigured:!!(process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1'),offsiteBackupsConfigured:false}));

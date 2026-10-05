@@ -136,7 +136,7 @@ export function openStore(file){
  });
  return db;
 }
-export function event(project,actor,text){project.activity.unshift({id:id(),actor:actor.name,text,at:now()});project.updatedAt=now();}
+export function event(project,actor,text){project.activity.unshift({id:id(),actor:actor.name,...(actor.id?{actorId:actor.id}:{}),text,at:now()});project.updatedAt=now();}
 export function makeProject(studioId,brief,actor,clientId=null){const p={id:id(),studioId,title:brief.occasion==='Wedding'?`${brief.name.split(' ')[0]}’s wedding`:brief.occasion+' · '+brief.name,clientEmail:brief.email,...(clientId?{clientId}:{}),status:'Enquiry',brief,briefRevision:1,briefLocked:false,briefHistory:[],changeRequests:[],messages:[],inspiration:[],designs:[],estimates:[],tasks:[],decisions:[],activity:[],createdAt:now(),updatedAt:now()};event(p,actor,'Submitted the first brief');return p;}
 export function saveProject(db,p){transaction(db,()=>{db.prepare('UPDATE projects SET data=? WHERE id=? AND studio_id=?').run(JSON.stringify(p),p.id,p.studioId);materializeProjectConversation(db,p);});}
 export function insertProject(db,p){transaction(db,()=>{db.prepare('INSERT INTO projects VALUES(?,?,?,?)').run(p.id,p.studioId,p.clientEmail,JSON.stringify(p));materializeProjectConversation(db,p);ensureProjectOpportunity(db,p);});}

@@ -2,9 +2,10 @@ import {messagePreview} from '../lib/message-preview';
 import {ProjectChat} from './ProjectChat';
 import React,{useEffect,useState,useRef} from 'react';
 import {Mail,Plus,Send} from 'lucide-react';
-export function PortalCorrespondence({studio,request,run,busy,projects,projectId,openProject,user,onThreadSelect,projectOnly=false,owner=false}){
- const [threads,setThreads]=useState([]),[selected,setSelected]=useState(null),[drafts,setDrafts]=useState({}),[error,setError]=useState('');const revision=useRef(0);
+export function PortalCorrespondence({studio,request,run,busy,projects,projectId,initialConversationId,conversationNavigationKey,openProject,user,onThreadSelect,projectOnly=false,owner=false}){
+ const [threads,setThreads]=useState([]),[selected,setSelected]=useState(initialConversationId||null),[drafts,setDrafts]=useState({}),[error,setError]=useState('');const revision=useRef(0);
  useEffect(()=>{let active=true;async function load(){const version=revision.current;try{const d=await request('/api/conversations?studio='+studio.id);if(active&&version===revision.current)setThreads(d.conversations);}catch(e){if(active)setError(e.message);}}load();const timer=setInterval(()=>{if(document.visibilityState==='visible')load();},6000);return()=>{active=false;clearInterval(timer);};},[studio.id]);
+ useEffect(()=>{setSelected(initialConversationId||null);},[initialConversationId,conversationNavigationKey,studio.id]);
  const visibleThreads=projectOnly?threads.filter(t=>t.projectId===projectId):threads;
  const thread=visibleThreads.find(t=>t.id===selected)||visibleThreads.find(t=>t.projectId===projectId)||visibleThreads[0],project=projects.find(p=>p.id===thread?.projectId);
  useEffect(()=>{if(!thread?.unreadMessages||!thread.messages.length)return;const last=thread.messages.at(-1).id;request(`/api/conversations/${thread.id}/seen?studio=${studio.id}`,'POST',{lastMessageId:last}).then(d=>setThreads(prev=>prev.map(t=>t.id===d.conversation.id&&t.messages.at(-1)?.id===last?{...t,unreadMessages:0}:t))).catch(e=>setError(e.message));},[thread?.id,thread?.unreadMessages,studio.id]);

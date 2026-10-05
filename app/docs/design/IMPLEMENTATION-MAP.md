@@ -16,7 +16,7 @@
 | Pipeline opportunity inspector | **Done (local)** | Contextual drawer: preserved form request, explicit review, dated next steps, project conversation and revision-protected start planning |
 | Enquiry review and active-project separation | **Done (local)** | Unaccepted projects remain in Enquiries; Active and Overview work exclude them. Project date and expected decision date are separate |
 | Calendar day-details drawer | **Done (local)** | Click a day → desktop drawer/mobile sheet; exact project and task navigation, filters, day browsing and retryable follow-up errors |
-| Notification history and read state | **Waiting — implementation** | Current bell is a needs-attention popover, not a persisted event inbox; full drawer, read history and exact-item navigation remain |
+| Notification history and read state | **Built; automated verification passed; browser review waiting** | Radix drawer, live actions, personal persisted read history, unread/all filters, pagination and exact routes; owners, clients and assigned team messaging |
 | Server-paged pipeline retrieval | **Waiting — implementation** | Visible lists paginate locally; the API still returns the dataset used by board, summaries and attention |
 | Estimates, proposals, invoices and external payment records | **Done (local)** | Project commercial tabs and Finances; owner-recorded payments are not live collection |
 | Versioned contracts and portal acceptance | **Done (local)** | Project → Contract: owner-authored terms, issue/withdraw, approver accept/decline, immutable receipt; no certified signing provider |
@@ -186,5 +186,18 @@ This section supersedes earlier Waiting bullets for features listed below. The w
 - Finished the pipeline intake recommendations: original saved form answers, provenance, explicit reviewed state, separate project/decision dates, enquiry project grouping, exact conversation navigation and protected start-planning action. Historic brief-only records are clearly distinguished from original submissions.
 - Calendar day details now open immediately in a Radix side panel instead of falling beneath the month. Project dates, tasks and private follow-ups have exact destinations; mobile uses a full-screen panel.
 - 24 focused checks passed; production build passed. Desktop and mobile browser checks verified layout, exact task navigation and focus return. Mutations were tested with isolated databases. No business records created or modified during browser QA.
-- **Waiting — implementation:** persisted notification events/read state and its new drawer; server-paged enquiry queries. The existing needs-attention bell remains unchanged.
+- Notification drawer/history continued in the batch below. **Waiting — implementation:** server-paged enquiry queries.
 - **Waiting — validation:** customer usability sessions. Provider setup/live acceptance and deferred live payments retain the statuses above.
+
+
+## 3 October: notification centre — built, browser review waiting
+
+- The topbar bell opens a full-height Radix drawer. **Action required** is derived from live work; **Updates** is personal saved history. Reading an update never completes a task, reviews an enquiry or marks a conversation seen. Opening the conversation uses its existing seen flow.
+- Incoming messages, client activity for owners, and issued/shared designs and financial documents for permitted client approvers are discovered from canonical saved records. Own actions are excluded; private draft work is excluded. Assigned team contributors receive project-message notifications only.
+- Read/unread and mark-all-read persist per person and studio, including encrypted browser demo snapshots. Mark-all uses the viewed watermark so newly discovered updates remain unread. Updates paginate at 25 items; action items use Show more.
+- Access is rechecked on every history read and read-state write. A removed participant cannot access saved entries. Exact destinations include pipeline enquiries, project versions, invoices, project/CRM tasks and individual general conversations; repeated conversation links still work after manual thread selection.
+- 34 focused automated checks passed: notification access/history, API, drawer interactions, conversation navigation, shared controls and hosted demo state. Frontend and hosted-demo builds passed. Existing large-bundle warning remains.
+- **Waiting — browser validation:** desktop and mobile appearance, real rendered navigation and panel scroll. Browser automation is blocked on a connection-error page even though the local server responds; user was asked to reopen the local app. Do not treat DOM/unit verification as visual acceptance.
+- Source discovery occurs on request and while the visible app polls every 20 seconds, rather than a background push stream. First discovery backfills the last 90 days (up to 200 project activity entries); entries already persisted retain history. Personal read history is excluded from studio record exports, matching other personal read positions; full database backups include it. No email delivery was enabled.
+- The prior enquiry/calendar batch is committed and pushed on main as **bb343e6**. This notification batch remains local and uncommitted.
+- Next UX work: forms responses and approvals. Provider setup/live acceptance, server-paged pipeline queries and customer usability sessions remain waiting; live payments remain deferred.
