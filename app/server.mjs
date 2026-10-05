@@ -59,7 +59,7 @@ function previewAuthorized(header,userDigest,passDigest){
  const userMatches=timingSafeEqual(suppliedUser,userDigest),passMatches=timingSafeEqual(suppliedPass,passDigest);
  return userMatches&&passMatches;
 }
-export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,trustProxy=process.env.TRUST_PROXY||0}={}){
+export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,trustProxy=process.env.TRUST_PROXY||0}={}){
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
@@ -67,7 +67,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
- const accountSecurity=createAccountSecurity(db,{origin,encryptionKey:notificationKey});
+ // Account mail has its own key when CALEANE_ACCOUNT_MAIL_KEY is set; the shared notification key still opens older queued mail.
+ const accountSecurity=createAccountSecurity(db,{origin,encryptionKey:accountMailKey||notificationKey,previousKeys:[notificationKey]});
  const queueProjectEvent=(studioId,projectId,actorUserId,eventId)=>{if(!eventId)return;recordProjectEvent(db,{studioId,projectId,actorUserId,eventId});if(outbox)outbox.enqueueProjectActivity({studioId,projectId,actorUserId,eventId});};
  // With TRUST_PROXY=N, N reverse proxies each append the peer they saw to X-Forwarded-For; the client is the right-most entry they did not add.
  const secureOrigin=origin.startsWith('https://');
@@ -762,4 +763,6 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);});
  return {server,db};
 }
-if(process.argv[1]===fileURLToPath(import.meta.url)){const port=Number(process.env.PORT||4320),host=process.env.HOST||'127.0.0.1';if(host==='0.0.0.0'&&!process.env.APP_ORIGIN)throw new Error('APP_ORIGIN is required when binding publicly.');const {server}=await createWorkspace({origin:process.env.APP_ORIGIN||`http://127.0.0.1:${port}`,demo:process.env.WORKSPACE_DEMO==='1',dev:process.argv.includes('--dev'),dbFile:process.env.DATABASE_PATH||undefined});server.listen(port,host,()=>console.log(`Caleane listening on ${host}:${port}`));}
+// The demo seeds accounts with a published password, so a production process needs an explicit opt-in to run it.
+export function assertSafeStartup(env=process.env){if(env.WORKSPACE_DEMO==='1'&&env.NODE_ENV==='production'&&env.ALLOW_PUBLIC_DEMO!=='1')throw new Error('WORKSPACE_DEMO=1 seeds accounts with a known password. Set ALLOW_PUBLIC_DEMO=1 to run the demo with NODE_ENV=production.');}
+if(process.argv[1]===fileURLToPath(import.meta.url)){assertSafeStartup();const port=Number(process.env.PORT||4320),host=process.env.HOST||'127.0.0.1';if(host==='0.0.0.0'&&!process.env.APP_ORIGIN)throw new Error('APP_ORIGIN is required when binding publicly.');const {server}=await createWorkspace({origin:process.env.APP_ORIGIN||`http://127.0.0.1:${port}`,demo:process.env.WORKSPACE_DEMO==='1',dev:process.argv.includes('--dev'),dbFile:process.env.DATABASE_PATH||undefined});server.listen(port,host,()=>console.log(`Caleane listening on ${host}:${port}`));}
