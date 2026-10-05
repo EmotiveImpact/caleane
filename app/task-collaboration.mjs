@@ -1,4 +1,5 @@
-import {id,now} from './store.mjs';
+import {id,now,transaction} from './store.mjs';
+import {assertQuota} from './uploads.mjs';
 import {recordTaskAssignment} from './notification-feed.mjs';
 import {projectAccess} from './relationships.mjs';
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
@@ -25,14 +26,17 @@ export async function handleTaskCollaboration({db,req,res,url,route,body,user,st
  const people=assignees(db,studio.id,projectId);
  if(req.method==='POST'){
   if(access==='Viewer')fail(403,'This participant has view-only access.');
+  // An attachment and the task state that lists it are written together.
+  transaction(db,()=>{
   if(body.action==='assign'){
    if(!owner)fail(403,'Only the studio owner can assign a task.');const selected=text(body.assigneeId||'',100);if(selected&&!people.some(p=>p.id===selected))fail(400,'Choose a team member with access to this project.');if(kind==='project'&&task.assignee==='client'&&selected)fail(400,'Change responsibility to Studio before assigning a team member.');if(selected!==state.assigneeId)recordTaskAssignment(db,{studioId:studio.id,taskKind:kind,taskId,projectId,title:task.title,assigneeId:selected,actor:user});state.assigneeId=selected;
   }else if(body.action==='comment'){
    const content=text(body.text,4000);if(!content)fail(400,'Write a comment first.');state.comments.push({id:id(),text:content,by:user.name,userId:user.id,at:now()});
   }else if(body.action==='file'){
-   const name=text(body.name,180),encoded=text(body.content,8400000),data=Buffer.from(encoded,'base64');if(!name||data.length<12||data.length>6000000)fail(400,'Choose a file smaller than 6 MB.');let mime='';if(data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))mime='image/png';else if(data[0]===255&&data[1]===216&&data[2]===255)mime='image/jpeg';else if(data.toString('ascii',0,4)==='RIFF'&&data.toString('ascii',8,12)==='WEBP')mime='image/webp';else if(data.toString('ascii',0,5)==='%PDF-')mime='application/pdf';else fail(400,'Use PNG, JPG, WebP or PDF.');const fid=id();db.prepare('INSERT INTO task_attachments VALUES(?,?,?,?,?,?)').run(fid,studio.id,key,name,mime,data);state.files.push({id:fid,name,mime,size:data.length,by:user.name,at:now()});
+   const name=text(body.name,180),encoded=text(body.content,8400000),data=Buffer.from(encoded,'base64');if(!name||data.length<12||data.length>6000000)fail(400,'Choose a file smaller than 6 MB.');let mime='';if(data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))mime='image/png';else if(data[0]===255&&data[1]===216&&data[2]===255)mime='image/jpeg';else if(data.toString('ascii',0,4)==='RIFF'&&data.toString('ascii',8,12)==='WEBP')mime='image/webp';else if(data.toString('ascii',0,5)==='%PDF-')mime='application/pdf';else fail(400,'Use PNG, JPG, WebP or PDF.');assertQuota(db,studio.id,data.length);const fid=id();db.prepare('INSERT INTO task_attachments VALUES(?,?,?,?,?,?)').run(fid,studio.id,key,name,mime,data);state.files.push({id:fid,name,mime,size:data.length,by:user.name,at:now()});
   }else fail(400,'Choose a task action.');
   db.prepare('INSERT INTO task_collaboration VALUES(?,?,?) ON CONFLICT(studio_id,task_key) DO UPDATE SET data=excluded.data').run(studio.id,key,JSON.stringify(state));
+  });
  }else if(req.method!=='GET')fail(405,'Method not allowed.');
  reply(200,{...state,assigneeName:people.find(p=>p.id===state.assigneeId)?.name||'',assignees:owner?people:[],canAssign:owner,canContribute:access!=='Viewer'});return true;
 }
