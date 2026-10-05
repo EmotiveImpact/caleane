@@ -127,3 +127,55 @@ test('clients without approval rights do not receive prices or payment activity'
   assert.ok(own.estimates.length>0,'the studio still sees estimates');
  }finally{server.close();db.close();await rm(dir,{recursive:true,force:true});}
 });
+
+test('people can change their name and password and sign out other devices',async()=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'studio-account-')),file=path.join(dir,'test.sqlite'),origin='http://127.0.0.1:4320';
+ const {server,db}=await createWorkspace({dbFile:file,origin,demo:true});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const base='http://127.0.0.1:'+server.address().port,cookies={};
+ async function call(route,method='GET',body,who='owner'){
+  const response=await fetch(base+route,{method,headers:{Origin:origin,...(body?{'Content-Type':'application/json'}:{}),...(cookies[who]?{Cookie:cookies[who]}:{})},body:body?JSON.stringify(body):undefined});
+  const cookie=response.headers.get('set-cookie');if(cookie)cookies[who]=cookie.split(';')[0];return {status:response.status,data:await response.json()};
+ }
+ try{
+  await call('/api/login','POST',{email:'studio@example.test',password:'StudioDemo2026!'});
+  await call('/api/login','POST',{email:'studio@example.test',password:'StudioDemo2026!'},'laptop');
+  assert.equal((await call('/api/account/profile','PATCH',{name:'Renamed Owner'})).status,200);
+  assert.equal((await call('/api/me')).data.user.name,'Renamed Owner');
+  assert.equal((await call('/api/account/password','POST',{current:'wrong password!',password:'BrandNewPass2026!'})).status,400);
+  assert.equal((await call('/api/account/password','POST',{current:'StudioDemo2026!',password:'BrandNewPass2026!'})).status,200);
+  assert.equal((await call('/api/me')).status,200,'this device stays signed in');
+  assert.equal((await call('/api/me','GET',undefined,'laptop')).status,401,'other devices are signed out');
+  await call('/api/login','POST',{email:'studio@example.test',password:'BrandNewPass2026!'},'laptop');
+  const r=await call('/api/account/sessions','POST',{action:'sign-out-others'});
+  assert.equal(r.data.signedOut,1);
+  assert.equal((await call('/api/me','GET',undefined,'laptop')).status,401);
+ }finally{server.close();db.close();await rm(dir,{recursive:true,force:true});}
+});
+
+test('estimate drafts stay private until shared',async()=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'studio-estimate-draft-')),file=path.join(dir,'test.sqlite'),origin='http://127.0.0.1:4320';
+ const {server,db}=await createWorkspace({dbFile:file,origin,demo:true});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const base='http://127.0.0.1:'+server.address().port,cookies={};
+ async function call(route,method='GET',body,who='owner'){
+  const response=await fetch(base+route,{method,headers:{Origin:origin,...(body?{'Content-Type':'application/json'}:{}),...(cookies[who]?{Cookie:cookies[who]}:{})},body:body?JSON.stringify(body):undefined});
+  const cookie=response.headers.get('set-cookie');if(cookie)cookies[who]=cookie.split(';')[0];return {status:response.status,data:await response.json()};
+ }
+ try{
+  await call('/api/login','POST',{email:'studio@example.test',password:'StudioDemo2026!'});
+  await call('/api/login','POST',{email:'amelia@example.test',password:'StudioDemo2026!'},'client');
+  const studio=(await call('/api/me')).data.studios[0].id,q='?studio='+studio;
+  const project=(await call('/api/projects'+q)).data.projects.find(p=>p.brief.email==='amelia@example.test'||p.clientEmail==='amelia@example.test');
+  const before=project.estimates?.length||0;
+  let r=await call(`/api/projects/${project.id}/estimates${q}`,'POST',{saveAs:'draft',currency:'EUR',title:'Draft',items:[{title:'Hire',quantity:2,unitAmount:1000}]});
+  assert.equal(r.status,200);assert.equal(r.data.project.estimateDraft.currency,'EUR');assert.equal(r.data.project.estimates.length,before);
+  const seen=(await call(`/api/projects/${project.id}${q}`,'GET',undefined,'client')).data.project;
+  assert.equal(seen.estimateDraft,undefined,'clients never see drafts');
+  r=await call(`/api/projects/${project.id}/estimates${q}`,'POST',{currency:'EUR',title:'Shared',items:[{title:'Hire',quantity:2,unitAmount:1000}]});
+  assert.equal(r.data.project.estimates.length,before+1);assert.equal(r.data.project.estimateDraft,undefined);
+  await call(`/api/projects/${project.id}/estimates${q}`,'POST',{saveAs:'draft',currency:'EUR',items:[{title:'Hire',quantity:1,unitAmount:1000}]});
+  r=await call(`/api/projects/${project.id}/estimates${q}`,'POST',{discardDraft:true});
+  assert.equal(r.data.project.estimateDraft,undefined);
+ }finally{server.close();db.close();await rm(dir,{recursive:true,force:true});}
+});
