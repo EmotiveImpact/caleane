@@ -1,0 +1,54 @@
+/* Shared component shapes for the studio workspace and client portal.
+   Loaded last so dialogs, tabs, buttons, fields and status labels look the same on every screen.
+   Change a value here rather than adding another override in a screen's own stylesheet. */
+:root{
+  --ds-radius-dialog:8px;
+  --ds-radius-control:6px;
+  --ds-radius-status:4px;
+  --ds-control-height:42px;
+  --ds-field-surface:var(--studio-surface,#f7f7f6);
+  --ds-backdrop:rgba(22,24,27,.42);
+  --ds-tab-size:14px;
+  --ds-title-size:24px;
+}
+
+/* Dialogs */
+.modal-backdrop,.ws-dialog-scrim{background:var(--ds-backdrop)!important}
+.modal,.ws-dialog,.workspace-search-dialog,.form-settings-dialog{border-radius:var(--ds-radius-dialog)!important}
+body .modal:not(.studio-project-setup)>h2,body .modal:not(.studio-project-setup) .modal-heading h2,body .ws-dialog h2{color:var(--studio-ink,#202326);font-size:var(--ds-title-size);font-weight:560;letter-spacing:-.025em;line-height:1.2}
+body .modal :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=color]):not([type=range]),select),
+body .modal .ws-select{min-height:var(--ds-control-height);border-radius:var(--ds-radius-control)!important;background-color:var(--ds-field-surface);font-size:14px}
+body .modal textarea{border-radius:var(--ds-radius-control)!important;background-color:var(--ds-field-surface);font-size:14px}
+body .modal :is(input,textarea)::placeholder{font-size:14px}
+body .modal:not(.studio-project-setup) :is(label,.field>span){font-size:12px!important;font-weight:500;color:#4c5155;letter-spacing:0}
+
+/* Buttons */
+body :is(.button,.ws-button.ws-button,.crm-primary,.crm-secondary,.task-primary){border-radius:var(--ds-radius-control)!important}
+body .modal :is(.button,.crm-primary,.task-primary,.ws-button--primary){min-height:var(--ds-control-height);padding-inline:20px;font-size:13px;font-weight:500}
+
+/* Status labels: square-cornered everywhere; number counts stay round */
+body :is(.badge,.ws-status,.doc-status,.folio-finances-status,.crm-stage-chip,.journey-status,.studio-status){border-radius:var(--ds-radius-status)!important}
+
+/* Tabs: one underline style for every list filter */
+.folio-workspace :is(.studio-tabs,.ws-filters,.studio-billing-filters,.folio-library-filters,.settings-tabs-nav)>button{font-size:var(--ds-tab-size)!important;font-weight:520;color:var(--studio-muted);padding:12px 0 15px!important;background:none}
+.folio-workspace :is(.studio-tabs>button.active,.studio-tabs>button[aria-pressed=true],.ws-filters>button[data-state=on],.studio-billing-filters>button[aria-pressed=true],.folio-library-filters>button[aria-pressed=true],.settings-tabs-nav>button[aria-selected=true]){color:var(--studio-ink)!important;font-weight:600}
+.folio-workspace :is(.studio-billing-filters,.folio-library-filters,.settings-tabs-nav){gap:24px}
+.folio-workspace :is(.studio-billing-filters,.folio-library-filters)>button{border-bottom-width:2px}
+.folio-workspace :is(.studio-billing-filters,.folio-library-filters)>button[aria-pressed=true]{border-bottom-color:var(--studio-ink)!important}
+.folio-workspace .ws-filters>button[data-state=on]:after{background:var(--studio-ink)}
+.folio-workspace :is(.studio-tabs,.ws-filters,.folio-library-filters)>button>span{display:inline-grid;place-items:center;min-width:23px;height:auto;padding:2px 7px;border-radius:20px;background:#eceeed;color:var(--studio-muted);font-size:12px;font-weight:500}
+
+/* Side rail actions on Projects, Briefs and Approvals: a compact button, not a full-width grey bar */
+.folio-workspace .studio-attention-item b{justify-self:start;display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:var(--ds-radius-control);background:var(--studio-accent)!important;color:#fff!important;font-size:12px;font-weight:500}
+.folio-workspace .studio-attention-item:hover b{background:var(--studio-accent-hover,#000)!important}
+
+/* Leftover warm beige from the earlier theme */
+.folio-workspace :is(.studio-attention-symbol,.studio-client-initials,.studio-reference-placeholder,.studio-upload-zone){background-color:var(--studio-surface)}
+.folio-workspace .studio-display-controls :is(button[aria-pressed=true],button.active){background:#eceeed}
+.folio-workspace :is(.studio-setup-form input[readonly],.studio-setup-enquiry){background:var(--studio-surface)}
+.folio-workspace .studio-project-next{background:#eceeed}
+
+@media(max-width:760px){
+  .folio-workspace :is(.studio-tabs,.ws-filters,.studio-billing-filters,.folio-library-filters,.settings-tabs-nav)>button{font-size:13px!important}
+  :root{--ds-title-size:22px}
+}
