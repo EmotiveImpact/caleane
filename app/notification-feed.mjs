@@ -116,10 +116,11 @@ export function listNotifications(db,{studioId,userId,owner,limit=20,before=''})
   more=rows.length===PAGE_MAX;
   for(const row of rows){last=row.seq;if(visible(db,row,{owner,userId}))items.push(row);if(items.length>size)break;}
  }
- const unread=db.prepare('SELECT * FROM notification_events WHERE studio_id=? AND user_id=? AND read_at IS NULL ORDER BY seq DESC LIMIT ?').all(studioId,userId,UNREAD_SCAN)
-  .filter(row=>visible(db,row,{owner,userId})).length;
+ const unreadRows=db.prepare('SELECT * FROM notification_events WHERE studio_id=? AND user_id=? AND read_at IS NULL ORDER BY seq DESC LIMIT ?').all(studioId,userId,UNREAD_SCAN)
+  .filter(row=>visible(db,row,{owner,userId})),unread=unreadRows.length;
+ const unreadByKind=Object.fromEntries(KINDS.map(kind=>[kind,unreadRows.filter(row=>row.kind===kind).length]));
  const shown=items.slice(0,size),next=items.length>size?shown.at(-1):null;
- return {notifications:shown.map(dto),unread,nextCursor:next?String(next.seq):null};
+ return {notifications:shown.map(dto),unread,unreadByKind,nextCursor:next?String(next.seq):null};
 }
 
 export function markNotificationsRead(db,{studioId,userId,ids,all=false}){

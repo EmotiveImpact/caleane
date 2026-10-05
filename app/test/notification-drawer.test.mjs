@@ -88,11 +88,11 @@ test('drawer filters unread, marks all as read and restores unread',async()=>{
 });
 
 test('one bell shows waiting work and saved updates in two tabs with a single badge',async()=>{
- const opened=[],request=async()=>({notifications:[{id:'n1',kind:'enquiry',title:'New enquiry from Priya Patel',detail:'Anniversary dinner',createdAt:new Date().toISOString(),read:false}],unread:1,nextCursor:null});
+ const opened=[],request=async()=>({notifications:[{id:'n1',kind:'enquiry',title:'New enquiry from Priya Patel',detail:'Anniversary dinner',createdAt:new Date().toISOString(),read:false}],unread:1,unreadByKind:{enquiry:1},nextCursor:null});
  const attention={items:[{id:'a1',kind:'message',label:'New client message',context:'Amelia Taylor',detail:'Table plan'}],loadError:false,onOpen:item=>opened.push(['attention',item.id]),onOverview:()=>opened.push(['overview'])};
  render(h(NotificationDrawer,{studio:{id:'s1'},request,onOpen:item=>opened.push(['update',item.id]),attention}));
  const u=user(),trigger=await screen.findByRole('button',{name:'Notifications, 1 needs attention, 1 unread'});
- assert.equal(trigger.textContent,'2','one badge counts both views');
+ assert.equal(trigger.textContent,'1','an unread enquiry is already counted under Needs attention');
  await u.click(trigger);const dialog=await screen.findByRole('dialog',{name:'Notifications'});
  assert.equal(within(dialog).getByRole('tab',{name:'Needs attention (1)'}).getAttribute('aria-selected'),'true');
  await u.click(within(dialog).getByRole('tab',{name:'Updates (1)'}));

@@ -24,7 +24,7 @@ test('notifications persist per person, respect project access and keep read sta
   const studio=(await call('/api/me','GET',undefined,'owner')).data.studios[0].id;q=`?studio=${studio}`;
   const project=(await call('/api/projects'+q,'GET',undefined,'owner')).data.projects.find(p=>p.clientEmail==='amelia@example.test');
   assert.equal((await call('/api/notifications'+q)).status,401);
-  assert.deepEqual(await feed('owner'),{notifications:[],unread:0,nextCursor:null},'existing records do not create a backlog');
+  assert.deepEqual(await feed('owner'),{notifications:[],unread:0,unreadByKind:{enquiry:0,message:0,project_update:0,task_assigned:0},nextCursor:null},'existing records do not create a backlog');
 
   assert.equal((await call(`/api/projects/${project.id}/messages${q}`,'POST',{text:'Could we add more candles?'},'client')).status,200);
   let owner=await feed('owner');
@@ -44,6 +44,7 @@ test('notifications persist per person, respect project access and keep read sta
   assert.equal((await call('/api/public/nay-decor/enquiries','POST',enquiry,'',{'Idempotency-Key':'notify-enquiry'})).status,200);
   owner=await feed('owner');
   assert.equal(owner.unread,2,'a repeated submission does not notify twice');
+  assert.deepEqual(owner.unreadByKind,{enquiry:1,message:1,project_update:0,task_assigned:0});
   const enquiryNote=owner.notifications.find(n=>n.kind==='enquiry');
   assert.equal(enquiryNote.title,'New enquiry from Priya Patel');assert.equal(enquiryNote.detail,'Anniversary dinner · 4 Sept 2027');
   assert.ok(enquiryNote.opportunityId&&enquiryNote.clientId);
@@ -88,7 +89,7 @@ test('notifications persist per person, respect project access and keep read sta
   // Removing access removes the history from view without deleting it.
   assert.equal((await call(grant,'PATCH',{enabled:false},'owner')).status,200);
   staff=await feed('staff');
-  assert.deepEqual(staff,{notifications:[],unread:0,nextCursor:null});
+  assert.deepEqual(staff,{notifications:[],unread:0,unreadByKind:{enquiry:0,message:0,project_update:0,task_assigned:0},nextCursor:null});
   assert.ok(db.prepare("SELECT COUNT(*) AS n FROM notification_events WHERE user_id=?").get(member.id).n>=2);
  }finally{
   await new Promise(resolve=>server.close(resolve));db.close();await rm(dir,{recursive:true,force:true});

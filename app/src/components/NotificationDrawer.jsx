@@ -10,24 +10,26 @@ const FILTERS=[{value:'all',label:'All'},{value:'unread',label:'Unread'}];
 // One bell for both views: live work still waiting (attention, worked out by the caller) and the saved history of updates.
 // Without attention, as for studio contributors, the drawer shows updates only.
 export function NotificationDrawer({studio,request,onOpen,attention=null}){
- const [open,setOpen]=useState(false),[items,setItems]=useState([]),[unread,setUnread]=useState(0),[cursor,setCursor]=useState(null);
+ const [open,setOpen]=useState(false),[items,setItems]=useState([]),[unread,setUnread]=useState(0),[byKind,setByKind]=useState({}),[cursor,setCursor]=useState(null);
  const [filter,setFilter]=useState('all'),[loading,setLoading]=useState(false),[error,setError]=useState(''),[clock,setClock]=useState(()=>Date.now()),[view,setView]=useState('attention');
  const trigger=useRef(null),generation=useRef(0);
  const base='/api/notifications?studio='+studio.id;
 
- const apply=useCallback((data,append=false)=>{setItems(prev=>append?[...prev,...data.notifications.filter(item=>!prev.some(p=>p.id===item.id))]:data.notifications);setUnread(data.unread);if(!append)setCursor(data.nextCursor);setClock(Date.now());},[]);
+ const apply=useCallback((data,append=false)=>{setItems(prev=>append?[...prev,...data.notifications.filter(item=>!prev.some(p=>p.id===item.id))]:data.notifications);setUnread(data.unread);setByKind(data.unreadByKind||{});if(!append)setCursor(data.nextCursor);setClock(Date.now());},[]);
  const reload=useCallback(async()=>{const mine=++generation.current;try{const data=await request(base);if(mine!==generation.current)return;apply(data);setError('');}catch{if(mine===generation.current)setError('Notifications could not be refreshed. They will retry automatically.');}},[base,request,apply]);
 
- useEffect(()=>{setItems([]);setUnread(0);setCursor(null);reload();const timer=setInterval(()=>{if(document.visibilityState==='visible')reload();},30000);return()=>{generation.current++;clearInterval(timer);};},[reload]);
+ useEffect(()=>{setItems([]);setUnread(0);setByKind({});setCursor(null);reload();const timer=setInterval(()=>{if(document.visibilityState==='visible')reload();},30000);return()=>{generation.current++;clearInterval(timer);};},[reload]);
  useEffect(()=>{if(open)reload();},[open,reload]);
  useEffect(()=>{if(open)setView(attention&&(attention.items.length||!unread)?'attention':'updates');},[open]);
 
  async function loadOlder(){if(!cursor||loading)return;setLoading(true);const mine=generation.current;try{const data=await request(base+'&before='+encodeURIComponent(cursor));if(mine!==generation.current)return;apply(data,true);setCursor(data.nextCursor);}catch{setError('Older notifications could not be loaded.');}finally{setLoading(false);}}
  async function mark(body,path='read'){const mine=++generation.current;try{const data=await request('/api/notifications/'+path+'?studio='+studio.id,'POST',{...body,limit:Math.max(20,items.length)});if(mine===generation.current){apply(data);setError('');}}catch{if(mine===generation.current)setError('That change could not be saved. Try again.');}}
  function chooseAttention(item){setOpen(false);attention.onOpen(item);}
- function choose(item){if(!item.read){setItems(prev=>prev.map(p=>p.id===item.id?{...p,read:true}:p));setUnread(count=>Math.max(0,count-1));mark({ids:[item.id]});}setOpen(false);onOpen(item);}
+ function choose(item){if(!item.read){setItems(prev=>prev.map(p=>p.id===item.id?{...p,read:true}:p));setUnread(count=>Math.max(0,count-1));setByKind(prev=>({...prev,[item.kind]:Math.max(0,(prev[item.kind]||0)-1)}));mark({ids:[item.id]});}setOpen(false);onOpen(item);}
 
- const shown=filter==='unread'?items.filter(item=>!item.read):items,waiting=attention?attention.items.length:0,total=waiting+unread;
+ const shown=filter==='unread'?items.filter(item=>!item.read):items,waiting=attention?attention.items.length:0;
+ // Unread messages and enquiries already appear under Needs attention, so the badge counts them once.
+ const total=attention?waiting+(byKind.project_update||0)+(byKind.task_assigned||0):unread;
  const label=attention?`Notifications, ${waiting} need${waiting===1?'s':''} attention, ${unread} unread`:`Notifications, ${unread} unread`;
  const updates=<>
    <div className="notification-drawer-toolbar">
