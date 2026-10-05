@@ -219,3 +219,9 @@ This section supersedes earlier Waiting bullets for features listed below. The w
 - **Client-booked consultations.** Off by default. A public page at `/book/:slug` shows free times from the studio's weekly hours, buffer, notice and daily limit. A booking creates a lead and a calendar task. Code: `consultations.mjs`, `PublicBooking.jsx`, Settings, Bookings.
 - Tests pass, including 5 new ones in `test/studio-commerce.test.mjs`; production build passes. Browser QA at 1280px and 390px with a throwaway database.
 - **Waiting:** email delivery for reminders and booking confirmations; Stripe refunds through the provider; calendar sync for bookings.
+
+## 5 October: invoice design
+
+- Studios choose how invoices look in Settings, Pricing & billing: three layouts (Classic, Minimal, Bold), two typefaces, their studio colour or a custom one, their logo, a closing line and a footer for company or VAT details. A live A4 preview uses a sample invoice built from their saved details.
+- One renderer (`src/lib/invoice-design.js`) draws the invoice for the project billing view, the client's view and Print or save PDF, so all three match. The design is stored per studio (`/api/invoice-design`, owner to change) and applies to every invoice, including ones already issued. Amounts and details stay as issued.
+- The archived record PDF in Documents is unchanged and stays plain.

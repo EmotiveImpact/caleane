@@ -174,3 +174,17 @@ test('slot times follow the studio time zone across daylight saving',()=>{
  assert.equal(new Date(localToUtc('2026-07-01','10:00','America/New_York')).toISOString(),'2026-07-01T14:00:00.000Z');
  assert.equal(typeof availableSlots,'function');
 });
+
+test('invoice design is saved by the owner, readable by the client and rendered safely',async t=>{
+ const {call,studio,suffix,project}=await workspace(t);
+ const {invoicePageHtml,normaliseInvoiceDesign}=await import('../src/lib/invoice-design.js');
+ let r=await call('/api/invoice-design'+suffix,'GET',undefined,'owner');assert.equal(r.status,200);assert.equal(r.data.design.layout,'classic');
+ r=await call('/api/invoice-design'+suffix,'POST',{layout:'bold',font:'serif',accent:'#2b4a3a',showLogo:true,thankYou:'With thanks',footer:'Company 0123456'},'client');assert.equal(r.status,403);
+ r=await call('/api/invoice-design'+suffix,'POST',{layout:'loud',font:'serif',accent:'',showLogo:true},'owner');assert.equal(r.status,400);
+ r=await call('/api/invoice-design'+suffix,'POST',{layout:'bold',font:'serif',accent:'red',showLogo:true},'owner');assert.equal(r.status,400);
+ r=await call('/api/invoice-design'+suffix,'POST',{layout:'bold',font:'serif',accent:'#2b4a3a',showLogo:false,thankYou:'With thanks',footer:'Company 0123456'},'owner');assert.equal(r.status,200);assert.equal(r.data.design.layout,'bold');
+ r=await call(`/api/projects/${project.id}/invoices${suffix}`,'GET',undefined,'client');assert.equal(r.status,200);assert.equal(r.data.design.footer,'Company 0123456');assert.equal(r.data.design.accent,'#2b4a3a');
+ const html=invoicePageHtml({number:'INV-1',status:'Paid',currency:'GBP',amountMinor:12000,netMinor:10000,taxMinor:2000,taxRate:20,issuedAt:'2026-10-05',dueDate:'2026-10-19',snapshot:{sellerName:'<b>Studio</b>',billToName:'A <script>x()</script>'}},{studio:{name:'S',accent:'#ffffff',branding:{logoUrl:'javascript:alert(1)'}},design:{layout:'bold',accent:'#ffffff" onload="x',footer:'<img src=x>'}});
+ assert.doesNotMatch(html,/<script>x|javascript:|<img src=x>|onload=/);assert.match(html,/&lt;b&gt;Studio/);assert.match(html,/--accent:#ffffff;--ink:#141414/);assert.match(html,/class="stamp">Paid/);
+ assert.deepEqual(normaliseInvoiceDesign({layout:'nope',font:'x',accent:'bad'}).layout,'classic');
+});

@@ -26,7 +26,7 @@ import {getProjectOperations,changeProjectOperations} from './studio-operations.
 import {DEFAULT_WORKFLOW,isWorkflowId,projectTypesFor,briefFieldsFor} from './src/lib/workflows.js';
 import {validateIntakeQuestions,captureIntakeAnswers,updateIntakeAnswers,normalizeIntakeAnswers} from './intake-questions.mjs';
 import {searchWorkspace} from './workspace-search.mjs';
-import {installStudioCommerce,handleStudioCommerce,billingDefaults} from './studio-commerce.mjs';
+import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation} from './consultations.mjs';
@@ -555,7 +555,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      }
      const invoice=invoiceId?db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=? AND project_id=?').get(invoiceId,studio.id,project.id):null;
      if(invoiceId&&!invoice)fail(404,'Invoice not found.');
-     if(req.method==='GET'&&!invoiceId)return reply(200,{invoices:invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row))});
+     if(req.method==='GET'&&!invoiceId)return reply(200,{invoices:invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row)),design:invoiceDesign(db,studio.id)});
      if(req.method==='GET'&&invoiceId&&!subaction)return reply(200,{invoice:invoiceDTO(db,invoice)});
      if(req.method==='GET'&&subaction==='attempts'){requireOwner();return reply(200,{attempts:listStripeCheckoutAttempts(db,{studioId:studio.id,invoiceId})});}
      if(req.method==='POST'&&subaction==='checkout'){
