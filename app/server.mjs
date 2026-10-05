@@ -1,5 +1,5 @@
 import {installForms,listForms,changeForm,publicForm,submitForm,listFormResponses,formResponseCSV} from './forms.mjs';
-import {installDataGovernance,dataGovernance,changeGovernance,exportStudio} from './data-governance.mjs';
+import {installDataGovernance,dataGovernance,changeGovernance,streamStudioExport} from './data-governance.mjs';
 import {handleCalendarSync} from './calendar-sync.mjs';
 import {operationalReadiness} from './operational-readiness.mjs';
 import {installDocuments,listDocuments,changeDocument,downloadDocument,syncProjectArchives} from './documents.mjs';
@@ -210,7 +210,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      fail(405,'Method not allowed.');
     }
     if(route==='/api/data-governance'){const args={studioId:studio.id,userId:user.id};if(req.method==='GET')return reply(200,dataGovernance(db,args));if(req.method==='POST')return reply(200,changeGovernance(db,args,body));fail(405,'Method not allowed.');}
-    if(route==='/api/studio-export'&&req.method==='GET'){const data=exportStudio(db,{studioId:studio.id,userId:user.id},{includeFiles:url.searchParams.get('files')==='1'});res.setHeader('Content-Disposition','attachment; filename=caleane-studio-export.json');return reply(200,data);}
+    if(route==='/api/studio-export'&&req.method==='GET')return await streamStudioExport(db,{studioId:studio.id,userId:user.id},res,{includeFiles:url.searchParams.get('files')==='1'});
     if(route==='/api/operations'&&req.method==='GET')return reply(200,await operationalReadiness(db,{studioId:studio.id,userId:user.id,backupReceiptPath:process.env.CALEANE_BACKUP_RECEIPT||'',emailConfigured:!!(process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1'),offsiteBackupsConfigured:false}));
     if(await handleCalendarSync({db,req,url,route,body,user,studio,owner,reply,origin}))return;
     if(handleNotificationFeed({db,req,url,route,body,user,studio,owner,reply}))return;
