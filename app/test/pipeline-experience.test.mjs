@@ -21,7 +21,7 @@ const h=React.createElement,user=()=>userEvent.setup({document:dom.window.docume
 afterEach(cleanup);after(async()=>{await unlink(compiled);dom.window.close();});
 const studio={id:'s',name:'Sample studio',branding:{profession:'floral-design'}};
 const base={id:'o1',clientId:'c1',clientName:'Amelia',title:'Wedding flowers',description:'Ivory flowers.',stage:'Discovery',amountMinor:0,currency:'GBP',probability:20,expectedClose:'',lostReason:'',source:'Website',revision:1,activities:[],tasks:[],projectId:'p1'};
-function fixture({stale=false,count=1,intake=null}={}){
+function fixture({stale=false,count=1,intake=null,pipeline=null}={}){
  let opportunity={...structuredClone(base),...(intake?{intake,formName:intake.formName,projectStatus:'Enquiry',needsReview:true}: {})},tasks=[];const writes=[],opened=[];
  const request=async(path,method,body)=>{
   if(method==='PATCH'&&path.startsWith('/api/opportunities/')){writes.push({path,body});if(stale&&writes.length===2)throw Error('This opportunity changed while you were editing. Refresh and try again.');assert.equal(body.revision,opportunity.revision);opportunity={...opportunity,...body,revision:opportunity.revision+1};return {opportunity:{...opportunity,tasks}};}
@@ -34,6 +34,9 @@ function fixture({stale=false,count=1,intake=null}={}){
   if(path.startsWith('/api/clients'))return {clients:[{id:'c1',name:'Amelia'}]};
   if(path.startsWith('/api/crm/tasks'))return {tasks};
   if(path.startsWith('/api/task-workspace'))return {assignments:{'crm:t1':'Sophie'}};
+  if(pipeline&&path.startsWith('/api/pipeline'))return pipeline;
+  if(pipeline&&path.startsWith('/api/catalogue'))return {items:[{id:'i1',name:'Bridal bouquet',unitAmount:28500,currency:'GBP',unit:'each',archived:false}]};
+  if(pipeline&&method==='POST'&&path.startsWith('/api/projects/p1/estimates')){writes.push({path,body});return {project:{id:'p1'}};}
   throw Error('Unexpected request '+path);
  };
  render(h(PipelineCRM,{studio,request,run:fn=>fn(),openClient:id=>opened.push(['client',id]),openProject:(p,tab)=>opened.push(['project',p.id,tab]),openTask:id=>opened.push(['task',id]),onProjectCreated(){}}));return {writes,opened};
@@ -121,4 +124,30 @@ test('submitted request is available in context; review is explicit, preserves s
  assert.equal(writes[0].body.reviewed,true);assert.equal(writes[0].body.stage,undefined);assert.equal(screen.getByRole('button',{name:'Start planning'}).disabled,false);
  await input.click(screen.getByRole('button',{name:'Open conversation',exact:true}));assert.deepEqual(opened,[['project','p1','Conversation']]);
  await input.click(screen.getByRole('button',{name:'Mark for review',exact:true}));await screen.findByRole('button',{name:'Mark reviewed',exact:true});assert.equal(writes[1].body.revision,2);assert.equal(writes[1].body.reviewed,false);
+});
+
+test('board keeps every stage reachable on small screens and the enquiry drives its own quote',async()=>{
+ const signal={opportunityId:'o1',projectId:'p1',eventDate:'2027-06-12',venue:'Bath',estimate:null,proposal:null,hold:null,deposit:null,fit:[{kind:'date',ok:false,label:'12 Jun is fully booked'}],flags:[{kind:'clash',tone:'bad',label:'Date full',rank:1}]};
+ const pipeline={settings:{dailyCapacity:1},dates:[],insights:null,signals:{o1:signal}};
+ const input=user(),{writes}=fixture({pipeline});
+ await screen.findByText('Date full');
+ assert.ok(screen.getByRole('heading',{name:'Needs a decision from you'}),'a date clash is surfaced in Today');
+ await input.click(screen.getByRole('radio',{name:'Board'}));
+ const strip=screen.getByRole('group',{name:'Pipeline stages'});
+ assert.equal(within(strip).getByRole('button',{name:/New enquiry/}).getAttribute('aria-pressed'),'true');
+ await input.click(screen.getByRole('button',{name:'Next stage'}));
+ assert.equal(within(strip).getByRole('button',{name:/Discussing the brief/}).getAttribute('aria-pressed'),'true');
+ await input.selectOptions(screen.getByRole('combobox',{name:'Move Amelia to'}),'Qualified');
+ await waitFor(()=>assert.equal(writes.at(-1).body.stage,'Qualified'),'cards can move without dragging');
+ await input.click(screen.getByRole('button',{name:'View Wedding flowers'}));
+ const deal=await screen.findByRole('region',{name:'Quote and booking'});
+ assert.match(deal.textContent,/already fully booked/);
+ await input.click(within(deal).getByRole('button',{name:'Build quote'}));
+ await input.selectOptions(await screen.findByRole('combobox',{name:'Add from your price list'}),'i1');
+ await input.click(screen.getByRole('button',{name:'Add line'}));
+ assert.equal(screen.getByRole('textbox',{name:'Line 1 description'}).value,'Bridal bouquet');
+ await input.click(screen.getByRole('button',{name:'Share quote'}));
+ await waitFor(()=>assert.ok(writes.some(w=>w.path.startsWith('/api/projects/p1/estimates'))));
+ const quote=writes.find(w=>w.path.startsWith('/api/projects/p1/estimates')).body;
+ assert.deepEqual(quote.items,[{title:'Bridal bouquet',quantity:1,unitAmount:28500}]);assert.equal(quote.currency,'GBP');
 });
