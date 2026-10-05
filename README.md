@@ -1,6 +1,6 @@
 # Caleane
 
-A separate local product for creatives and their clients. NAY DÉCOR is its first connected studio and keeps its own brand and website in `/Users/augustusedem/Downloads/NayDecor`.
+A separate local product for creatives and their clients. NAY DÉCOR is its first connected studio and keeps its own brand and website in a separate repository.
 
 ## Project layout
 
@@ -13,14 +13,14 @@ A separate local product for creatives and their clients. NAY DÉCOR is its firs
 ## Local previews
 
 ```sh
-cd /Users/augustusedem/Calenne/app
+cd app
 npm run demo
 ```
 
 The app opens at <http://127.0.0.1:4320/>. For the website, in a second terminal:
 
 ```sh
-cd /Users/augustusedem/Calenne/web
+cd web
 python3 -m http.server 4330 --bind 127.0.0.1
 ```
 

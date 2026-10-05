@@ -6,7 +6,7 @@ final result: passed
 Selected product-section mock implemented in the existing static homepage. Frontend demonstration only; responses are sample state and reset on page reload. Existing hero, header, intro animation and downstream story sections retained. Not deployed during this task.
 
 ## Visual evidence
-- Source: `/Users/augustusedem/.codex/generated_images/01a0eadf-ab68-7cd3-ad38-a3a0733048bd/exec-379efad0-9746-492e-bbbc-634a5a5afd39.png`
+- Source: the selected generated concept image (kept locally, not in the repository)
 - Desktop: `frontpage-design/qa/product-review-desktop.png`
 - Mobile: `frontpage-design/qa/product-review-mobile.png`
 - Source and desktop screenshot viewed together at 1190 × 1322 CSS-pixel viewport, default design-review state. Mobile checked at 390 × 844.

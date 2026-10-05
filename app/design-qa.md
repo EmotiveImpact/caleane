@@ -12,9 +12,9 @@ No actionable P0, P1 or P2 differences remain. The approved studies established 
 
 | Screen | Source visual truth | Browser-rendered implementation | Combined comparison |
 | --- | --- | --- | --- |
-| Overview | `/Users/augustusedem/.codex/generated_images/01a0ead5-2cf8-7652-9c62-69179d274922/exec-249daea5-9d5f-4db9-bd11-732605248be3.png` | `docs/design-qa/calenne-qa-overview-final-1487.png` | `docs/design-qa/calenne-qa-overview-final-comparison.png` |
-| Plan | `/Users/augustusedem/.codex/generated_images/01a0ead5-2cf8-7652-9c62-69179d274922/exec-f1cc95fb-66b3-4f66-89b4-dc09a79fe305.png` | `docs/design-qa/calenne-qa-plan-final-1487.png` | `docs/design-qa/calenne-qa-plan-final-comparison.png` |
-| Decision | `/Users/augustusedem/.codex/generated_images/01a0ead5-2cf8-7652-9c62-69179d274922/exec-5a2f7876-2b6e-42ce-a035-1597209d023f.png` | `docs/design-qa/calenne-qa-interior-choice-selected-1487.png` | `docs/design-qa/calenne-qa-decisions-final-comparison.png` |
+| Overview | Generated concept image (kept locally, not in the repository) | `docs/design-qa/calenne-qa-overview-final-1487.png` | `docs/design-qa/calenne-qa-overview-final-comparison.png` |
+| Plan | Generated concept image (kept locally, not in the repository) | `docs/design-qa/calenne-qa-plan-final-1487.png` | `docs/design-qa/calenne-qa-plan-final-comparison.png` |
+| Decision | Generated concept image (kept locally, not in the repository) | `docs/design-qa/calenne-qa-interior-choice-selected-1487.png` | `docs/design-qa/calenne-qa-decisions-final-comparison.png` |
 
 The decision comparison intentionally uses an interior material choice against the study's wedding venue choice. The structure and selection state match; the subject and comparison facts change with the profession. The overview and plan compare the NAY DÉCOR event styling sample against the studies' Rowan Studio planning sample. Fake documents and milestones from the studies were replaced by recorded messages, references, tasks and dates.
 

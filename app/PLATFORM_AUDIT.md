@@ -39,7 +39,7 @@ Avoid a giant generic object builder at this stage. Start with durable core enti
 - [ChurchCRM's person/family model](https://docs.churchcrm.io/user-guide/persons) shows the importance of people, groupings and custom fields. It is a different domain and should inform the data graph rather than be merged wholesale.
 - [OWASP's multi-tenant guidance](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html) makes tenant isolation, object-level authorisation, storage boundaries and noisy-neighbour controls product requirements, not late deployment polish.
 
-The supplied Frappe CRM and ChurchCRM repositories, and locally saved references in `/Users/augustusedem/Downloads/NayDecor/reference/upstream/` (Atomic CRM, Chatwoot, Better Auth), are research material. Inspect current licences and architecture before reusing any code. In particular, [Frappe states CRM is AGPLv3](https://docs.frappe.io/legal/others/license-and-trademark); a commercial white-label SaaS needs a deliberate licensing decision before incorporating code. The local Chatwoot tree separates its MIT community code from an `enterprise/` licence.
+The supplied Frappe CRM and ChurchCRM repositories, and locally saved references in the NAY DÉCOR repository's `reference/upstream/` folder (Atomic CRM, Chatwoot, Better Auth), are research material. Inspect current licences and architecture before reusing any code. In particular, [Frappe states CRM is AGPLv3](https://docs.frappe.io/legal/others/license-and-trademark); a commercial white-label SaaS needs a deliberate licensing decision before incorporating code. The local Chatwoot tree separates its MIT community code from an `enterprise/` licence.
 
 ## Build order that earns the word “platform”
 
