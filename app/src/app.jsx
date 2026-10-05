@@ -1,6 +1,7 @@
 import {SettingsWorkspace} from './components/SettingsWorkspace';
 import {FormsWorkspace} from './components/FormsWorkspace';
 import {HostedForm,PublicForm} from './components/PublicForm';
+import {PublicBooking} from './components/PublicBooking';
 import {QuestionInput,intakeFormValues,answerText} from './components/QuestionInput';
 import './forms.css';
 import {ProjectDocuments} from './components/ProjectDocuments';
@@ -109,6 +110,7 @@ function App(){
  useEffect(()=>{if(p&&tab==='Conversation'&&p.unreadMessages>0){request(`/api/projects/${p.id}/seen?studio=${studio.id}`,'POST',{lastMessageId:p.messages.at(-1)?.id}).then(d=>setProjects(prev=>prev.map(x=>x.id===d.project.id&&x.messages.at(-1)?.id===d.project.messages.at(-1)?.id?{...x,unreadMessages:d.project.unreadMessages}:x))).catch(e=>setError(e.message));}},[p?.id,p?.unreadMessages,tab,studio?.id]);
  const intakeMatch=location.pathname.match(/^\/intake\/([^/]+)(?:\/([^/]+))?$/),intakeSlug=intakeMatch?.[1];
  if(['/recover','/reset-password','/verify-email','/account'].includes(location.pathname))return <AccountSecurity request={request}/>;
+ const bookingSlug=location.pathname.match(/^\/book\/([a-z0-9-]+)$/)?.[1];if(bookingSlug)return <PublicBooking slug={bookingSlug}/>;
  if(intakeSlug)return intakeMatch[2]?<HostedForm slug={intakeSlug} formSlug={intakeMatch[2]}/>:<Intake slug={intakeSlug}/>;
  if(location.pathname==='/embed-demo')return <EmbedDemo/>;
  if(loading)return <div className="loading">Opening your workspace…</div>;

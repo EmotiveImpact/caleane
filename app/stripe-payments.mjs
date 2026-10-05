@@ -1,3 +1,4 @@
+import {installInvoiceAdjustments} from './invoice-adjustments.mjs';
 import {randomUUID,createHash} from 'node:crypto';
 import {transaction,now} from './store.mjs';
 
@@ -8,7 +9,8 @@ function fail(status,message){throw Object.assign(new Error(message),{status});}
 function accountId(value){if(typeof value!=='string'||!/^acct_[A-Za-z0-9]{8,}$/.test(value))fail(400,'Invalid Stripe account ID.');return value;}
 function invoiceBalance(db,invoice){
  const paid=db.prepare('SELECT COALESCE(SUM(amount_minor),0) AS amount FROM invoice_payments WHERE studio_id=? AND invoice_id=?').get(invoice.studio_id,invoice.id).amount;
- return invoice.amount_minor-paid;
+ const adjustments=db.prepare("SELECT (SELECT COALESCE(SUM(amount_minor),0) FROM invoice_credit_notes WHERE studio_id=? AND invoice_id=?) AS credited,(SELECT COALESCE(SUM(amount_minor),0) FROM invoice_refunds WHERE studio_id=? AND invoice_id=?) AS refunded").get(invoice.studio_id,invoice.id,invoice.studio_id,invoice.id);
+ return invoice.amount_minor-adjustments.credited-(paid-adjustments.refunded);
 }
 function invoiceRow(db,{studioId,projectId,invoiceId}){
  const row=db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=? AND project_id=?').get(invoiceId,studioId,projectId);
@@ -18,7 +20,7 @@ function invoiceRow(db,{studioId,projectId,invoiceId}){
 function attemptDTO(row){return {id:row.id,invoiceId:row.invoice_id,projectId:row.project_id,amountMinor:row.amount_minor,currency:row.currency,status:row.status,url:row.checkout_url||null,sessionId:row.stripe_session_id||null,paymentIntentId:row.payment_intent_id||null,reviewReason:row.review_reason||''};}
 
 /** Run once when the SQLite store opens, before Checkout routes or invoice reads. */
-export function installStripePayments(db){
+export function installStripePayments(db){installInvoiceAdjustments(db);
  transaction(db,()=>{
   // Existing databases had a one-value CHECK on source. Preserve their payment IDs and
   // idempotency keys while allowing a distinct, verified provider source.

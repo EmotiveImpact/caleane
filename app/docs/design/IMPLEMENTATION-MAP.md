@@ -188,3 +188,14 @@ This section supersedes earlier Waiting bullets for features listed below. The w
 - 24 focused checks passed; production build passed. Desktop and mobile browser checks verified layout, exact task navigation and focus return. Mutations were tested with isolated databases. No business records created or modified during browser QA.
 - **Waiting — implementation:** persisted notification events/read state and its new drawer; server-paged enquiry queries. The existing needs-attention bell remains unchanged.
 - **Waiting — validation:** customer usability sessions. Provider setup/live acceptance and deferred live payments retain the statuses above.
+
+## 5 October: studio commerce batch (local, draft PR)
+
+- **Refunds and credit notes.** Studios record a refund on a paid invoice and can reduce the invoice with a numbered credit note (`CN-YYYY-0001`) in the same step. Invoice status now reads Refund due, Refunded, Partly refunded or Credited where it applies. Caleane records refunds only; it does not move money. Code: `invoice-adjustments.mjs`, `Billing.jsx`.
+- **Payment plans.** A confirmed estimate can be split into scheduled payments from the studio's default plan (30% deposit, 70% balance 14 days before the event). Steps are issued in order; issued steps are locked. Code: `payment-plans.mjs`, `PaymentPlan.jsx`.
+- **Pricing and billing defaults.** Saved studio address, contact, tax number, payment instructions and payment terms prefill every invoice. A price list feeds estimate lines. Code: `studio-commerce.mjs`, Settings, Pricing & billing.
+- **Message templates.** Four starter templates with placeholders, insertable from the project conversation and client record. Settings, Templates.
+- **Automatic reminders.** Off by default. When on, an hourly check posts one in-app message per reminder for invoices due or overdue, proposals and contracts about to expire and designs awaiting approval, and creates studio tasks for plan payments due. Clients without portal access are skipped. Email is still not sent. Code: `reminders.mjs`.
+- **Client-booked consultations.** Off by default. A public page at `/book/:slug` shows free times from the studio's weekly hours, buffer, notice and daily limit. A booking creates a lead and a calendar task. Code: `consultations.mjs`, `PublicBooking.jsx`, Settings, Bookings.
+- 115 tests pass, including 5 new ones in `test/studio-commerce.test.mjs`; production build passes. Browser QA at 1280px and 390px with a throwaway database.
+- **Waiting:** email delivery for reminders and booking confirmations; Stripe refunds through the provider; calendar sync for bookings.
