@@ -1,0 +1,31 @@
+/* First-run guidance: the owner's setup card on Overview and the client's one-time welcome. */
+.studio-setup{margin:0 0 34px;padding:24px 24px 10px;border:1px solid var(--studio-rule,#e2e2df);border-radius:6px;background:var(--studio-paper,#fff)}
+.studio-setup>header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.studio-setup h2{margin:0 0 6px;font-size:21px;letter-spacing:-.025em}
+.studio-setup>header p{margin:0;font-size:13px;line-height:1.55;color:var(--studio-muted,#6e7274);max-width:520px}
+.studio-setup>header .studio-setup-count{font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.studio-setup-progress{height:3px;margin:18px 0 6px;background:var(--studio-surface,#f2f2f0);border-radius:3px;overflow:hidden}
+.studio-setup-progress>span{display:block;height:100%;background:var(--studio-accent,#202326);transition:width .3s ease}
+.studio-setup-error{font-size:12px;color:#8a4b2f}
+.studio-setup-steps{list-style:none;margin:0;padding:0}
+.studio-setup-steps>li+li{border-top:1px solid var(--studio-rule,#e2e2df)}
+.studio-setup-steps button{display:grid;grid-template-columns:24px minmax(0,1fr) 16px;align-items:center;gap:14px;width:100%;padding:14px 2px;border:0;background:none;text-align:left;color:var(--studio-ink,#202326);cursor:pointer}
+.studio-setup-steps button:hover .studio-setup-go{transform:translateX(2px);color:var(--studio-ink,#202326)}
+.studio-setup-steps button:focus-visible{outline:2px solid var(--studio-accent,#202326);outline-offset:2px}
+.studio-setup-mark{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--studio-rule,#d6d6d2);color:#fff}
+.studio-setup-steps li.is-next .studio-setup-mark{border-color:var(--studio-accent,#202326)}
+.studio-setup-steps li.is-done .studio-setup-mark{border-color:var(--studio-accent,#202326);background:var(--studio-accent,#202326)}
+.studio-setup-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
+.studio-setup-copy strong{font-size:14px;font-weight:500}
+.studio-setup-copy strong small{font-size:11px;font-weight:400;color:var(--studio-muted,#6e7274);margin-left:6px}
+.studio-setup-copy>span{font-size:12px;line-height:1.5;color:var(--studio-muted,#6e7274)}
+.studio-setup-steps li.is-done .studio-setup-copy strong{color:var(--studio-muted,#6e7274);text-decoration:line-through;text-decoration-thickness:1px}
+.studio-setup-go{color:var(--studio-muted,#9a9d9f);transition:transform .15s ease}
+.client-welcome.ws-dialog{width:min(520px,calc(100vw - 32px))}
+.client-welcome-logo{display:block;max-height:44px;max-width:180px;margin:0 0 18px}
+.client-welcome-points{list-style:none;margin:6px 0 24px;padding:0;display:grid;gap:16px}
+.client-welcome-points li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:14px;align-items:start;color:var(--studio-muted,#6e7274)}
+.client-welcome-points li>span{font-size:13px;line-height:1.55}
+.client-welcome-points strong{display:block;font-weight:500;color:var(--studio-ink,#202326)}
+.client-welcome-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+@media(max-width:720px){.studio-setup{padding:20px 16px 6px}.studio-setup>header{flex-direction:column;gap:8px}.client-welcome-actions>*{flex:1}}
