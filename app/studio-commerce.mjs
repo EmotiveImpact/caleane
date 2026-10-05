@@ -1,4 +1,5 @@
 import {id,now,transaction} from './store.mjs';
+import {invoiceFonts,invoiceLayouts,normaliseInvoiceDesign} from './src/lib/invoice-design.js';
 
 // Studio-level libraries the owner reuses across projects: a price list,
 // saved message templates and the details printed on every invoice.
@@ -97,7 +98,24 @@ export function saveBillingDefaults(db,studioId,body){
  return writeSetting(db,studioId,'billing_defaults',{sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan)});
 }
 
+export function invoiceDesign(db,studioId){return normaliseInvoiceDesign(readSetting(db,studioId,'invoice_design',{}));}
+export function saveInvoiceDesign(db,studioId,body){
+ if(!invoiceLayouts.some(([key])=>key===body.layout))fail(400,'Choose an invoice layout.');
+ if(!invoiceFonts.some(([key])=>key===body.font))fail(400,'Choose an invoice typeface.');
+ if(body.accent&&!/^#[0-9a-f]{6}$/i.test(body.accent))fail(400,'Use a colour like #1f2a24, or leave it blank to use your studio colour.');
+ if(typeof body.showLogo!=='boolean')fail(400,'Choose whether to show your logo.');
+ if(body.showItems!==undefined&&typeof body.showItems!=='boolean')fail(400,'Choose whether to list the project items.');
+ const thankYou=text(body.thankYou,300,'the closing line',false),footer=text(body.footer,500,'the footer',false);
+ return writeSetting(db,studioId,'invoice_design',normaliseInvoiceDesign({layout:body.layout,font:body.font,accent:body.accent||'',showLogo:body.showLogo,showItems:body.showItems!==false,thankYou,footer}));
+}
+
 export async function handleStudioCommerce({db,req,route,body,studio,owner,reply}){
+ if(route==='/api/invoice-design'){
+  installStudioCommerce(db);
+  if(req.method==='GET')return reply(200,{design:invoiceDesign(db,studio.id)}),true;
+  if(req.method==='POST'){if(!owner)fail(403,'Only the studio owner can change the invoice design.');return reply(200,{design:saveInvoiceDesign(db,studio.id,body)}),true;}
+  fail(405,'Method not allowed.');
+ }
  const routes={'/api/catalogue':1,'/api/message-templates':1,'/api/billing-defaults':1};
  if(!routes[route])return false;
  if(!owner)fail(403,'Only the studio owner can manage these settings.');
