@@ -7,7 +7,7 @@ const CHECKOUT_EVENTS=new Set(['checkout.session.completed','checkout.session.as
 
 function fail(status,message){throw Object.assign(new Error(message),{status});}
 function accountId(value){if(typeof value!=='string'||!/^acct_[A-Za-z0-9]{8,}$/.test(value))fail(400,'Invalid Stripe account ID.');return value;}
-function invoiceBalance(db,invoice){
+export function invoiceBalance(db,invoice){
  const paid=db.prepare('SELECT COALESCE(SUM(amount_minor),0) AS amount FROM invoice_payments WHERE studio_id=? AND invoice_id=?').get(invoice.studio_id,invoice.id).amount;
  const adjustments=db.prepare("SELECT (SELECT COALESCE(SUM(amount_minor),0) FROM invoice_credit_notes WHERE studio_id=? AND invoice_id=?) AS credited,(SELECT COALESCE(SUM(amount_minor),0) FROM invoice_refunds WHERE studio_id=? AND invoice_id=?) AS refunded").get(invoice.studio_id,invoice.id,invoice.studio_id,invoice.id);
  return invoice.amount_minor-adjustments.credited-(paid-adjustments.refunded);
@@ -158,10 +158,14 @@ export async function createStripeCheckout(db,stripe,{studioId,projectId,invoice
 }
 
 /** Pass the unparsed raw HTTP body and Stripe-Signature header. */
-export function processStripeWebhook(db,stripe,{rawBody,signature,webhookSecret}){
+export function verifyStripeEvent(stripe,{rawBody,signature,webhookSecret}){
  if(!webhookSecret||!signature||!(Buffer.isBuffer(rawBody)||typeof rawBody==='string'))fail(400,'Missing Stripe webhook signature or raw body.');
- let event;
- try{event=stripe.webhooks.constructEvent(rawBody,signature,webhookSecret);}catch{fail(400,'Invalid Stripe webhook signature.');}
+ try{return stripe.webhooks.constructEvent(rawBody,signature,webhookSecret);}catch{fail(400,'Invalid Stripe webhook signature.');}
+}
+export function processStripeWebhook(db,stripe,options){return applyInvoiceCheckoutEvent(db,verifyStripeEvent(stripe,options));}
+
+/** Applies an already verified event to invoice Checkout attempts. */
+export function applyInvoiceCheckoutEvent(db,event){
  if(!CHECKOUT_EVENTS.has(event.type))return {handled:false,result:'ignored'};
  const session=event.data?.object;
  if(!event.id||!session?.id||session.object!=='checkout.session'||!event.account)fail(400,'Malformed Stripe Checkout event.');
