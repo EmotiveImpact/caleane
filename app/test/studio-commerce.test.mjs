@@ -174,3 +174,38 @@ test('slot times follow the studio time zone across daylight saving',()=>{
  assert.equal(new Date(localToUtc('2026-07-01','10:00','America/New_York')).toISOString(),'2026-07-01T14:00:00.000Z');
  assert.equal(typeof availableSlots,'function');
 });
+
+test('invoice design is saved by the owner, readable by the client and rendered safely',async t=>{
+ const {call,studio,suffix,project}=await workspace(t);
+ const {invoicePageHtml,normaliseInvoiceDesign}=await import('../src/lib/invoice-design.js');
+ let r=await call('/api/invoice-design'+suffix,'GET',undefined,'owner');assert.equal(r.status,200);assert.equal(r.data.design.layout,'atelier');
+ r=await call('/api/invoice-design'+suffix,'POST',{layout:'bold',font:'serif',accent:'#2b4a3a',showLogo:true,thankYou:'With thanks',footer:'Company 0123456'},'client');assert.equal(r.status,403);
+ r=await call('/api/invoice-design'+suffix,'POST',{layout:'loud',font:'serif',accent:'',showLogo:true},'owner');assert.equal(r.status,400);
+ r=await call('/api/invoice-design'+suffix,'POST',{layout:'bold',font:'serif',accent:'red',showLogo:true},'owner');assert.equal(r.status,400);
+ r=await call('/api/invoice-design'+suffix,'POST',{layout:'bold',font:'serif',accent:'#2b4a3a',showLogo:false,thankYou:'With thanks',footer:'Company 0123456'},'owner');assert.equal(r.status,200);assert.equal(r.data.design.layout,'bold');
+ r=await call(`/api/projects/${project.id}/invoices${suffix}`,'GET',undefined,'client');assert.equal(r.status,200);assert.equal(r.data.design.footer,'Company 0123456');assert.equal(r.data.design.accent,'#2b4a3a');
+ const html=invoicePageHtml({number:'INV-1',status:'Paid',currency:'GBP',amountMinor:12000,netMinor:10000,taxMinor:2000,taxRate:20,issuedAt:'2026-10-05',dueDate:'2026-10-19',snapshot:{sellerName:'<b>Studio</b>',billToName:'A <script>x()</script>'}},{studio:{name:'S',accent:'#ffffff',branding:{logoUrl:'javascript:alert(1)'}},design:{layout:'bold',accent:'#ffffff" onload="x',footer:'<img src=x>'}});
+ assert.doesNotMatch(html,/<script>x|javascript:|<img src=x>|onload=/);assert.match(html,/&lt;b&gt;Studio/);assert.match(html,/\.band{[^}]*background:#ffffff;color:#141414}/);assert.match(html,/class="stamp">Paid/);
+ assert.deepEqual(normaliseInvoiceDesign({layout:'nope',font:'x',accent:'bad'}).layout,'atelier');
+});
+
+test('brand kit accepts real logos and fonts only, serves them inertly and feeds invoices',async t=>{
+ const {call,suffix,project,ws}=await workspace(t);
+ const png=Buffer.concat([Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]),Buffer.alloc(40)]).toString('base64');
+ const woff2=Buffer.concat([Buffer.from('wOF2'),Buffer.alloc(40)]).toString('base64');
+ let r=await call('/api/brand-kit'+suffix,'POST',{action:'upload',kind:'logo',name:'logo.png',content:png},'client');assert.equal(r.status,403);
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'upload',kind:'logo',name:'logo.png',content:Buffer.from('MZ not an image at all').toString('base64')},'owner');assert.equal(r.status,400);
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'upload',kind:'font',name:'font.woff2',content:png},'owner');assert.equal(r.status,400);
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'upload',kind:'logo',name:'logo.png',content:png},'owner');assert.equal(r.status,201);const logo=r.data.asset;assert.equal(logo.mime,'image/png');
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'upload',kind:'font',name:'Brand-Serif.woff2',content:woff2},'owner');assert.equal(r.status,201);const font=r.data.asset;assert.equal(font.mime,'font/woff2');
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{logos:{primary:font.id}}},'owner');assert.equal(r.status,400);
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{logos:{primary:logo.id},colours:{primary:'#5a2d4c',secondary:'#f3e9ee'},fonts:{heading:{type:'upload',assetId:font.id,family:'Brand Serif'},body:{type:'preset',preset:'dm-sans'}}}},'owner');assert.equal(r.status,200);
+ assert.equal(r.data.kit.logos.primary,logo.id);assert.equal(r.data.kit.fonts.heading.family,'Brand Serif');
+ const base=`http://127.0.0.1:${ws.server.address().port}`,file=await fetch(base+logo.url);assert.equal(file.status,200);assert.equal(file.headers.get('content-type'),'image/png');assert.match(file.headers.get('content-security-policy'),/sandbox/);assert.equal(file.headers.get('x-content-type-options'),'nosniff');
+ r=await call(`/api/projects/${project.id}/invoices${suffix}`,'GET',undefined,'client');assert.equal(r.data.brandKit.colours.primary,'#5a2d4c');assert.equal(r.data.brandKit.logos.primary,logo.id);
+ const {invoicePageHtml}=await import('../src/lib/invoice-design.js');
+ const html=invoicePageHtml({number:'INV-9',currency:'GBP',amountMinor:30000,netMinor:25000,taxMinor:5000,taxRate:20,snapshot:{}},{design:{layout:'studio',font:'brand'},brandKit:r.data.brandKit,estimate:{items:[{title:'Arch <b>',quantity:2,unitAmount:25000}],total:60000,taxRate:20}});
+ assert.match(html,new RegExp(`/api/brand-assets/${logo.id}`));assert.match(html,/font-family:'Brand Serif'/);assert.match(html,/Arch &lt;b&gt;/);assert.match(html,/50% of the project total/);assert.match(html,/#5a2d4c/);
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'remove',assetId:font.id},'owner');assert.equal(r.data.kit.fonts.heading.type,'preset');assert.equal(r.data.assets.some(a=>a.id===font.id),false);
+ assert.equal((await fetch(base+font.url)).status,404);
+});

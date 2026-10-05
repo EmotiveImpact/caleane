@@ -1,6 +1,8 @@
 import React,{useEffect,useState} from 'react';
 import {ArrowDown,ArrowUp,Copy,Plus,Trash2} from 'lucide-react';
 import {WorkspaceButton,WorkspaceField,WorkspaceSelect,WorkspaceStatus,WorkspaceSwitch} from './workspace/WorkspaceUI';
+import {InvoicePreview,printInvoice} from './InvoiceDocument';
+import {invoiceFonts,invoiceLayouts,invoicePageHtml,sampleInvoice} from '../lib/invoice-design';
 import '../studio-commerce.css';
 
 const money=(minor,currency='GBP')=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}catch{return `${((Number(minor)||0)/100).toFixed(2)} ${currency}`;}};
@@ -87,8 +89,38 @@ export function PricingSettings({studio,request}){
    </form>
    <aside className="settings-support"><h3>How payment plans work</h3><p>When a client confirms an estimate, open Billing on the project and start a plan. Caleane works out each amount and due date from these rules.</p><p>Each payment becomes a normal invoice when you issue it. If a payment date arrives and it has not been issued, a reminder appears in your follow-ups.</p></aside>
   </div>
+  <InvoiceDesignSettings studio={studio} request={request} defaults={form}/>
   <PriceList studio={studio} request={request}/>
  </div>;
+}
+
+function InvoiceDesignSettings({studio,request,defaults}){
+ const {data,error,busy,send}=useStudioData(`/api/invoice-design?studio=${studio.id}`,request);
+ const [design,setDesign]=useState(null),[saved,setSaved]=useState(false),[brandKit,setBrandKit]=useState(null);
+ useEffect(()=>{let active=true;request(`/api/brand-kit?studio=${studio.id}`).then(result=>{if(active)setBrandKit(result.kit);}).catch(()=>{});return()=>{active=false;};},[studio.id,request]);
+ useEffect(()=>{if(data?.design)setDesign(data.design);},[data]);
+ if(!design)return <p className="commerce-muted">{error||'Loading invoice design…'}</p>;
+ const set=patch=>{setSaved(false);setDesign({...design,...patch});};
+ const hasLogo=!!(brandKit?.logos?.primary||studio.branding?.logoUrl),brandColour=brandKit?.colours?.primary||studio.accent||'#1f2a24';
+ const sample=sampleInvoice(studio,defaults),html=invoicePageHtml(sample.invoice,{studio,design,brandKit,estimate:sample.estimate});
+ return <section className="settings-pane-layout commerce-invoice-design" aria-labelledby="invoice-design-heading">
+  <form className="settings-pane-form" onSubmit={async e=>{e.preventDefault();if(await send(design))setSaved(true);}}>
+   <header className="settings-pane-heading"><h2 id="invoice-design-heading">Invoice design</h2><p>How your invoices look to clients, on screen and when printed or saved as a PDF. Changes apply to every invoice, including ones already issued. The amounts and details never change.</p></header>
+   <fieldset className="commerce-choice-group"><legend>Layout</legend><div className="commerce-layout-options">{invoiceLayouts.map(([key,label,hint])=><label key={key} className={design.layout===key?'is-selected':''}><input type="radio" name="layout" value={key} checked={design.layout===key} onChange={()=>set({layout:key})}/><span className={`commerce-layout-thumb is-${key}`} aria-hidden="true"><i/><b/><b/><b/><em/></span><strong>{label}</strong><small>{hint}</small></label>)}</div></fieldset>
+   <fieldset className="commerce-choice-group"><legend>Typeface</legend><div className="commerce-pill-options">{invoiceFonts.map(([key,label])=><label key={key} className={design.font===key?'is-selected':''}><input type="radio" name="font" value={key} checked={design.font===key} onChange={()=>set({font:key})}/><span className={`is-${key}`}>{label}</span></label>)}</div></fieldset>
+   <div className="settings-fields">
+    <WorkspaceSwitch label="Use my brand colour" description={`From your brand kit (${brandColour}). Change it in Settings, Brand kit.`} checked={!design.accent} onCheckedChange={on=>set({accent:on?'':brandColour})}/>
+    {design.accent&&<div className="commerce-colour-row"><label htmlFor="invoice-accent">Invoice colour</label><input id="invoice-accent" type="color" value={design.accent} onChange={e=>set({accent:e.target.value})}/><code>{design.accent}</code></div>}
+    <WorkspaceSwitch label="Show my logo" description={hasLogo?'Uses the logo from your brand kit.':'Upload a logo in Settings, Brand kit. Until then your studio name is used.'} checked={design.showLogo} onCheckedChange={on=>set({showLogo:on})}/>
+    <WorkspaceSwitch label="List the project items" description="Shows each line from the confirmed estimate, and what share this invoice covers." checked={design.showItems} onCheckedChange={on=>set({showItems:on})}/>
+    <WorkspaceField label="Closing line (optional)" value={design.thankYou} maxLength={300} onChange={e=>set({thankYou:e.target.value})} placeholder="Thank you for your business."/>
+    <WorkspaceField label="Footer (optional)" hint="Company number, registered office or VAT details. Shown at the bottom of every page."><textarea rows={2} maxLength={500} value={design.footer} onChange={e=>set({footer:e.target.value})}/></WorkspaceField>
+   </div>
+   {error&&<p className="commerce-error" role="alert">{error}</p>}
+   <footer className="settings-save-row"><WorkspaceButton type="submit" disabled={busy}>{busy?'Saving…':'Save invoice design'}</WorkspaceButton>{saved&&<span role="status">Saved.</span>}</footer>
+  </form>
+  <aside className="settings-support commerce-invoice-preview"><div className="commerce-preview-head"><h3>Preview</h3><button type="button" className="commerce-link-button" onClick={()=>printInvoice(html)}>Print a sample</button></div><InvoicePreview html={html} title="Sample invoice preview"/><p>A sample invoice using your saved details.</p></aside>
+ </section>;
 }
 
 /* ---------- Reminders ---------- */
