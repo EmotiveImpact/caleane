@@ -27,7 +27,8 @@ import {getProjectOperations,changeProjectOperations} from './studio-operations.
 import {DEFAULT_WORKFLOW,isWorkflowId,projectTypesFor,briefFieldsFor} from './src/lib/workflows.js';
 import {validateIntakeQuestions,captureIntakeAnswers,updateIntakeAnswers,normalizeIntakeAnswers} from './intake-questions.mjs';
 import {searchWorkspace} from './workspace-search.mjs';
-import {installStudioCommerce,handleStudioCommerce,billingDefaults} from './studio-commerce.mjs';
+import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
+import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation} from './consultations.mjs';
@@ -64,7 +65,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);const limits=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBrandKit(db);const limits=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
@@ -77,7 +78,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
   for(const [u,role] of [[owner,'owner'],[client,'client']]){db.prepare('INSERT INTO users VALUES(?,?,?,?)').run(u.id,u.email,u.name,passwordHash('StudioDemo2026!'));db.prepare('INSERT INTO memberships VALUES(?,?,?)').run(u.id,studioId,role);}
   for(const [index,person] of ['Amelia Taylor','Noah Williams','Olivia Chen'].entries()){
    const b={name:person,email:index===0?client.email:`demo${index}@example.test`,occasion:['Wedding','Brand launch','Private dinner'][index],date:['2027-06-12','2027-02-20','2027-04-10'][index],venue:['A London townhouse','A gallery in Shoreditch','Private residence, Richmond'][index],vision:['An intimate celebration with sculptural ivory flowers, candlelight and a touch of sage. Elegant, personal and warm.','A quiet, architectural world for a new collection. Soft forms, strong silhouettes and space to explore.','A beautiful dinner for family and friends. Layers of flowers, linen and candlelight.'][index],colours:['Ivory','Sage'],customColours:'Champagne accents',pinterest:'',budget:''};
-   const p=makeProject(studioId,b,client);p.demo=true;p.status=['Design','Enquiry','Planning'][index];
+   const p=makeProject(studioId,b,index===0?client:{name:person});p.demo=true;p.status=['Design','Enquiry','Planning'][index];
    if(index===0){p.inspiration.push({id:id(),title:'The atmosphere',url:'',sample:'/assets/candlelit-table.webp',note:'Warm candlelight, ivory flowers and a considered table.',by:'NAY Studio',at:now()});p.designs.push({id:id(),version:1,briefRevision:p.briefRevision,briefSnapshot:structuredClone(p.brief),title:'Ivory, softly',description:'An intimate table beneath sculptural florals. Ivory and sage, warm candlelight, soft champagne fabrics. This is a sample concept for the demo project.',sample:'/assets/blush-celebration.webp',fileId:'',status:'Awaiting approval',at:now(),feedback:''});p.messages.push({id:id(),by:'NAY Studio',role:'owner',text:'Welcome, Amelia. Your first concept is ready to explore in Designs. You can leave feedback or approve it when you are happy.',at:now()});event(p,owner,'Shared design version 1');}
    if(index===0){p.decisions.push({id:id(),title:'Choose the table direction',description:'Which setting feels closer to the celebration you have in mind? We will refine the chosen direction together.',options:[{id:id(),label:'Sculptural ivory',detail:'Architectural florals, candlelight and a restrained palette.',url:''},{id:id(),label:'Soft garden',detail:'Low arrangements, layered greenery and a more relaxed table.',url:''}],status:'Awaiting choice',briefRevision:1,createdAt:now(),by:'NAY Studio'});p.tasks.push({id:id(),title:'Share any important table details',due:'2026-10-12',assignee:'client',completed:false,createdBy:'NAY Studio',at:now()});p.tasks.push({id:id(),title:'Refine the table layout',due:'2026-11-02',assignee:'studio',completed:false,createdBy:'NAY Studio',at:now()});}
    insertProject(db,p);
@@ -117,7 +118,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(route.startsWith('/api/')&&!['GET','HEAD','OPTIONS'].includes(req.method)){
     if(!publicMatch&&req.headers.origin!==origin)fail(403,'Please use this workspace to make changes.');
     if(!/^application\/json(?:;|$)/i.test(String(req.headers['content-type']||'')))fail(415,'Use JSON for this request.');
-    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/drafts\/files)$/.test(route),limit=(isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+)$/.test(route))?8500000:65536,chunks=[];let bytes=0;
+    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/drafts\/files)$/.test(route),limit=(isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+)$/.test(route))?8500000:route==='/api/brand-kit'?6000000:65536,chunks=[];let bytes=0;
     for await(const chunk of req){bytes+=chunk.length;if(bytes>limit)fail(413,isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.');chunks.push(chunk);}
     try{body=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');if(!body||Array.isArray(body)||typeof body!=='object')throw 0;}catch{fail(400,'We could not read that request.');}
    }
@@ -134,6 +135,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     rate(req,'intake',30);if(body.website)fail(400,'Please leave the website field empty.');const publicBrand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(publicStudio.id)?.data||'{}');const questions=validateIntakeQuestions(publicBrand.intakeQuestions||[]);const b=brief({...body,workflowType:publicBrand.profession||DEFAULT_WORKFLOW,intakeAnswers:captureIntakeAnswers(body.intakeAnswers,questions)});const key=str(req.headers['idempotency-key']||'',120);if(!key)fail(400,'An enquiry reference is required.');const digest=hash(JSON.stringify(b));const previous=db.prepare('SELECT * FROM receipts WHERE studio_id=? AND key=?').get(publicStudio.id,key);if(previous){if(previous.digest!==digest)fail(409,'This enquiry reference has already been used.');return reply(200,{ok:true,reference:previous.project_id.slice(0,8).toUpperCase()});}
     const p=makeProject(publicStudio.id,b,{name:b.name});db.exec('BEGIN');try{insertProject(db,p);db.prepare('INSERT INTO receipts VALUES(?,?,?,?)').run(publicStudio.id,key,digest,p.id);recordEnquiry(db,{studioId:publicStudio.id,projectId:p.id});db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return reply(201,{ok:true,reference:p.id.slice(0,8).toUpperCase()});
    }
+   const brandAssetMatch=route.match(/^\/api\/brand-assets\/([a-f0-9-]{36})$/);
+   if(brandAssetMatch&&req.method==='GET')return serveBrandAsset(db,res,brandAssetMatch[1]);
    const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)$/);
    if(bookingMatch){
     const bookingStudio=db.prepare('SELECT * FROM studios WHERE slug=?').get(bookingMatch[1]);if(!bookingStudio)fail(404,'Studio not found.');
@@ -209,6 +212,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(await handleConversationFileUpload({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
     if(await handleConversationOrganiser({db,req,route,body,user,studio,owner,reply}))return;
     if(await handleStudioCommerce({db,req,route,body,studio,owner,reply}))return;
+    if(handleBrandKit({db,req,route,body,studio,owner,reply}))return;
     if(await handleReminders({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin}))return;
     if(route==='/api/stripe/connect/status'&&req.method==='GET'){
@@ -475,7 +479,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      else fail(405,'Method not allowed.');data.updatedAt=now();transaction(db,()=>{db.prepare('UPDATE clients SET name=?,data=? WHERE id=? AND studio_id=?').run(name,JSON.stringify(data),row.id,studio.id);const primary=db.prepare('SELECT contact_id FROM crm_client_contacts WHERE studio_id=? AND client_id=? AND primary_contact=1').get(studio.id,row.id);if(primary)db.prepare('UPDATE crm_contacts SET name=?,phone=?,updated_at=? WHERE id=? AND studio_id=?').run(name,data.phone||'',now(),primary.contact_id,studio.id);});return reply(200,{client:clientDTO(db.prepare('SELECT * FROM clients WHERE id=?').get(row.id))});
     }
     if(route==='/api/projects'&&req.method==='GET'){const all=(owner||staffViewer?db.prepare('SELECT data FROM projects WHERE studio_id=?').all(studio.id):db.prepare(`SELECT DISTINCT p.data FROM projects p JOIN crm_project_stakeholders ps ON ps.project_id=p.id AND ps.studio_id=p.studio_id JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE p.studio_id=? AND ps.portal_access=1 AND ct.user_id=?`).all(studio.id,user.id)).map(row=>JSON.parse(row.data));return reply(200,{projects:all.map(decorate).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))});}
-    if(route==='/api/projects'&&req.method==='POST'){requireOwner();const p=makeProject(studio.id,brief({...body,workflowType:body.workflowType||branding(studio.id).profession||DEFAULT_WORKFLOW}),user,body.clientId?str(body.clientId,100):null);insertProject(db,p);return reply(201,{project:decorate(p)});}
+    if(route==='/api/projects'&&req.method==='POST'){requireOwner();const p=makeProject(studio.id,brief({...body,workflowType:body.workflowType||branding(studio.id).profession||DEFAULT_WORKFLOW}),user,body.clientId?str(body.clientId,100):null);p.status='Planning';p.activity[0].text='Created the project';insertProject(db,p);return reply(201,{project:decorate(p)});}
     if(route==='/api/invoices'){
      requireOwner();if(req.method!=='GET')fail(405,'Method not allowed.');return reply(200,{invoices:invoiceRows(db,studio.id).map(row=>invoiceDTO(db,row))});
     }
@@ -557,7 +561,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      }
      const invoice=invoiceId?db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=? AND project_id=?').get(invoiceId,studio.id,project.id):null;
      if(invoiceId&&!invoice)fail(404,'Invoice not found.');
-     if(req.method==='GET'&&!invoiceId)return reply(200,{invoices:invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row))});
+     if(req.method==='GET'&&!invoiceId)return reply(200,{invoices:invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row)),design:invoiceDesign(db,studio.id),brandKit:brandKit(db,studio.id)});
      if(req.method==='GET'&&invoiceId&&!subaction)return reply(200,{invoice:invoiceDTO(db,invoice)});
      if(req.method==='GET'&&subaction==='attempts'){requireOwner();return reply(200,{attempts:listStripeCheckoutAttempts(db,{studioId:studio.id,invoiceId})});}
      if(req.method==='POST'&&subaction==='checkout'){
