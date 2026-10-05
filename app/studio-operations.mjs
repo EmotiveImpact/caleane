@@ -13,7 +13,9 @@ export const MILESTONE_TEMPLATES={
  'balloon-styling':['Site dimensions and access','Colour and form direction','Materials preparation','Installation','Collection and handover'],
  'interior-design':['Site survey and measurements','Concept direction','Specifications and sourcing','Installation plan','Space handover'],
  'creative-studio':['Discovery and brief','Concept direction','Production','Review and refinements','Final assets delivered'],
- 'bespoke-making':['Specification','Materials and finish','Making','Quality review','Collection or delivery']
+ 'bespoke-making':['Specification','Materials and finish','Making','Quality review','Collection or delivery'],
+ 'photo-film':['Brief and shot list','Planning and locations','Shoot','Selection and editing','Final delivery'],
+ 'general':['Brief and references','Direction','Making','Review and refinements','Delivery']
 };
 
 function fail(status,message){throw Object.assign(new Error(message),{status});}
