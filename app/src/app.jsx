@@ -13,7 +13,6 @@ import './project-delivery.css';
 import React,{lazy,Suspense,useEffect,useState,useRef} from 'react';
 import {createRoot} from 'react-dom/client';
 import * as Tabs from '@radix-ui/react-tabs';
-import '@fontsource-variable/inter/wght.css';
 import './style.css';
 import {AuthScenes} from './auth-scenes';
 import './aetheria.css';
