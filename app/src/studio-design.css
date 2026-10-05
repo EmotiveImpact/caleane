@@ -161,3 +161,6 @@ body:has(.folio-workspace) :is(.folio-context-links button,.folio-context-detail
 .project-correspondence .portal-correspondence-grid{grid-template-columns:minmax(0,1fr)}.project-correspondence .folio-correspondence{min-width:0;width:100%}.project-correspondence .folio-subject h2{font-size:22px}.project-correspondence .folio-letters{max-height:55vh;overflow:auto}
 
 
+.studio-index-controls>.studio-board-scope{flex:1;display:flex;align-items:center;min-height:50px;margin:0;color:var(--studio-muted);font-size:13px}
+.project-unavailable{max-width:520px;margin:72px auto;text-align:center;color:var(--studio-muted)}.project-unavailable.loading{min-height:0;display:block}.project-unavailable h1{margin:0 0 12px;color:var(--studio-ink);font-size:28px}.project-unavailable p{margin:0 0 24px;line-height:1.55}
+@media(max-width:760px){.studio-index-controls>.studio-board-scope{min-height:0;margin-bottom:12px}}
