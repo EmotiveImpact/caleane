@@ -23,3 +23,5 @@
 .notification-drawer .ws-empty{margin-top:28px}
 @media(max-width:720px){.notification-drawer.ws-dialog{width:100vw;padding:20px 16px}.notification-drawer-unread{opacity:1;position:static;margin:0 0 10px 58px}}
 @media(hover:none){.notification-drawer-unread{opacity:1}}
+.notification-drawer-tabs>[role=tablist]{margin-bottom:16px}
+.notification-drawer-note{margin:14px 0 0;font-size:11px;color:var(--studio-muted,#80858d)}
