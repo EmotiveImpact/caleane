@@ -5,6 +5,7 @@ import {operationalReadiness} from './operational-readiness.mjs';
 import {installDocuments,listDocuments,changeDocument,downloadDocument,syncProjectArchives} from './documents.mjs';
 import {handleTaskCollaboration} from './task-collaboration.mjs';
 import {handleConversationFileUpload} from './conversation-features.mjs';
+import {handleConversationOrganiser} from './conversation-organiser.mjs';
 import {createAccountSecurity} from './account-security.mjs';
 import {installEngagements,getEngagements,changeEngagements,projectCalendar} from './engagements.mjs';
 import http from 'node:http';
@@ -206,6 +207,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(handleOnboarding({db,req,route,body,user,studio,reply}))return;
     if(await handleTaskCollaboration({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
     if(await handleConversationFileUpload({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
+    if(await handleConversationOrganiser({db,req,route,body,user,studio,owner,reply}))return;
     if(await handleStudioCommerce({db,req,route,body,studio,owner,reply}))return;
     if(await handleReminders({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin}))return;
