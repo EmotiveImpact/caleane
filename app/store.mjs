@@ -10,6 +10,25 @@ export function passwordHash(password){const salt=randomBytes(16).toString('hex'
 let dummyHash;
 // A missing account still costs one scrypt, so sign-in timing does not reveal which emails exist.
 export function passwordOK(password,stored){const real=typeof stored==='string'&&stored.includes(':');const [salt,key]=(real?stored:(dummyHash||=passwordHash(randomBytes(16).toString('hex')))).split(':');const expected=Buffer.from(key,'hex');return timingSafeEqual(expected,scryptSync(password,salt,64))&&real;}
+// Staff access levels: a viewer can be given projects to contribute to; a bookkeeper sees finances only, read-only.
+export const STAFF_ACCESS=['viewer','bookkeeper'];
+const staffAccessCheck=`CHECK(access IN (${STAFF_ACCESS.map(value=>`'${value}'`).join(',')}))`;
+const STAFF_TABLES={
+ studio_staff:name=>`CREATE TABLE IF NOT EXISTS ${name}(user_id TEXT NOT NULL REFERENCES users(id),studio_id TEXT NOT NULL REFERENCES studios(id),access TEXT NOT NULL ${staffAccessCheck},joined_at TEXT NOT NULL,PRIMARY KEY(user_id,studio_id));`,
+ staff_invitations:name=>`CREATE TABLE IF NOT EXISTS ${name}(token TEXT PRIMARY KEY,studio_id TEXT NOT NULL REFERENCES studios(id),email TEXT NOT NULL,access TEXT NOT NULL ${staffAccessCheck},expires INTEGER NOT NULL,used INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL);`,
+};
+// Older databases only allowed 'viewer'. Rebuild those tables once, keeping every row, so bookkeepers can be stored.
+function widenStaffAccess(db){
+ for(const [table,create] of Object.entries(STAFF_TABLES)){
+  const schema=db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").get(table)?.sql||'';
+  if(schema.includes("'bookkeeper'"))continue;
+  transaction(db,()=>db.exec(`${create(table+'_access_migration')}
+   INSERT INTO ${table}_access_migration SELECT * FROM ${table};
+   DROP TABLE ${table};
+   ALTER TABLE ${table}_access_migration RENAME TO ${table};`));
+ }
+ db.exec('CREATE INDEX IF NOT EXISTS staff_invitations_studio_email ON staff_invitations(studio_id,email);');
+}
 export function openStore(file){
  const db=new DatabaseSync(file);db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
  CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password TEXT NOT NULL);
@@ -24,8 +43,8 @@ export function openStore(file){
  CREATE TABLE IF NOT EXISTS project_reads(user_id TEXT NOT NULL,project_id TEXT NOT NULL,seen TEXT NOT NULL,PRIMARY KEY(user_id,project_id));
  CREATE TABLE IF NOT EXISTS studio_branding(studio_id TEXT PRIMARY KEY,data TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS receipts(studio_id TEXT NOT NULL,key TEXT NOT NULL,digest TEXT NOT NULL,project_id TEXT NOT NULL,PRIMARY KEY(studio_id,key));
- CREATE TABLE IF NOT EXISTS studio_staff(user_id TEXT NOT NULL REFERENCES users(id),studio_id TEXT NOT NULL REFERENCES studios(id),access TEXT NOT NULL CHECK(access IN ('viewer')),joined_at TEXT NOT NULL,PRIMARY KEY(user_id,studio_id));
- CREATE TABLE IF NOT EXISTS staff_invitations(token TEXT PRIMARY KEY,studio_id TEXT NOT NULL REFERENCES studios(id),email TEXT NOT NULL,access TEXT NOT NULL CHECK(access IN ('viewer')),expires INTEGER NOT NULL,used INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL);
+ ${STAFF_TABLES.studio_staff('studio_staff')}
+ ${STAFF_TABLES.staff_invitations('staff_invitations')}
  CREATE TABLE IF NOT EXISTS studio_project_collaborators(user_id TEXT NOT NULL REFERENCES users(id),studio_id TEXT NOT NULL REFERENCES studios(id),project_id TEXT NOT NULL REFERENCES projects(id),assigned_at TEXT NOT NULL,assigned_by TEXT NOT NULL REFERENCES users(id),PRIMARY KEY(user_id,studio_id,project_id));
  CREATE INDEX IF NOT EXISTS studio_project_collaborators_project ON studio_project_collaborators(studio_id,project_id);
  CREATE INDEX IF NOT EXISTS staff_invitations_studio_email ON staff_invitations(studio_id,email);
@@ -143,6 +162,7 @@ export function openStore(file){
    if(last.seq)db.prepare('INSERT OR IGNORE INTO conversation_reads VALUES(?,?,?)').run(read.user_id,c.id,last.seq);
   }
  });
+ widenStaffAccess(db);
  runMigrations(db);
  return db;
 }

@@ -15,7 +15,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomBytes,timingSafeEqual} from 'node:crypto';
 import Stripe from 'stripe';
-import {openStore,id,now,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
+import {openStore,STAFF_ACCESS,id,now,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
 import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask,deleteTask} from './crm.mjs';
 import {clientErasurePreview,eraseClient} from './client-erasure.mjs';
 import {bindInvitedContact,conversationAccess,ensurePrimaryContact,listClientContacts,listStakeholders,projectAccess,projectClientId} from './relationships.mjs';
@@ -193,10 +193,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(route.startsWith('/api/')){
     if(!user)fail(401,'Please sign in.');
     const branding=sid=>JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(sid)?.data||'{}');
-    const decorate=p=>{if(staffViewer)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Studio viewer',canContribute:!!db.prepare('SELECT 1 FROM studio_project_collaborators WHERE studio_id=? AND project_id=? AND user_id=?').get(p.studioId,p.id,user.id),briefRevision:p.briefRevision,brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,venue:p.brief.venue,vision:p.brief.vision,workflowType:p.brief.workflowType},designs:p.designs.map(d=>({id:d.id,version:d.version,title:d.title,status:d.status,at:d.at})),tasks:(p.tasks||[]).map(t=>({id:t.id,title:t.title,due:t.due,assignee:t.assignee,completed:t.completed})),createdAt:p.createdAt,updatedAt:p.updatedAt};const c=db.prepare('SELECT * FROM conversations WHERE project_id=?').get(p.id),accessRole=owner?'Owner':projectAccess(db,p.studioId,p.id,user.id),latest=accessRole==='Owner'||accessRole==='Approver'?db.prepare(`SELECT i.* FROM invoices i WHERE i.studio_id=? AND i.project_id=? ORDER BY
+    const decorate=p=>{if(bookkeeper)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Bookkeeper',brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,workflowType:p.brief.workflowType},clientId:projectClientId(db,p.studioId,p.id),createdAt:p.createdAt,updatedAt:p.updatedAt};if(staffViewer)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Studio viewer',canContribute:!!db.prepare('SELECT 1 FROM studio_project_collaborators WHERE studio_id=? AND project_id=? AND user_id=?').get(p.studioId,p.id,user.id),briefRevision:p.briefRevision,brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,venue:p.brief.venue,vision:p.brief.vision,workflowType:p.brief.workflowType},designs:p.designs.map(d=>({id:d.id,version:d.version,title:d.title,status:d.status,at:d.at})),tasks:(p.tasks||[]).map(t=>({id:t.id,title:t.title,due:t.due,assignee:t.assignee,completed:t.completed})),createdAt:p.createdAt,updatedAt:p.updatedAt};const c=db.prepare('SELECT * FROM conversations WHERE project_id=?').get(p.id),accessRole=owner?'Owner':projectAccess(db,p.studioId,p.id,user.id),latest=accessRole==='Owner'||accessRole==='Approver'?db.prepare(`SELECT i.* FROM invoices i WHERE i.studio_id=? AND i.project_id=? ORDER BY
      CASE WHEN i.cancelled_at IS NULL AND i.amount_minor>COALESCE((SELECT SUM(ip.amount_minor) FROM invoice_payments ip WHERE ip.studio_id=i.studio_id AND ip.invoice_id=i.id),0) THEN 0 ELSE 1 END,
      i.issued_at DESC,i.number DESC LIMIT 1`).get(p.studioId,p.id):null;const invoice=latest?invoiceDTO(db,latest):null;const moneyHidden=accessRole!=='Owner'&&accessRole!=='Approver';return {...p,...(moneyHidden?{estimates:[],proposals:[],moneyHidden:true,activity:(p.activity||[]).filter(entry=>!/invoice|payment|refund|credit note|estimate|proposal|deposit|instalment|balance/i.test(entry.text||entry.title||''))}:{}),viewerId:user.id,enquiryReviewedAt:owner?db.prepare('SELECT r.reviewed_at FROM crm_enquiry_reviews r JOIN crm_opportunities o ON o.id=r.opportunity_id AND o.studio_id=r.studio_id WHERE o.project_id=? AND o.studio_id=?').get(p.id,p.studioId)?.reviewed_at:undefined,operations:owner?p.operations:undefined,estimateDraft:owner?p.estimateDraft:undefined,clientId:projectClientId(db,p.studioId,p.id),accessRole,conversationId:c?.id,unreadMessages:c?conversationUnreadCount(db,c,user):0,latestInvoice:invoice?{id:invoice.id,number:invoice.number,kind:invoice.kind,currency:invoice.currency,amountMinor:invoice.amountMinor,paidMinor:invoice.paidMinor,dueDate:invoice.dueDate,status:invoice.status}:null};};
-    const memberships=[...db.prepare('SELECT s.*,m.role FROM studios s JOIN memberships m ON m.studio_id=s.id WHERE m.user_id=?').all(user.id),...db.prepare("SELECT s.*,'staff_viewer' AS role FROM studios s JOIN studio_staff st ON st.studio_id=s.id WHERE st.user_id=? AND st.access='viewer'").all(user.id)];
+    const memberships=[...db.prepare('SELECT s.*,m.role FROM studios s JOIN memberships m ON m.studio_id=s.id WHERE m.user_id=?').all(user.id),...db.prepare("SELECT s.*,CASE st.access WHEN 'bookkeeper' THEN 'staff_bookkeeper' ELSE 'staff_viewer' END AS role FROM studios s JOIN studio_staff st ON st.studio_id=s.id WHERE st.user_id=? AND st.access IN ('viewer','bookkeeper')").all(user.id)];
     if(route==='/api/me'&&req.method==='GET')return reply(200,{user:{id:user.id,name:user.name,email:user.email},studios:memberships.map(s=>({...s,origins:JSON.parse(s.origins),branding:branding(s.id)}))});
     if(route==='/api/stripe/connect/refresh'&&req.method==='GET'){
      if(!stripe)fail(503,'Stripe account setup is not configured.');
@@ -209,7 +209,9 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      const destination=new URL('/',origin);destination.searchParams.set('view','settings');destination.searchParams.set('studio',result.studioId);destination.searchParams.set('stripe',result.status);
      res.writeHead(303,{Location:destination.toString(),'Cache-Control':'no-store'});return res.end();
     }
-    const studio=memberships.find(s=>s.id===url.searchParams.get('studio'));if(!studio)fail(403,'You do not have access to this studio.');const owner=studio.role==='owner',staffViewer=studio.role==='staff_viewer';const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
+    const studio=memberships.find(s=>s.id===url.searchParams.get('studio'));if(!studio)fail(403,'You do not have access to this studio.');const owner=studio.role==='owner',staffViewer=studio.role==='staff_viewer',bookkeeper=studio.role==='staff_bookkeeper';
+    // Bookkeepers read the money and nothing else: no project content, messages, files, settings or changes of any kind.
+    if(bookkeeper&&!(req.method==='GET'&&(['/api/invoices','/api/projects',`/api/studios/${studio.id}/stripe-status`].includes(route)||/^\/api\/projects\/[a-f0-9-]+\/invoices(?:\/(?:plan|[a-f0-9-]+))?$/.test(route))))fail(403,'Bookkeeper access is read-only and limited to finances.');const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
     if(req.method==='POST'&&((route.startsWith('/api/conversations/')&&route.endsWith('/files'))||(route.startsWith('/api/task-workspace/')&&body.action==='file')))rate(req,'upload',40);
     const formRoute=route.match(/^\/api\/forms(?:\/([a-f0-9-]+)(?:\/(responses|export))?)?$/);
     if(formRoute){requireOwner();const formId=formRoute[1],action=formRoute[2];
@@ -253,24 +255,25 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       return reply(200,{owner:{id:user.id,name:user.name,email:user.email},members,pending});
      }
      if(req.method==='POST'){
-      rate(req,'staff-invite-create',20);const mail=email(body.email);
+      rate(req,'staff-invite-create',20);const mail=email(body.email),access=body.access===undefined?'viewer':body.access;if(!STAFF_ACCESS.includes(access))fail(400,'Choose a valid access level.');
       if(mail===user.email)fail(409,'You already own this studio.');
       const existing=db.prepare('SELECT id FROM users WHERE email=?').get(mail);
       if(existing&&(db.prepare('SELECT 1 FROM memberships WHERE user_id=? AND studio_id=?').get(existing.id,studio.id)||db.prepare('SELECT 1 FROM studio_staff WHERE user_id=? AND studio_id=?').get(existing.id,studio.id)))fail(409,'This person already has access to this studio.');
       const token=randomBytes(32).toString('hex');transaction(db,()=>{
        db.prepare('UPDATE staff_invitations SET used=1 WHERE studio_id=? AND email=? AND used=0').run(studio.id,mail);
-       db.prepare('INSERT INTO staff_invitations VALUES(?,?,?,?,?,0,?)').run(hash(token),studio.id,mail,'viewer',Date.now()+7*86400000,now());
+       db.prepare('INSERT INTO staff_invitations VALUES(?,?,?,?,?,0,?)').run(hash(token),studio.id,mail,access,Date.now()+7*86400000,now());
       });
-      return reply(201,{url:`${origin}/join-studio#${token}`,email:mail,access:'viewer',expiresDays:7,delivery:'copy_link'});
+      return reply(201,{url:`${origin}/join-studio#${token}`,email:mail,access,expiresDays:7,delivery:'copy_link'});
      }
      fail(405,'Method not allowed.');
     }
     const staffAssignmentMatch=route.match(/^\/api\/staff\/([a-f0-9-]+)\/projects\/([a-f0-9-]+)$/);
     if(staffAssignmentMatch){
      requireOwner();if(req.method!=='PATCH'||typeof body.enabled!=='boolean')fail(400,'Choose whether this member can contribute.');
-     const member=db.prepare('SELECT 1 FROM studio_staff WHERE studio_id=? AND user_id=?').get(studio.id,staffAssignmentMatch[1]);
+     const member=db.prepare('SELECT access FROM studio_staff WHERE studio_id=? AND user_id=?').get(studio.id,staffAssignmentMatch[1]);
      const project=db.prepare('SELECT id FROM projects WHERE id=? AND studio_id=?').get(staffAssignmentMatch[2],studio.id);
      if(!member||!project)fail(404,'Studio member or project not found.');
+     if(body.enabled&&member.access!=='viewer')fail(409,'Bookkeepers see finances only and cannot be given projects.');
      if(body.enabled)db.prepare('INSERT OR IGNORE INTO studio_project_collaborators VALUES(?,?,?,?,?)').run(staffAssignmentMatch[1],studio.id,project.id,now(),user.id);
      else db.prepare('DELETE FROM studio_project_collaborators WHERE user_id=? AND studio_id=? AND project_id=?').run(staffAssignmentMatch[1],studio.id,project.id);
      return reply(200,{ok:true,projectId:project.id,enabled:body.enabled});
@@ -360,7 +363,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      return reply(200,{draft:designDraftDTO(db,projectId,db.prepare('SELECT * FROM design_drafts WHERE id=?').get(draftId))});
     }
     const staffMemberMatch=route.match(/^\/api\/staff\/([a-f0-9-]+)$/);
-    if(staffMemberMatch){requireOwner();if(req.method!=='PATCH'||body.remove!==true)fail(405,'Method not allowed.');const removed=transaction(db,()=>{db.prepare('DELETE FROM studio_project_collaborators WHERE studio_id=? AND user_id=?').run(studio.id,staffMemberMatch[1]);return db.prepare('DELETE FROM studio_staff WHERE studio_id=? AND user_id=?').run(studio.id,staffMemberMatch[1]);});if(!removed.changes)fail(404,'Studio member not found.');return reply(200,{ok:true});}
+    if(staffMemberMatch){requireOwner();if(req.method==='PATCH'&&body.access!==undefined){if(!STAFF_ACCESS.includes(body.access))fail(400,'Choose a valid access level.');const changed=transaction(db,()=>{if(body.access!=='viewer')db.prepare('DELETE FROM studio_project_collaborators WHERE studio_id=? AND user_id=?').run(studio.id,staffMemberMatch[1]);return db.prepare('UPDATE studio_staff SET access=? WHERE studio_id=? AND user_id=?').run(body.access,studio.id,staffMemberMatch[1]);});if(!changed.changes)fail(404,'Studio member not found.');return reply(200,{ok:true,access:body.access});}if(req.method!=='PATCH'||body.remove!==true)fail(405,'Method not allowed.');const removed=transaction(db,()=>{db.prepare('DELETE FROM studio_project_collaborators WHERE studio_id=? AND user_id=?').run(studio.id,staffMemberMatch[1]);return db.prepare('DELETE FROM studio_staff WHERE studio_id=? AND user_id=?').run(studio.id,staffMemberMatch[1]);});if(!removed.changes)fail(404,'Studio member not found.');return reply(200,{ok:true});}
     const staffInviteMatch=route.match(/^\/api\/staff-invitations\/([a-f0-9]{64})$/);
     if(staffInviteMatch){requireOwner();if(req.method!=='PATCH'||body.revoke!==true)fail(405,'Method not allowed.');const revoked=db.prepare('UPDATE staff_invitations SET used=1 WHERE studio_id=? AND token=? AND used=0').run(studio.id,staffInviteMatch[1]);if(!revoked.changes)fail(404,'Invitation not found.');return reply(200,{ok:true});}
     if(route==='/api/opportunities'){
@@ -506,10 +509,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      else if(!clientMatch[2]&&req.method==='PATCH'){name=str(body.name,120);if(!name||!['Lead','Active','Past client','VIP'].includes(body.stage))fail(400,'Add a client name and relationship stage.');if(!Array.isArray(body.tags)||body.tags.length>20)fail(400,'Use up to 20 tags.');const followUp=date(body.followUp,'follow-up date');Object.assign(data,{company:str(body.company||'',200),phone:str(body.phone||'',60),source:str(body.source||'',200),stage:body.stage,tags:body.tags.map(t=>str(t,50)).filter(Boolean),followUp,followUpNote:str(body.followUpNote||'',500)});}
      else fail(405,'Method not allowed.');data.updatedAt=now();transaction(db,()=>{db.prepare('UPDATE clients SET name=?,data=? WHERE id=? AND studio_id=?').run(name,JSON.stringify(data),row.id,studio.id);const primary=db.prepare('SELECT contact_id FROM crm_client_contacts WHERE studio_id=? AND client_id=? AND primary_contact=1').get(studio.id,row.id);if(primary)db.prepare('UPDATE crm_contacts SET name=?,phone=?,updated_at=? WHERE id=? AND studio_id=?').run(name,data.phone||'',now(),primary.contact_id,studio.id);});return reply(200,{client:clientDTO(db.prepare('SELECT * FROM clients WHERE id=?').get(row.id))});
     }
-    if(route==='/api/projects'&&req.method==='GET'){const all=(owner||staffViewer?db.prepare('SELECT data FROM projects WHERE studio_id=?').all(studio.id):db.prepare(`SELECT DISTINCT p.data FROM projects p JOIN crm_project_stakeholders ps ON ps.project_id=p.id AND ps.studio_id=p.studio_id JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE p.studio_id=? AND ps.portal_access=1 AND ct.user_id=?`).all(studio.id,user.id)).map(row=>JSON.parse(row.data));return reply(200,{projects:all.map(decorate).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))});}
+    if(route==='/api/projects'&&req.method==='GET'){const all=(owner||staffViewer||bookkeeper?db.prepare('SELECT data FROM projects WHERE studio_id=?').all(studio.id):db.prepare(`SELECT DISTINCT p.data FROM projects p JOIN crm_project_stakeholders ps ON ps.project_id=p.id AND ps.studio_id=p.studio_id JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE p.studio_id=? AND ps.portal_access=1 AND ct.user_id=?`).all(studio.id,user.id)).map(row=>JSON.parse(row.data));return reply(200,{projects:all.map(decorate).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))});}
     if(route==='/api/projects'&&req.method==='POST'){requireOwner();const p=makeProject(studio.id,brief({...body,workflowType:body.workflowType||branding(studio.id).profession||DEFAULT_WORKFLOW}),user,body.clientId?str(body.clientId,100):null);p.status='Planning';p.activity[0].text='Created the project';insertProject(db,p);return reply(201,{project:decorate(p)});}
     if(route==='/api/invoices'){
-     requireOwner();if(req.method!=='GET')fail(405,'Method not allowed.');return reply(200,{invoices:invoiceRows(db,studio.id).map(row=>invoiceDTO(db,row))});
+     if(!bookkeeper)requireOwner();if(req.method!=='GET')fail(405,'Method not allowed.');return reply(200,{invoices:invoiceRows(db,studio.id).map(row=>invoiceDTO(db,row))});
     }
     if(route===`/api/studios/${studio.id}/stripe-status`&&req.method==='GET'){
      const connected=db.prepare('SELECT stripe_account_id FROM stripe_studio_accounts WHERE studio_id=?').get(studio.id);
@@ -533,9 +536,9 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/(plan|[a-f0-9-]+)(?:\/(payments|cancel|credit-notes|refunds|checkout(?:\/expire)?|attempts))?)?$/);
     if(invoiceMatch){
      const projectRow=db.prepare('SELECT * FROM projects WHERE id=? AND studio_id=?').get(invoiceMatch[1],studio.id);
-     const accessRole=projectRow&&(owner?'Owner':projectAccess(db,studio.id,projectRow.id,user.id));
+     const accessRole=projectRow&&(owner?'Owner':bookkeeper?'Bookkeeper':projectAccess(db,studio.id,projectRow.id,user.id));
      if(!accessRole)fail(404,'Project not found.');
-     if(!owner&&accessRole!=='Approver')fail(403,'Only the project approver can see billing.');
+     if(!owner&&!bookkeeper&&accessRole!=='Approver')fail(403,'Only the project approver can see billing.');
      const project=JSON.parse(projectRow.data),invoiceId=invoiceMatch[2],subaction=invoiceMatch[3];
      const issueInvoice=(project,body,afterInsert)=>{
       const estimate=project.estimates?.find(item=>item.id===body.estimateId);
