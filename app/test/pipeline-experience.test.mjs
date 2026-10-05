@@ -37,10 +37,12 @@ function fixture({stale=false,count=1,intake=null,pipeline=null}={}){
   if(pipeline&&path.startsWith('/api/pipeline'))return pipeline;
   if(pipeline&&path.startsWith('/api/catalogue'))return {items:[{id:'i1',name:'Bridal bouquet',unitAmount:28500,currency:'GBP',unit:'each',archived:false}]};
   if(pipeline&&method==='POST'&&path.startsWith('/api/projects/p1/estimates')){writes.push({path,body});return {project:{id:'p1'}};}
+  if(pipeline&&path.startsWith('/api/projects/p1?'))return {project:{id:'p1',estimates:[],proposals:[]}};
   throw Error('Unexpected request '+path);
  };
  render(h(PipelineCRM,{studio,request,run:fn=>fn(),openClient:id=>opened.push(['client',id]),openProject:(p,tab)=>opened.push(['project',p.id,tab]),openTask:id=>opened.push(['task',id]),onProjectCreated(){}}));return {writes,opened};
 }
+const stagePath=()=>screen.getByRole('group',{name:'Enquiry stage'});
 async function choose(input,label,option){await input.click(screen.getByRole('combobox',{name:label,exact:true}));await input.click(screen.getByRole('option',{name:option,exact:true}));}
 
 test('attention only includes open enquiries with actionable missing/due steps; currencies remain separate',()=>{
@@ -55,7 +57,7 @@ test('attention only includes open enquiries with actionable missing/due steps; 
 test('drawer prioritises follow-ups and persisted stage change can be undone with latest revision',async()=>{
  const input=user(),{writes}=fixture();await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));
  await screen.findByRole('heading',{name:'Next steps'});assert.equal(screen.queryByRole('textbox',{name:'Enquiry title'}),null);
- await choose(input,'Enquiry status','Awaiting decision');await waitFor(()=>assert.equal(writes.length,1));assert.equal(writes[0].body.stage,'Negotiation');
+ await input.click(within(stagePath()).getByRole('button',{name:'Awaiting decision'}));await waitFor(()=>assert.equal(writes.length,1));assert.equal(writes[0].body.stage,'Negotiation');
  await input.click(screen.getByRole('button',{name:'Undo',exact:true}));await waitFor(()=>assert.equal(writes.length,2));assert.equal(writes[1].body.stage,'Discovery');assert.equal(writes[1].body.revision,2);
 });
 
@@ -71,7 +73,7 @@ test('adding a dated follow-up removes enquiry from attention, supports assignme
 
 test('not proceeding requires an explanation and keeps project accessible; Undo restores previous stage',async()=>{
  const input=user(),{writes}=fixture();await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));await screen.findByRole('heading',{name:'Next steps'});
- await choose(input,'Enquiry status','Not proceeding');assert.ok(screen.getByRole('dialog',{name:'Not proceeding'}));assert.equal(writes.length,0);
+ await input.click(screen.getByRole('button',{name:'Not proceeding',exact:true}));assert.ok(screen.getByRole('dialog',{name:'Not proceeding'}));assert.equal(writes.length,0);
  await input.type(screen.getByRole('textbox',{name:'Reason',exact:true}),'Dates changed');await input.click(screen.getByRole('button',{name:'Mark as not proceeding'}));
  await waitFor(()=>assert.equal(screen.queryByRole('dialog',{name:'Not proceeding'}),null));assert.equal(writes[0].body.lostReason,'Dates changed');assert.ok(screen.getByRole('button',{name:'Open project brief',exact:true}));
  await input.click(screen.getByRole('button',{name:'Undo',exact:true}));await waitFor(()=>assert.equal(writes.length,2));assert.equal(writes[1].body.stage,'Discovery');
@@ -79,7 +81,7 @@ test('not proceeding requires an explanation and keeps project accessible; Undo 
 
 test('stale Undo surfaces conflict and cannot report success or overwrite another edit',async()=>{
  const input=user(),{writes}=fixture({stale:true});await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));await screen.findByRole('heading',{name:'Next steps'});
- await choose(input,'Enquiry status','Confirmed');await input.click(await screen.findByRole('button',{name:'Undo',exact:true}));
+ await input.click(within(stagePath()).getByRole('button',{name:'Confirmed'}));await input.click(await screen.findByRole('button',{name:'Undo',exact:true}));
  await waitFor(()=>assert.match(screen.getByRole('alert').textContent,/changed while you were editing/));assert.equal(writes.length,2);assert.equal(screen.queryByText('Stage change undone.'),null);
 });
 
@@ -141,8 +143,8 @@ test('board keeps every stage reachable on small screens and the enquiry drives 
  await waitFor(()=>assert.equal(writes.at(-1).body.stage,'Qualified'),'cards can move without dragging');
  await input.click(screen.getByRole('button',{name:'View Wedding flowers'}));
  const deal=await screen.findByRole('region',{name:'Quote and booking'});
- assert.match(deal.textContent,/already fully booked/);
- await input.click(within(deal).getByRole('button',{name:'Build quote'}));
+ assert.match(deal.textContent,/is full/);
+ await input.click(within(screen.getByRole('tablist',{name:'Enquiry sections'})).getByRole('tab',{name:'Quote'}));
  await input.selectOptions(await screen.findByRole('combobox',{name:'Add from your price list'}),'i1');
  await input.click(screen.getByRole('button',{name:'Add line'}));
  assert.equal(screen.getByRole('textbox',{name:'Line 1 description'}).value,'Bridal bouquet');

@@ -264,7 +264,21 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
    productionStatus:booking?.productionStatus||null,portalClient:p?hasPortalClient(db,studioId,p.id):false,
    lastClientMessageAt:replied,followUpsSent:followed,nextFollowUp:nextFollow,fit,flags:flags.sort((a,b)=>a.rank-b.rank)};
  }
- return {settings,asOf,dates,signals,insights:insights(db,studioId,opps,projects,asOf)};
+ return {settings,asOf,dates,signals,insights:insights(db,studioId,opps,projects,asOf),handled:handledFor(db,studioId,asOf),replySpeed:replySpeed(db,studioId,opps,asOf)};
+}
+
+// What the automations did in the last week, for the Today panel.
+function handledFor(db,studioId,asOf){
+ return db.prepare("SELECT a.title,a.created_at AS at,a.opportunity_id AS opportunityId,c.name AS clientName FROM crm_activities a JOIN clients c ON c.id=a.client_id AND c.studio_id=a.studio_id WHERE a.studio_id=? AND a.actor_name='Caleane automation' AND a.created_at>=? ORDER BY a.created_at DESC LIMIT 8").all(studioId,addDays(asOf,-7));
+}
+
+// Median hours from a new enquiry to the studio's first message, over the last 90 days.
+function replySpeed(db,studioId,opps,asOf){
+ const since=addDays(asOf,-90),first=db.prepare("SELECT MIN(m.created_at) AS at FROM conversation_messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.project_id=? AND m.role='owner' AND m.created_at>=?");
+ const hours=opps.filter(o=>o.project_id&&o.created_at>=since).map(o=>{const at=first.get(o.project_id,o.created_at)?.at;return at?(Date.parse(at)-Date.parse(o.created_at))/36e5:null;}).filter(h=>h!==null).sort((a,b)=>a-b);
+ if(!hours.length)return null;
+ const mid=Math.floor(hours.length/2);
+ return {hours:Math.round((hours.length%2?hours[mid]:(hours[mid-1]+hours[mid])/2)*10)/10,count:hours.length};
 }
 
 function insights(db,studioId,opps,projects,asOf){
