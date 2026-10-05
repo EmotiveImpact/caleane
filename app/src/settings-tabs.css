@@ -82,3 +82,9 @@
 @media(max-width:520px) {
   .settings-fields { grid-template-columns: minmax(0,1fr); gap: 20px; }
 }
+
+.settings-unsaved { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; margin: 0 0 22px; padding: 14px 18px; border-radius: 6px; background: #fbf3e8; color: #6b4a1f; }
+
+.settings-unsaved p { margin: 0; font-size: 13px; line-height: 1.5; }
+
+.settings-unsaved > div { display: flex; gap: 10px; }

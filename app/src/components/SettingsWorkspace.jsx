@@ -27,6 +27,13 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
   const [origins,setOrigins]=useState(()=>studio.origins.join('\n'));
   const [saved,setSaved]=useState(''),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState('');
   const revisions=useRef({});
+  // Unsaved drafts are compared with what was last loaded or saved for each pane.
+  const [baseline,setBaseline]=useState(()=>({studio:JSON.stringify(identityOf(studio)),website:studio.origins.join('\n'),appearance:studio.accent}));
+  const [accentDraft,setAccentDraft]=useState(studio.accent),[accentKey,setAccentKey]=useState(0),[leaving,setLeaving]=useState(false);
+  const unsaved=[['studio','Studio',JSON.stringify(identity)!==baseline.studio],['website','Website',origins!==baseline.website],['appearance','Appearance',accentDraft!==baseline.appearance]].filter(([,,dirty])=>dirty);
+  const dirty=unsaved.length>0;
+  useEffect(()=>{if(!dirty){setLeaving(false);return;}const savedURL=location.href;const guard=event=>{event.preventDefault();event.returnValue='';},internal=event=>{event.preventDefault();history.replaceState(null,'',savedURL);setLeaving(true);};window.addEventListener('beforeunload',guard);window.addEventListener('caleane:before-navigate',internal);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('caleane:before-navigate',internal);};},[dirty]);
+  function discard(){setIdentity(JSON.parse(baseline.studio));setOrigins(baseline.website);setAccentDraft(baseline.appearance);setAccentKey(key=>key+1);setLeaving(false);}
   const code=`<script src="${location.origin}/embed.js" data-studio="${studio.slug}" data-label="Plan your project" defer></script>`;
   useEffect(()=>{const restore=()=>setSection(settingsSection(location.search));window.addEventListener('popstate',restore);return()=>window.removeEventListener('popstate',restore);},[]);
   function choose(next){
@@ -37,8 +44,9 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
   function updateIdentity(key,value){edited('studio');setIdentity(previous=>({...previous,[key]:value}));}
   async function save(pane,patch){
     const revision=revisions.current[pane]||0;
-    const payload={...savedSettings(studio),...patch};
+    const payload={...savedSettings(studio),...patch},snapshot=pane==='studio'?JSON.stringify(identity):pane==='website'?origins:patch.accent;
     const result=await run(async()=>{await request('/api/settings?studio='+studio.id,'PATCH',payload);await reload();return true;});
+    if(result){setBaseline(previous=>({...previous,[pane]:snapshot}));if(pane==='appearance')setAccentDraft(current=>revision===(revisions.current[pane]||0)?snapshot:current);}
     if(result&&revision===(revisions.current[pane]||0))setSaved(pane);
   }
   const panel=(value,children)=><Tabs.Content key={value} value={value} forceMount hidden={section!==value} className="settings-tab-panel">{children}</Tabs.Content>;
@@ -46,6 +54,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
 
   return <div className="folio-settings-page settings-tabbed">
     <WorkspaceHeading className="page-heading" title="Workspace settings" description="Your studio identity, client experience and connected services." action={<WorkspaceButton variant="secondary" onClick={()=>navigate('members')}>Members and access</WorkspaceButton>}/>
+    {leaving&&dirty&&<div className="settings-unsaved" role="alert"><p>You have unsaved changes in {unsaved.map(([,label])=>label).join(' and ')}. Save them, or discard them before leaving settings.</p><div><WorkspaceButton variant="secondary" size="small" onClick={()=>{choose(unsaved[0][0]);setLeaving(false);}}>Review changes</WorkspaceButton><WorkspaceButton variant="danger" size="small" onClick={discard}>Discard changes</WorkspaceButton></div></div>}
     <Tabs.Root value={section} onValueChange={choose} activationMode="manual">
       <Tabs.List className="settings-tabs-nav" aria-label="Workspace settings sections">{sections.map(([value,label])=><Tabs.Trigger key={value} value={value}>{label}</Tabs.Trigger>)}</Tabs.List>
 
@@ -67,7 +76,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
       {panel('appearance',<div className="settings-pane-layout">
         <form className="settings-pane-form" onSubmit={event=>{event.preventDefault();save('appearance',{accent:new FormData(event.currentTarget).get('accent')});}}>
           <header className="settings-pane-heading"><h2>Workspace appearance</h2><p>Choose the accent that feels right for your studio.</p></header>
-          <AccentPicker value={studio.accent} onChange={()=>edited('appearance')}/>
+          <AccentPicker key={accentKey} value={studio.accent} onChange={next=>{edited('appearance');setAccentDraft(next);}}/>
           {saveAction('appearance','Save appearance')}
         </form>
         <aside className="settings-support"><h3>See it in context</h3><div className="settings-accent-preview"><span>Amelia’s wedding</span><strong>The next step, together.</strong><p>Your accent gives actions and selected items a clear place in the workspace.</p><span className="settings-preview-action">Review direction</span></div><p>Accent changes preview immediately. Save appearance to keep your choice.</p></aside>
