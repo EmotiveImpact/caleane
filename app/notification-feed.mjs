@@ -73,6 +73,11 @@ export function recordProjectEvent(db,{studioId,projectId,actorUserId,eventId}){
   actorName:item.actor,title:item.text,detail:project.title,projectId,createdAt:item.at});
 }
 
+/** A client opening a proposal, contract, estimate or invoice for the first time. Only studio owners are told. */
+export function recordDocumentOpened(db,{studioId,projectId,kind,itemId,actorName,title,detail,opportunityId,clientId,createdAt}){
+ return deliver(db,owners(db,studioId),null,{studioId,kind:'project_update',sourceKey:`opened:${kind}:${itemId}`,actorName,title,detail,projectId,clientId,opportunityId,createdAt});
+}
+
 /** A public enquiry or form submission. Only studio owners can see enquiries. */
 export function recordEnquiry(db,{studioId,projectId}){
  const row=db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(projectId,studioId);

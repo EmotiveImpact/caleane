@@ -6,6 +6,7 @@ import {Check,Copy,Download,FileText,Plus} from 'lucide-react';
 import '../folio-billing.css';
 import '../studio-commerce.css';
 import {PaymentPlan} from './PaymentPlan';
+import {OpenedNote,useRecordOpen} from './OpenedNote';
 
 const money=(minor,currency='GBP')=>{
  try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}
@@ -144,6 +145,7 @@ function CreditNoteForm({invoice,p,studio,request,run,busy,creditable,onSaved,on
 
 function InvoiceDetail({invoice,design,brandKit,p,studio,owner,request,run,busy,onChanged,stripeReady,checkoutReturn}){
  const [recording,setRecording]=useState(false),[cancelling,setCancelling]=useState(false),[expiring,setExpiring]=useState(false),[copy,setCopy]=useState(false),[linkCopied,setLinkCopied]=useState(false),[linkError,setLinkError]=useState(''),[cancelReason,setCancelReason]=useState(''),[checkoutBusy,setCheckoutBusy]=useState(false),[checkoutError,setCheckoutError]=useState('');
+ useRecordOpen(p,owner,'invoice',invoice.id);
  const balance=invoiceBalance(invoice),[refunding,setRefunding]=useState(false),[crediting,setCrediting]=useState(false);
  const refundable=(invoice.grossPaidMinor??invoice.paidMinor??0)-(invoice.refundedMinor||0),creditable=invoice.amountMinor-(invoice.creditedMinor||0);
  const canRefund=owner&&invoice.status!=='Cancelled'&&refundable>0&&!['creating','open','processing'].includes(invoice.checkout?.status),canCredit=owner&&invoice.status!=='Cancelled'&&creditable>0&&!['creating','open','processing'].includes(invoice.checkout?.status);
@@ -162,6 +164,7 @@ function InvoiceDetail({invoice,design,brandKit,p,studio,owner,request,run,busy,
  async function startCheckout(){setCheckoutError('');setCheckoutBusy(true);try{const result=await request(`/api/projects/${p.id}/invoices/${invoice.id}/checkout?studio=${studio.id}`,'POST',{});const destination=new URL(result.url);if(destination.protocol!=='https:'||destination.hostname!=='checkout.stripe.com')throw new Error('Stripe did not return a secure Checkout link.');window.location.assign(destination.toString());}catch(error){setCheckoutError(error.message||'Checkout could not be opened.');setCheckoutBusy(false);}}
  return <article className="billing-document" aria-label={`Invoice ${invoice.number}`}>
   <header className="billing-document-head"><div><span className="billing-document-label">INVOICE {invoice.number}</span><h3>{invoiceTitle(invoice)}</h3><p>From {snapshot.sellerName||studio.name} to {snapshot.billToName||p.brief.name}</p></div><div className="billing-document-head-right"><Status invoice={invoice}/>{owner&&invoice.status!=='Cancelled'&&<><button className="billing-text-button billing-share" onClick={async()=>{try{const url=new URL('/',window.location.origin);url.search=new URLSearchParams({view:'projects',project:p.id,tab:'Billing',invoice:invoice.id}).toString();await navigator.clipboard.writeText(url.toString());setLinkCopied(true);setLinkError('');}catch{setLinkCopied(false);setLinkError('Could not copy the link. Check browser clipboard permission.');}}}><Copy size={15}/>{linkCopied?'Invoice link copied':'Copy invoice link'}</button><small>Client needs portal access. No message is sent.</small>{linkError&&<small className="billing-copy-error" role="alert">{linkError}</small>}</>}<button className="billing-text-button billing-print" onClick={()=>printInvoice(invoicePageHtml(invoice,pageOptions))}><Download size={15}/> Print / save PDF</button></div></header>
+  <OpenedNote p={p} owner={owner} kind="invoice" itemId={invoice.id} shared={invoice.status!=='Cancelled'}/>
   <div className="doc-actions"><button className="doc-quiet" aria-pressed={!documentView} onClick={()=>setDocumentView(false)}>Account details</button><button className="doc-quiet" aria-pressed={documentView} onClick={()=>setDocumentView(true)}>Invoice document</button></div>
   {documentView&&<InvoicePreview html={invoicePage} title={`Invoice ${invoice.number}`}/>}
   {!documentView&&<><div className="billing-document-parties"><div><span>FROM</span><strong>{snapshot.sellerName||studio.name}</strong><p>{snapshot.sellerAddress||'—'}</p>{snapshot.sellerContact&&<small>{snapshot.sellerContact}</small>}{snapshot.taxRegistration&&<small>Tax registration: {snapshot.taxRegistration}</small>}</div><div><span>BILL TO</span><strong>{snapshot.billToName||p.brief.name}</strong><p>{snapshot.customerAddress||'—'}</p>{snapshot.billToEmail&&<small>{snapshot.billToEmail}</small>}</div></div>

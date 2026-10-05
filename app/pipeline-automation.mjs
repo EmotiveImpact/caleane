@@ -3,6 +3,7 @@ import {readSetting,writeSetting,currencies,installStudioCommerce,billingDefault
 import {installConsultations} from './consultations.mjs';
 import {getProjectOperations,changeProjectOperations} from './studio-operations.mjs';
 import {createPlan,getPlan,installPaymentPlans} from './payment-plans.mjs';
+import {firstOpenedAt} from './document-opens.mjs';
 
 // The pipeline reads what already happened on the linked project (quotes,
 // proposals, date holds, deposits, client replies) and keeps each enquiry in
@@ -26,7 +27,8 @@ export const defaultFollowUpMessages=[
 export const defaultPipelineSettings={autoStages:true,holdOnProposal:true,planOnAccept:true,confirmOnDeposit:true,
  followUps:false,followUpDays:[3,7,12],followUpMessages:defaultFollowUpMessages,
  dailyCapacity:1,minimumSpend:0,minimumCurrency:'GBP',serviceAreas:'',silentDays:7,
- prepBeforeConsultation:false,closeSilent:false,closeSilentDays:21};
+ prepBeforeConsultation:false,closeSilent:false,closeSilentDays:21,
+ nudgeOpened:false,nudgeOpenedDays:2};
 
 export function installPipeline(db){installStudioCommerce(db);installConsultations(db);installPaymentPlans(db);db.exec('CREATE TABLE IF NOT EXISTS crm_pipeline_triggers(studio_id TEXT NOT NULL REFERENCES studios(id),key TEXT NOT NULL,opportunity_id TEXT,detail TEXT NOT NULL DEFAULT \'\',at TEXT NOT NULL,PRIMARY KEY(studio_id,key));');}
 
@@ -37,8 +39,8 @@ export function pipelineSettings(db,studioId){
 export function savePipelineSettings(db,studioId,input){
  if(!input||typeof input!=='object'||Array.isArray(input))fail(400,'Check the automation settings.');
  const current=pipelineSettings(db,studioId),result={...current};
- for(const key of ['autoStages','holdOnProposal','planOnAccept','confirmOnDeposit','followUps','prepBeforeConsultation','closeSilent'])if(input[key]!==undefined){if(typeof input[key]!=='boolean')fail(400,'Switch each automation on or off.');result[key]=input[key];}
- for(const [key,min,max,message] of [['dailyCapacity',1,20,'Events a day must be between 1 and 20.'],['minimumSpend',0,10000000,'Enter a minimum spend between zero and ten million.'],['silentDays',1,60,'Quiet days must be between 1 and 60.'],['closeSilentDays',7,120,'Days before closing a silent enquiry must be between 7 and 120.']])
+ for(const key of ['autoStages','holdOnProposal','planOnAccept','confirmOnDeposit','followUps','prepBeforeConsultation','closeSilent','nudgeOpened'])if(input[key]!==undefined){if(typeof input[key]!=='boolean')fail(400,'Switch each automation on or off.');result[key]=input[key];}
+ for(const [key,min,max,message] of [['dailyCapacity',1,20,'Events a day must be between 1 and 20.'],['minimumSpend',0,10000000,'Enter a minimum spend between zero and ten million.'],['silentDays',1,60,'Quiet days must be between 1 and 60.'],['closeSilentDays',7,120,'Days before closing a silent enquiry must be between 7 and 120.'],['nudgeOpenedDays',1,30,'Days after opening must be between 1 and 30.']])
   if(input[key]!==undefined){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)fail(400,message);result[key]=input[key];}
  if(input.minimumCurrency!==undefined){if(!currencies.includes(input.minimumCurrency))fail(400,'Choose a supported currency.');result.minimumCurrency=input.minimumCurrency;}
  if(input.serviceAreas!==undefined){if(typeof input.serviceAreas!=='string'||input.serviceAreas.length>500)fail(400,'Keep service areas under 500 characters.');result.serviceAreas=input.serviceAreas.trim();}
@@ -74,6 +76,21 @@ function activity(db,studioId,opp,owner,title,detail=''){
 function currentEstimate(p){const e=p.estimates?.at(-1);return e&&e.briefRevision===p.briefRevision&&e.status!=='Superseded'?e:null;}
 function currentProposal(p){const q=p.proposals?.at(-1);return q&&q.briefRevision===p.briefRevision&&!['Superseded','Withdrawn'].includes(q.status)?q:null;}
 function lastClientMessage(db,projectId){return db.prepare("SELECT MAX(m.created_at) AS at FROM conversation_messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.project_id=? AND m.role='client'").get(projectId)?.at||null;}
+function currentAgreement(db,studioId,projectId){const row=db.prepare('SELECT data FROM project_agreements WHERE studio_id=? AND project_id=? ORDER BY version DESC LIMIT 1').get(studioId,projectId);return row?JSON.parse(row.data):null;}
+// A client who opened a proposal or contract days ago and has not answered or written since: a task for the owner to check in by hand.
+function nudgeOpened(db,{studioId,opp,owner,p,item,kind,asOf,days}){
+ const key=`opened-nudge:${item.id}`;if(fired(db,studioId,key))return false;
+ const opened=firstOpenedAt(db,studioId,kind,item.id);if(!opened||dayNumber(asOf)-dayNumber(opened)<days)return false;
+ const replied=lastClientMessage(db,p.id);if(replied&&replied>=opened)return false;
+ transaction(db,()=>{
+  mark(db,studioId,key,opp.id);
+  const client=db.prepare('SELECT name FROM clients WHERE id=? AND studio_id=?').get(opp.client_id,studioId)?.name||'the client',what=kind==='contract'?'contract':'proposal';
+  db.prepare(`INSERT INTO crm_tasks (id,studio_id,client_id,opportunity_id,title,detail,due_date,priority,completed,created_at,completed_at,created_by) VALUES(?,?,?,?,?,?,?,?,0,?,'',?)`)
+   .run(id(),studioId,opp.client_id,opp.id,`Check in with ${client} about the ${what}`,`They opened “${item.title}” on ${longDate(opened)} but have not replied or answered it yet. A short personal note usually helps.`,asOf,'Normal',now(),'Caleane automation');
+  activity(db,studioId,opp,owner,`Check-in task added for the opened ${what}`,`Automatic: opened ${longDate(opened)}, no reply since.`);
+ });
+ return true;
+}
 function hasPortalClient(db,studioId,projectId){return !!db.prepare('SELECT 1 FROM crm_project_stakeholders WHERE studio_id=? AND project_id=? AND portal_access=1').get(studioId,projectId);}
 
 // Move forward only, once per trigger. Returns true when the stage changed.
@@ -209,6 +226,11 @@ export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}
      }
     }
    }
+   if(settings.nudgeOpened){
+    if(proposal?.status==='Awaiting response'&&proposal.expiresOn>=asOf&&nudgeOpened(db,{studioId,opp,owner,p,item:proposal,kind:'proposal',asOf,days:settings.nudgeOpenedDays}))log.push({opportunityId:opp.id,action:'Check in'});
+    const contract=currentAgreement(db,studioId,p.id);
+    if(contract?.status==='Issued'&&contract.briefRevision===p.briefRevision&&!(contract.expiresOn<asOf)&&nudgeOpened(db,{studioId,opp,owner,p,item:contract,kind:'contract',asOf,days:settings.nudgeOpenedDays}))log.push({opportunityId:opp.id,action:'Check in'});
+   }
    // A proposal with no reply for a long time closes, so the pipeline reflects what is really open.
    if(settings.closeSilent&&proposal?.status==='Awaiting response'&&!fired(db,studioId,'close:'+proposal.id)){
     const replied=lastClientMessage(db,p.id),quiet=dayNumber(asOf)-dayNumber(replied&&replied>proposal.createdAt?replied:proposal.createdAt);
@@ -289,11 +311,13 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
   const replied=p?lastClientMessage(db,p.id):null;
   if(open&&proposal){
    if(proposal.status==='Awaiting response'){
-    const out=dayNumber(asOf)-dayNumber(proposal.createdAt),silent=!replied||replied<proposal.createdAt,left=dayNumber(proposal.expiresOn)-dayNumber(asOf);
+    const out=dayNumber(asOf)-dayNumber(proposal.createdAt),silent=!replied||replied<proposal.createdAt,left=dayNumber(proposal.expiresOn)-dayNumber(asOf),opened=firstOpenedAt(db,studioId,'proposal',proposal.id);
     if(left<0)flags.push({kind:'proposal-expired',tone:'bad',label:'Proposal expired',rank:1});
     else if(left<=3)flags.push({kind:'proposal-ending',tone:'warn',label:`Proposal closes ${shortDay(proposal.expiresOn)}`,rank:2});
     if(silent&&out>=settings.silentDays)flags.push({kind:'silent',tone:'warn',label:`No reply for ${out} days`,rank:3});
     else flags.push({kind:'waiting',tone:'info',label:out?`Proposal out ${out} day${out===1?'':'s'}`:'Proposal sent today',rank:6});
+    if(opened)flags.push({kind:'opened',tone:'info',label:`Opened ${shortDay(opened)}`,rank:5});
+    else if(out>=2&&hasPortalClient(db,studioId,p.id))flags.push({kind:'unopened',tone:'warn',label:'Not opened yet',rank:3});
    }else if(proposal.status==='Changes requested')flags.push({kind:'changes',tone:'warn',label:'Changes requested',rank:1});
    else if(proposal.status==='Scope accepted'&&booking?.deposit?.status!=='Paid')flags.push({kind:'deposit',tone:'good',label:'Accepted · deposit due',rank:2});
   }else if(open&&estimate?.status==='Changes requested')flags.push({kind:'changes',tone:'warn',label:'Quote changes requested',rank:1});
@@ -303,7 +327,7 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
   const nextFollow=settings.followUps&&proposal?.status==='Awaiting response'&&followed<settings.followUpDays.length&&(!replied||replied<proposal.createdAt)?addDays(proposal.createdAt,settings.followUpDays[followed]):null;
   signals[o.id]={opportunityId:o.id,projectId:p?.id||null,eventDate:isDay(date)?date:'',venue:p?.brief?.venue||'',budget:p?.brief?.budget||'',
    estimate:estimate?{id:estimate.id,version:estimate.version,status:estimate.status,total:estimate.total,currency:estimate.currency,items:estimate.items.length}:null,
-   proposal:proposal?{id:proposal.id,version:proposal.version,title:proposal.title,status:proposal.status,expiresOn:proposal.expiresOn,sharedAt:proposal.createdAt}:null,
+   proposal:proposal?{id:proposal.id,version:proposal.version,title:proposal.title,status:proposal.status,expiresOn:proposal.expiresOn,sharedAt:proposal.createdAt,openedAt:firstOpenedAt(db,studioId,'proposal',proposal.id)}:null,
    hold:hold?{id:hold.id,status:hold.status,startDate:hold.startDate,holdUntil:hold.holdUntil}:null,
    deposit:booking?.deposit&&!['No deposit invoice','Private'].includes(booking.deposit.status)?booking.deposit:null,
    productionStatus:booking?.productionStatus||null,portalClient:p?hasPortalClient(db,studioId,p.id):false,

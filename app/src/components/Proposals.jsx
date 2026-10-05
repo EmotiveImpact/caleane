@@ -4,6 +4,7 @@ import React,{lazy,Suspense,useRef,useState} from 'react';
 const PagedDocument=lazy(()=>import('./PagedDocument')); 
 import * as Dialog from '@radix-ui/react-dialog';
 import {useConfirm} from './ConfirmDialog';
+import {OpenedNote,useRecordOpen} from './OpenedNote';
 const tidyHtml=value=>String(value||'').replace(/\s+/g,' ').replace(/<p>( |<br\s*\/?>)*<\/p>/g,'').trim();
 
 const escapeDoc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -14,6 +15,7 @@ export function Proposals({p,owner,mutate,busy,onNavigate}){
  async function requestClose(){if(busy||flushing)return;const changed=edited.current||tidyHtml(documentHtml)!==tidyHtml(openedHtml.current);if(changed&&!await confirm({title:'Discard this proposal?',description:'Nothing has been shared yet. Closing now loses the scope, delivery plan and document you have written in this dialog.',confirmLabel:'Discard proposal',cancelLabel:'Keep editing'}))return;setOpen(false);}
  const trigger=useRef(null),list=p.proposals||[],q=list.find(x=>x.id===selected)||list.at(-1),estimate=p.estimates?.at(-1);
  const expired=q?.expiresOn&&q.expiresOn<new Date().toISOString().slice(0,10),stale=q&&q.briefRevision!==p.briefRevision;
+ useRecordOpen(p,owner,'proposal',q?.id);
  const actionable=!!q&&q.id===list.at(-1)?.id&&q.status==='Awaiting response'&&!expired&&!stale;
  return <section className="folio-estimates proposal-workspace"><div className="section-title"><div><h2>Proposals</h2></div>{owner&&<button ref={trigger} className="doc-primary" onClick={()=>{const html=q?.documentHtml||'<h2>Our approach</h2><p>Describe the creative direction, milestones and working relationship.</p>';setRevision(p.briefRevision);setError('');openedHtml.current=html;edited.current=false;setDocumentHtml(html);setOpen(true);}}>{q?'Create a revision':'Create proposal'}</button>}</div>
  <p className="muted">Scope, delivery and the agreed investment, with every version retained.</p>
@@ -29,7 +31,7 @@ export function Proposals({p,owner,mutate,busy,onNavigate}){
  <p>Sharing publishes to the client portal. No email is sent.</p>{error&&<p role="alert">{error}</p>}<button className="button" disabled={busy||flushing}>{busy||flushing?'Sharing…':'Share proposal'}</button>
  </form>:<><p>Create an estimate first so your proposal has a clear price.</p><button className="button" onClick={()=>onNavigate('Estimate')}>Create estimate</button></>}
  </Dialog.Content></Dialog.Portal></Dialog.Root>{confirmation}
- {q?<><label className="field"><span>Proposal history</span><WorkspaceSelect label="Proposal version" value={q.id} onValueChange={setSelected} options={list.map(x=>({value:x.id,label:`Version ${x.version} · ${x.status}`}))}/></label>
+ {q?<><OpenedNote p={p} owner={owner} kind="proposal" itemId={q.id}/><label className="field"><span>Proposal history</span><WorkspaceSelect label="Proposal version" value={q.id} onValueChange={setSelected} options={list.map(x=>({value:x.id,label:`Version ${x.version} · ${x.status}`}))}/></label>
  <div className="doc-actions" style={{margin:'16px 0'}}><button className="doc-quiet" aria-pressed={!documentView} onClick={()=>setDocumentView(false)}>Summary</button><button className="doc-quiet" aria-pressed={documentView} onClick={()=>setDocumentView(true)}>Document / PDF</button></div>
  {documentView?<AgreementPages agreement={{id:q.id,revision:q.version,bodyHasTitle:true,title:q.title,version:q.version,status:q.status,briefRevision:q.briefRevision,termsHtml:`<h1>${escapeDoc(q.title)}</h1><p>Reply by ${escapeDoc(q.expiresOn)}</p>${[['Included scope',q.scope],['Exclusions and assumptions',q.exclusions],['Delivery plan',q.delivery]].filter(([,v])=>v).map(([label,value])=>`<h2>${label}</h2><p>${escapeDoc(value).replace(/\n/g,'<br>')}</p>`).join('')}${q.documentHtml||''}<h2>Proposed investment</h2><table><thead><tr><th>Quantity</th><th>Item</th></tr></thead><tbody>${q.estimate.items.map(item=>`<tr><td>${escapeDoc(item.quantity)}</td><td>${escapeDoc(item.title)}</td></tr>`).join('')}</tbody></table><p><strong>${escapeDoc(money(q.estimate))}</strong></p><p>Includes ${escapeDoc(q.estimate.taxRate)}% tax. Estimate version ${q.estimate.version}.</p><p>Scope acceptance does not confirm a booking or record payment.</p>`,...(q.decidedBy?{response:{name:q.decidedBy,at:q.decidedAt}}:{})}}/>:( <article className="estimate-document"><header><div><p>PROPOSAL · VERSION {q.version}</p><h2>{q.title}</h2></div><span>{q.status==='Awaiting response'&&expired?'Expired':q.status}</span></header>
  <p>Reply by {q.expiresOn} · Brief version {q.briefRevision}</p>
