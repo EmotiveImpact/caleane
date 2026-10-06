@@ -1,42 +1,14 @@
-/* Home page story: the scroll-driven walkthrough, the client phone and the live studio feed. */
+/* Home page story: reveals each photographed moment as it arrives, the client phone and the live studio feed. */
 (() => {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  const flow = document.querySelector('[data-hs-flow]');
-  if (flow) {
-    const frame = flow.querySelector('[data-hs-frame]');
-    const app = flow.querySelector('[data-hs-app]');
-    const steps = [...flow.querySelectorAll('.hs-step')];
-    const screens = [...flow.querySelectorAll('.hs-screen')];
-    const dots = [...flow.querySelectorAll('[data-dot]')];
-    const navItems = [...flow.querySelectorAll('[data-nav]')];
-    const crumb = flow.querySelector('[data-hs-crumb]');
-    const crumbs = ['Pipeline · New enquiry', 'Pipeline', 'Projects · Amelia’s wedding · Brief', 'Projects · Amelia’s wedding · Designs', 'Finances · Invoices', 'Projects · Amelia’s wedding'];
-    let current = 0;
-
-    const fit = () => app.style.setProperty('--hs-scale', String(frame.clientWidth / app.offsetWidth));
-    fit();
-    new ResizeObserver(fit).observe(frame);
-
-    function show(step) {
-      if (step === current) return;
-      current = step;
-      app.dataset.step = String(step);
-      steps.forEach(item => item.classList.toggle('is-on', Number(item.dataset.step) === step));
-      screens.forEach(item => item.classList.toggle('is-on', Number(item.dataset.screen) === step));
-      dots.forEach(item => item.classList.toggle('is-on', Number(item.dataset.dot) === step));
-      navItems.forEach(item => item.classList.toggle('is-on', item.dataset.nav.split(' ').includes(String(step))));
-      crumb.textContent = crumbs[step - 1];
-    }
-
-    // The step whose text crosses the reading line drives the app window.
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => { if (entry.isIntersecting) show(Number(entry.target.dataset.step)); });
-    }, { rootMargin: '-48% 0px -51% 0px' });
-    steps.forEach(step => observer.observe(step));
-    current = 0;
-    show(1);
-  }
+  // Without the script the moments simply show in full.
+  document.documentElement.classList.add('hs-js');
+  const chapters = [...document.querySelectorAll('[data-chapter]')];
+  const reveal = new IntersectionObserver(entries => {
+    entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('is-in'); });
+  }, { threshold: 0.55 });
+  chapters.forEach(chapter => reveal.observe(chapter));
 
   const client = document.querySelector('.hs-client');
   if (client) {
@@ -50,14 +22,14 @@
   const feed = document.querySelector('[data-hs-feed]');
   if (feed && !reducedMotion.matches) {
     const events = [
-      ['', '✓', 'Contract accepted', 'Olivia Grant, wedding in September'],
       ['is-cal', '◷', 'Payment reminder sent', 'To Jas Patel, due Friday'],
       ['', '↗', 'Proposal opened', 'Theo Marsh viewed it twice'],
-      ['is-pay', '£', 'Instalment paid', '£1,200 from Ruth & Sam'],
-      ['is-cal', '◷', 'Date held', 'Kiln & Co., 3 April, for seven days'],
-      ['', '✓', 'Brief shared', 'Revision 02 sent to Noah Bennett'],
-      ['is-pay', '£', 'Deposit received', '£2,700 from Amelia Taylor'],
-      ['is-cal', '◷', 'Consultation booked', 'Noah Bennett, Thursday at 10:00']
+      ['is-pay', '£', 'Instalment paid', '£1,200 from Kiln & Co.'],
+      ['is-cal', '◷', 'Date held', 'Ruth & Sam, 3 April, for seven days'],
+      ['', '✓', 'Brief shared', 'Revision 02 sent to Lena'],
+      ['is-pay', '£', 'Deposit received', '£2,700 from Daniel Hart'],
+      ['is-cal', '◷', 'Consultation booked', 'Maya Ellis, Thursday at 10:00'],
+      ['', '✓', 'Contract accepted', 'Olivia Grant, wedding in September']
     ];
     let index = 0;
     let timer;
@@ -79,7 +51,7 @@
       item.append(mark, text, time);
       feed.querySelectorAll('time').forEach(stamp => { if (stamp.textContent === 'Just now') stamp.textContent = '1m'; });
       feed.prepend(item);
-      while (feed.children.length > 6) feed.lastElementChild.remove();
+      while (feed.children.length > 5) feed.lastElementChild.remove();
     }
 
     new IntersectionObserver(entries => {
