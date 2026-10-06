@@ -8,7 +8,7 @@ function PriceListPicker({studio,onPick}){
  const [items,setItems]=useState(null);
  useEffect(()=>{let active=true;fetch(`/api/catalogue?studio=${studio.id}`,{credentials:'same-origin'}).then(r=>r.ok?r.json():{items:[]}).then(d=>{if(active)setItems((d.items||[]).filter(item=>!item.archived));}).catch(()=>{if(active)setItems([]);});return()=>{active=false;};},[studio.id]);
  if(!items)return null;
- if(!items.length)return <p className="estimate-price-picker muted">Save your usual services under Settings, Pricing & billing to add them here in one click.</p>;
+ if(!items.length)return <p className="estimate-price-picker muted">Save your usual services under Settings, Price list to add them here in one click.</p>;
  return <label className="estimate-price-picker"><span>Add from your price list</span><select value="" onChange={event=>{const item=items.find(x=>x.id===event.target.value);if(item)onPick(item);}}><option value="">Choose a service…</option>{items.map(item=><option key={item.id} value={item.id}>{item.category?item.category+' · ':''}{item.name} · {money(item.unitAmount,item.currency)}</option>)}</select></label>;
 }
 export function Estimates({p,studio,owner,mutate,busy}){

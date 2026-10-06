@@ -18,7 +18,7 @@ function useStudioData(url,request){
  return {data,error,busy,send,setError};
 }
 
-/* ---------- Pricing: studio details, default payment plan and price list ---------- */
+/* ---------- Money: invoice details, payment plan, late fees, invoice design and price list ---------- */
 
 function PlanTemplateEditor({plan,onChange}){
  const total=plan.reduce((sum,step)=>sum+(Number(step.percent)||0),0);
@@ -66,53 +66,79 @@ function PriceList({studio,request}){
  </section>;
 }
 
-// Both are off until the studio turns them on. A late fee is only ever added to
-// invoices that showed the terms when they were issued, and nothing is sent.
-function LateFeeAndTips({form,set}){
- const fee=form.lateFee,update=patch=>set({lateFee:{...fee,...patch}});
- return <>
-  <header className="settings-pane-heading commerce-subheading"><h2>Late fees and tips</h2><p>Optional extras on your invoices. Each one is shown to the client on the invoice itself.</p></header>
-  <WorkspaceSwitch label="Add a late fee to overdue invoices" description="Applies once, after the grace period, to invoices issued while this is on. Caleane adds it to the invoice and notes it on the project. It does not message, email or charge the client." checked={fee.enabled} onCheckedChange={enabled=>update({enabled})}/>
-  {fee.enabled&&<div className="settings-fields commerce-late-fee">
-   <WorkspaceField label="Fee"><WorkspaceSelect label="Fee" value={fee.type} onValueChange={type=>update({type})} options={[{value:'fixed',label:'Fixed amount'},{value:'percent',label:'Percentage of the unpaid balance'}]}/></WorkspaceField>
-   {fee.type==='fixed'?<WorkspaceField label="Amount" type="number" min="0.01" max="1000" step="0.01" value={(fee.amountMinor/100).toFixed(2)} onChange={e=>update({amountMinor:Math.round(Number(e.target.value)*100)})}/>
-   :<WorkspaceField label="Percentage" type="number" min="0.1" max="25" step="0.1" value={fee.percent} onChange={e=>update({percent:Number(e.target.value)})}/>}
-   <WorkspaceField label="Days after the due date" type="number" min="1" max="90" value={fee.afterDays} onChange={e=>update({afterDays:Number(e.target.value)})}/>
-   <p className="commerce-muted commerce-late-fee-preview">Clients will read: “{lateFeeTerms(fee,'GBP')}”</p>
-  </div>}
-  <WorkspaceSwitch label="Let clients add a tip to final invoices" description="Adds an optional tip choice to balance and full invoices. Deposits never ask for a tip. Tips carry no tax." checked={form.tips.enabled} onCheckedChange={enabled=>set({tips:{enabled}})}/>
- </>;
-}
-
-export function PricingSettings({studio,request}){
- const {data,error,busy,send}=useStudioData(`/api/billing-defaults?studio=${studio.id}`,request);
+// Invoice details, the default plan, late fees and tips share one billing record.
+// Each settings section edits only its own fields and saves them on top of the
+// latest saved record, so saving one section never overwrites another.
+const invoiceKeys=['sellerAddress','paymentInstructions','sellerContact','taxRegistration','paymentTermsDays','plan'],extraKeys=['lateFee','tips'];
+function useBillingDefaults(studio,request,keys){
+ const url=`/api/billing-defaults?studio=${studio.id}`;
+ const {data,error,busy,send,setError}=useStudioData(url,request);
  const [form,setForm]=useState(null),[saved,setSaved]=useState(false);
  useEffect(()=>{if(data?.defaults)setForm(data.defaults);},[data]);
- if(!form)return <p className="commerce-muted">{error||'Loading billing settings…'}</p>;
- const set=patch=>{setSaved(false);setForm({...form,...patch});};
- return <div className="commerce-stack">
-  <div className="settings-pane-layout">
-   <form className="settings-pane-form" onSubmit={async e=>{e.preventDefault();if(await send(form))setSaved(true);}}>
-    <header className="settings-pane-heading"><h2>Invoice details</h2><p>Saved once and filled in on every invoice. You can still change them on a single invoice.</p></header>
-    <div className="settings-fields">
-     <WorkspaceField label="Studio address"><textarea rows={3} maxLength={500} value={form.sellerAddress} onChange={e=>set({sellerAddress:e.target.value})}/></WorkspaceField>
-     <WorkspaceField label="Payment instructions"><textarea rows={3} maxLength={1000} value={form.paymentInstructions} onChange={e=>set({paymentInstructions:e.target.value})} placeholder="Bank name, sort code, account number and the reference to use"/></WorkspaceField>
-     <WorkspaceField label="Studio contact" value={form.sellerContact} maxLength={300} onChange={e=>set({sellerContact:e.target.value})} placeholder="Email or phone"/>
-     <WorkspaceField label="VAT or tax number (optional)" value={form.taxRegistration} maxLength={100} onChange={e=>set({taxRegistration:e.target.value})}/>
-     <WorkspaceField label="Payment terms (days)" type="number" min="0" max="120" value={form.paymentTermsDays} onChange={e=>set({paymentTermsDays:Number(e.target.value)})}/>
-    </div>
-    <header className="settings-pane-heading commerce-subheading"><h2>Default payment plan</h2><p>How you usually split a project into payments. Each project starts from this plan, and you can adjust it there.</p></header>
-    <PlanTemplateEditor plan={form.plan} onChange={plan=>set({plan})}/>
-    <LateFeeAndTips form={form} set={set}/>
-    {error&&<p className="commerce-error" role="alert">{error}</p>}
-    <footer className="settings-save-row"><WorkspaceButton type="submit" disabled={busy}>{busy?'Saving…':'Save billing settings'}</WorkspaceButton>{saved&&<span role="status">Saved.</span>}</footer>
-   </form>
-   <aside className="settings-support"><h3>How payment plans work</h3><p>When a client confirms an estimate, open Billing on the project and start a plan. Caleane works out each amount and due date from these rules.</p><p>Each payment becomes a normal invoice when you issue it. If a payment date arrives and it has not been issued, a reminder appears in your follow-ups.</p></aside>
-  </div>
-  <InvoiceDesignSettings studio={studio} request={request} defaults={form}/>
-  <PriceList studio={studio} request={request}/>
+ const set=patch=>{setSaved(false);setForm(previous=>({...previous,...patch}));};
+ async function save(event){
+  event.preventDefault();
+  let latest;try{latest=(await request(url)).defaults;}catch(e){setError(e.message);return;}
+  if(await send({...latest,...Object.fromEntries(keys.map(key=>[key,form[key]]))}))setSaved(true);
+ }
+ return {form,set,save,saved,busy,error};
+}
+const billingSaveRow=(busy,saved,label)=><footer className="settings-save-row"><WorkspaceButton type="submit" disabled={busy}>{busy?'Saving…':label}</WorkspaceButton>{saved&&<span role="status">Saved.</span>}</footer>;
+
+export function InvoiceDefaultsSettings({studio,request}){
+ const {form,set,save,saved,busy,error}=useBillingDefaults(studio,request,invoiceKeys);
+ if(!form)return <p className="commerce-muted">{error||'Loading invoice settings…'}</p>;
+ return <div className="settings-pane-layout">
+  <form className="settings-pane-form" onSubmit={save}>
+   <header className="settings-pane-heading"><h2>Invoice details</h2><p>Saved once and filled in on every invoice. You can still change them on a single invoice.</p></header>
+   <div className="settings-fields">
+    <WorkspaceField label="Studio address"><textarea rows={3} maxLength={500} value={form.sellerAddress} onChange={e=>set({sellerAddress:e.target.value})}/></WorkspaceField>
+    <WorkspaceField label="Payment instructions"><textarea rows={3} maxLength={1000} value={form.paymentInstructions} onChange={e=>set({paymentInstructions:e.target.value})} placeholder="Bank name, sort code, account number and the reference to use"/></WorkspaceField>
+    <WorkspaceField label="Studio contact" value={form.sellerContact} maxLength={300} onChange={e=>set({sellerContact:e.target.value})} placeholder="Email or phone"/>
+    <WorkspaceField label="VAT or tax number (optional)" value={form.taxRegistration} maxLength={100} onChange={e=>set({taxRegistration:e.target.value})}/>
+    <WorkspaceField label="Payment terms (days)" type="number" min="0" max="120" value={form.paymentTermsDays} onChange={e=>set({paymentTermsDays:Number(e.target.value)})}/>
+   </div>
+   <header className="settings-pane-heading commerce-subheading"><h2>Default payment plan</h2><p>How you usually split a project into payments. Each project starts from this plan, and you can adjust it there.</p></header>
+   <PlanTemplateEditor plan={form.plan} onChange={plan=>set({plan})}/>
+   {error&&<p className="commerce-error" role="alert">{error}</p>}
+   {billingSaveRow(busy,saved,'Save invoice settings')}
+  </form>
+  <aside className="settings-support"><h3>How payment plans work</h3><p>When a client confirms an estimate, open Billing on the project and start a plan. Caleane works out each amount and due date from these rules.</p><p>Each payment becomes a normal invoice when you issue it. If a payment date arrives and it has not been issued, a reminder appears in your follow-ups.</p></aside>
  </div>;
 }
+
+// Both are off until the studio turns them on. A late fee is only ever added to
+// invoices that showed the terms when they were issued, and nothing is sent.
+export function LateFeeSettings({studio,request}){
+ const {form,set,save,saved,busy,error}=useBillingDefaults(studio,request,extraKeys);
+ if(!form)return <p className="commerce-muted">{error||'Loading late fees and tips…'}</p>;
+ const fee=form.lateFee,update=patch=>set({lateFee:{...fee,...patch}});
+ return <div className="settings-pane-layout">
+  <form className="settings-pane-form commerce-extras-form" onSubmit={save}>
+   <header className="settings-pane-heading"><h2>Late fees and tips</h2><p>Optional extras on your invoices. Each one is shown to the client on the invoice itself.</p></header>
+   <WorkspaceSwitch label="Add a late fee to overdue invoices" description="Applies once, after the grace period, to invoices issued while this is on. Caleane adds it to the invoice and notes it on the project. It does not message, email or charge the client." checked={fee.enabled} onCheckedChange={enabled=>update({enabled})}/>
+   {fee.enabled&&<div className="settings-fields commerce-late-fee">
+    <WorkspaceField label="Fee"><WorkspaceSelect label="Fee" value={fee.type} onValueChange={type=>update({type})} options={[{value:'fixed',label:'Fixed amount'},{value:'percent',label:'Percentage of the unpaid balance'}]}/></WorkspaceField>
+    {fee.type==='fixed'?<WorkspaceField label="Amount" type="number" min="0.01" max="1000" step="0.01" value={(fee.amountMinor/100).toFixed(2)} onChange={e=>update({amountMinor:Math.round(Number(e.target.value)*100)})}/>
+    :<WorkspaceField label="Percentage" type="number" min="0.1" max="25" step="0.1" value={fee.percent} onChange={e=>update({percent:Number(e.target.value)})}/>}
+    <WorkspaceField label="Days after the due date" type="number" min="1" max="90" value={fee.afterDays} onChange={e=>update({afterDays:Number(e.target.value)})}/>
+    <p className="commerce-muted commerce-late-fee-preview">Clients will read: “{lateFeeTerms(fee,'GBP')}”</p>
+   </div>}
+   <WorkspaceSwitch label="Let clients add a tip to final invoices" description="Adds an optional tip choice to balance and full invoices. Deposits never ask for a tip. Tips carry no tax." checked={form.tips.enabled} onCheckedChange={enabled=>set({tips:{enabled}})}/>
+   {error&&<p className="commerce-error" role="alert">{error}</p>}
+   {billingSaveRow(busy,saved,'Save late fees and tips')}
+  </form>
+  <aside className="settings-support"><h3>What changes for clients</h3><p>A late fee only applies to invoices issued while it is switched on, because the terms are printed on the invoice. While it is off, no new late fees are added.</p><p>Tips are always optional for the client, and are only offered on balance and full invoices.</p></aside>
+ </div>;
+}
+
+export function InvoiceDesignSection({studio,request}){
+ const {data,error}=useStudioData(`/api/billing-defaults?studio=${studio.id}`,request);
+ if(!data&&!error)return <p className="commerce-muted">Loading invoice design…</p>;
+ return <InvoiceDesignSettings studio={studio} request={request} defaults={data?.defaults||{}}/>;
+}
+
+export function PriceListSettings({studio,request}){return <PriceList studio={studio} request={request}/>;}
 
 function InvoiceDesignSettings({studio,request,defaults}){
  const {data,error,busy,send}=useStudioData(`/api/invoice-design?studio=${studio.id}`,request);
