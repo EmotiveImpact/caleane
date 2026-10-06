@@ -8,6 +8,7 @@ import {OperationsReadiness} from './OperationsReadiness';
 import {StripeConnectSettings} from './StripeConnectSettings';
 import {BrandKitSettings} from './BrandKitSettings';
 import {WebhookSettings} from './WebhookSettings';
+import {BookingIntegrations} from './BookingIntegrations';
 import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
@@ -94,7 +95,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
         <aside className="settings-support settings-embed"><h3>Add the planner to your site</h3><p>Use this snippet to open the planner from your existing website.</p><pre>{code}</pre><WorkspaceButton variant="secondary" onClick={async()=>{try{await navigator.clipboard.writeText(code);setCopied(true);setCopyError('');}catch{setCopyError('Select the snippet above and copy it manually.');}}}>{copied?'Copied':'Copy embed code'}</WorkspaceButton>{copyError&&<p role="alert">{copyError}</p>}<h3>Or share a direct link</h3><a href={`/intake/${studio.slug}`} target="_blank" rel="noreferrer">{location.origin}/intake/{studio.slug}</a><details><summary>Advanced connection options</summary><p>Already have a form? Send its enquiries to:</p><code>POST /api/public/{studio.slug}/enquiries</code><a href="/embed-demo" target="_blank" rel="noreferrer">See the plugin on an example website</a></details></aside>
       </div>)}
 
-      {panel('bookings',section==='bookings'&&<BookingSettings studio={studio} request={request}/>)}
+      {panel('bookings',section==='bookings'&&<><BookingSettings studio={studio} request={request}/><BookingIntegrations studio={studio} request={request} navigate={choose}/></>)}
       {panel('brand',section==='brand'&&<BrandKitSettings studio={studio} request={request}/>)}
       {panel('pricing',section==='pricing'&&<PricingSettings studio={studio} request={request}/>)}
       {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}

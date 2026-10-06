@@ -75,7 +75,7 @@ test('failed deliveries retry with backoff, a 410 switches the endpoint off, and
   w.setResponse(()=>({status:410}));await w.call({action:'test',id:endpointId});
   const off=(await w.call()).endpoints[0];assert.equal(off.active,false);assert.match(off.disabledReason,/410/);
   addClient(w.db,w.studio.id,'While Off','off@example.test');detectWebhookEvents(w.db);assert.equal(w.db.prepare("SELECT COUNT(*) AS n FROM webhook_deliveries WHERE status='pending'").get().n,0);
-  w.setResponse(()=>({status:200}));const resumed=await w.call({action:'update',id:endpointId,active:true});assert.equal(resumed.endpoints[0].active,true);assert.equal(resumed.endpoints[0].disabledReason,'');
+  await new Promise(resolve=>setTimeout(resolve,5));w.setResponse(()=>({status:200}));const resumed=await w.call({action:'update',id:endpointId,active:true});assert.equal(resumed.endpoints[0].active,true);assert.equal(resumed.endpoints[0].disabledReason,'');
   assert.equal(detectWebhookEvents(w.db),0,'switching back on does not replay what happened while off');
   const oldSecret=resumed.endpoints[0].secret,rotated=await w.call({action:'rotate',id:endpointId});assert.notEqual(rotated.endpoints[0].secret,oldSecret);
   assert.equal((await w.call({action:'delete',id:endpointId})).endpoints.length,0);

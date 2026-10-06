@@ -34,7 +34,7 @@ export function PublicBooking({slug}){
    <small>Times are shown in {zone.replaceAll('_',' ')}{zone!==visitorZone?`, the studio’s time zone`:''}.</small>
   </aside>
   <main className="booking-main">
-   {done?<div className="booking-done" role="status"><CalendarCheck size={32}/><p className="booking-kicker">BOOKED · {done.reference}</p><h2>You’re booked in.</h2><p><strong>{longDay(done.start,zone)}</strong> at <strong>{time(done.start,zone)}</strong> for {page.booking.durationMinutes} minutes.</p>{done.location?.detail&&<p>{meetingLabel}: {done.location.detail}</p>}<p className="booking-muted">{page.studio.name} has your details. If you need to change the time, reply to them directly.</p></div>
+   {done?<div className="booking-done" role="status"><CalendarCheck size={32}/><p className="booking-kicker">BOOKED · {done.reference}</p><h2>You’re booked in.</h2><p><strong>{longDay(done.start,zone)}</strong> at <strong>{time(done.start,zone)}</strong> for {page.booking.durationMinutes} minutes.</p>{done.location?.detail&&<p>{meetingLabel}: {/^https:\/\//.test(done.location.detail)?<a href={done.location.detail} target="_blank" rel="noreferrer">{done.location.detail}</a>:done.location.detail}</p>}<p className="booking-muted">{page.studio.name} has your details. If you need to change the time, reply to them directly.</p></div>
    :slot?<form className="booking-form" onSubmit={book}>
     <button type="button" className="booking-back" onClick={()=>setSlot('')}><ArrowLeft size={16}/>Choose another time</button>
     <h2>{longDay(slot,zone)}, {time(slot,zone)}</h2>

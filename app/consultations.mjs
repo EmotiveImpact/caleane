@@ -50,7 +50,9 @@ export function saveBookingSettings(db,studioId,input){
 
 function booked(db,studioId){return db.prepare("SELECT start_at,end_at FROM consultations WHERE studio_id=? AND status='Booked' AND end_at>?").all(studioId,new Date(Date.now()-86400000).toISOString()).map(row=>({start:Date.parse(row.start_at),end:Date.parse(row.end_at)}));}
 
-export function availableSlots(db,studioId,{nowMs=Date.now(),settings=bookingSettings(db,studioId)}={}){
+// `busy` holds extra busy periods, such as events in the owner's connected calendar. They block
+// overlapping times but do not count towards the daily limit.
+export function availableSlots(db,studioId,{nowMs=Date.now(),settings=bookingSettings(db,studioId),busy=[]}={}){
  const zone=settings.timezone,duration=settings.durationMinutes*60000,buffer=settings.bufferMinutes*60000,earliest=nowMs+settings.minNoticeHours*3600000,taken=booked(db,studioId),slots=[];
  const perDay=new Map();for(const item of taken){const day=localDay(item.start,zone);perDay.set(day,(perDay.get(day)||0)+1);}
  const firstDay=localDay(nowMs,zone);
@@ -63,6 +65,7 @@ export function availableSlots(db,studioId,{nowMs=Date.now(),settings=bookingSet
     if(count>=settings.maxPerDay)break;
     if(start<earliest)continue;
     if(taken.some(item=>start<item.end+buffer&&start+duration+buffer>item.start))continue;
+    if(busy.some(item=>start<item.end&&start+duration>item.start))continue;
     slots.push(new Date(start).toISOString());
    }
   }
@@ -83,7 +86,7 @@ function clientFor(db,studioId,{name,email,phone}){
  ensurePrimaryContact(db,client);return client;
 }
 
-export function bookConsultation(db,{studio,body,key,nowMs=Date.now()}){
+export function bookConsultation(db,{studio,body,key,nowMs=Date.now(),busy=[]}){
  const settings=bookingSettings(db,studio.id);if(!settings.enabled)fail(404,'Online booking is not available for this studio.');
  if(body.website)fail(400,'Please leave the website field empty.');
  if(typeof key!=='string'||!/^[A-Za-z0-9_-]{8,120}$/.test(key))fail(400,'Refresh the page and try again.');
@@ -92,7 +95,7 @@ export function bookConsultation(db,{studio,body,key,nowMs=Date.now()}){
  const name=text(body.name,120,'your name',true),email=text(body.email,254,'your email',true).toLowerCase();if(!emailPattern.test(email))fail(400,'Enter a valid email address.');
  const phone=text(body.phone,40,'your phone number'),notes=text(body.notes,2000,'your note'),start=text(body.start,40,'the time');
  return transaction(db,()=>{
-  if(!availableSlots(db,studio.id,{nowMs,settings}).includes(start))fail(409,'That time has just been taken. Please choose another.');
+  if(!availableSlots(db,studio.id,{nowMs,settings,busy}).includes(start))fail(409,'That time has just been taken. Please choose another.');
   const startMs=Date.parse(start),end=new Date(startMs+settings.durationMinutes*60000).toISOString(),client=clientFor(db,studio.id,{name,email,phone});
   const consultationId=id(),zone=settings.timezone,taskId=id();
   const timeLabel=`${localTime(startMs,zone)}`;
@@ -118,11 +121,11 @@ export function changeConsultation(db,{studioId,user,body}){
  return consultationDTO(db.prepare('SELECT * FROM consultations WHERE id=?').get(row.id));
 }
 
-export function publicBooking(db,studio,{nowMs=Date.now()}={}){
+export function publicBooking(db,studio,{nowMs=Date.now(),busy=[]}={}){
  const settings=bookingSettings(db,studio.id);if(!settings.enabled)fail(404,'Online booking is not available for this studio.');
  const brand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(studio.id)?.data||'{}');
  return {studio:{name:studio.name,slug:studio.slug,accent:studio.accent,logoUrl:brand.logoUrl||'',portalTitle:brand.portalTitle||studio.name},
-  booking:{title:settings.title,description:settings.description,durationMinutes:settings.durationMinutes,timezone:settings.timezone,location:{type:settings.location.type}},slots:availableSlots(db,studio.id,{nowMs,settings})};
+  booking:{title:settings.title,description:settings.description,durationMinutes:settings.durationMinutes,timezone:settings.timezone,location:{type:settings.location.type}},slots:availableSlots(db,studio.id,{nowMs,settings,busy})};
 }
 
 export async function handleConsultations({db,req,route,body,studio,owner,user,reply,origin}){

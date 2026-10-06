@@ -1,6 +1,7 @@
 import {installForms,listForms,changeForm,publicForm,submitForm,listFormResponses,formResponseCSV} from './forms.mjs';
 import {installDataGovernance,dataGovernance,changeGovernance,streamStudioExport} from './data-governance.mjs';
-import {handleCalendarSync} from './calendar-sync.mjs';
+import {handleCalendarSync,syncAllCalendars} from './calendar-sync.mjs';
+import {handleBookingIntegrations,safeCalendarBusy,completeBookingIntegrations,syncBookingIntegrations} from './booking-integrations.mjs';
 import {operationalReadiness} from './operational-readiness.mjs';
 import {installDocuments,listDocuments,changeDocument,downloadDocument,syncProjectArchives} from './documents.mjs';
 import {installTaskCollaboration,handleTaskCollaboration} from './task-collaboration.mjs';
@@ -34,7 +35,7 @@ import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-k
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline} from './pipeline-automation.mjs';
-import {installConsultations,handleConsultations,publicBooking,bookConsultation} from './consultations.mjs';
+import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
 import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
@@ -66,7 +67,7 @@ function previewAuthorized(header,userDigest,passDigest){
  const userMatches=timingSafeEqual(suppliedUser,userDigest),passMatches=timingSafeEqual(suppliedPass,passDigest);
  return userMatches&&passMatches;
 }
-export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,webhookIntervalMs=disableExternalServices?0:15000,trustProxy=process.env.TRUST_PROXY||0}={}){
+export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,webhookIntervalMs=disableExternalServices?0:15000,calendarIntervalMs=disableExternalServices?0:300000,trustProxy=process.env.TRUST_PROXY||0}={}){
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
@@ -157,8 +158,15 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)$/);
    if(bookingMatch){
     const bookingStudio=db.prepare('SELECT * FROM studios WHERE slug=?').get(bookingMatch[1]);if(!bookingStudio)fail(404,'Studio not found.');
-    if(req.method==='GET')return reply(200,publicBooking(db,bookingStudio));
-    if(req.method==='POST'){rate(req,'booking',20);const result=bookConsultation(db,{studio:bookingStudio,body,key:req.headers['idempotency-key']});return reply(result.status,result.data);}
+    // Busy times from the owner's connected calendar, when they have chosen one; never in the hosted sample.
+    const busyFor=maxAgeMs=>{if(!calendarIntervalMs)return [];const settings=bookingSettings(db,bookingStudio.id);return settings.enabled?safeCalendarBusy(db,bookingStudio.id,{from:Date.now(),to:Date.now()+(settings.horizonDays+2)*86400000,maxAgeMs}):[];};
+    if(req.method==='GET')return reply(200,publicBooking(db,bookingStudio,{busy:await busyFor()}));
+    if(req.method==='POST'){
+     rate(req,'booking',20);const result=bookConsultation(db,{studio:bookingStudio,body,key:req.headers['idempotency-key'],busy:await busyFor(30000)});
+     // Make the video link and calendar event now, so the client sees the link on the confirmation screen.
+     if(result.status===201&&calendarIntervalMs){const consultationId=db.prepare('SELECT consultation_id FROM consultation_receipts WHERE studio_id=? AND key=?').get(bookingStudio.id,req.headers['idempotency-key'])?.consultation_id;const meetingUrl=consultationId&&await completeBookingIntegrations(db,consultationId).catch(error=>{console.error('Booking integrations failed:',error?.message||error);return null;});if(meetingUrl)result.data.location={...result.data.location,detail:meetingUrl};}
+     return reply(result.status,result.data);
+    }
     fail(405,'Method not allowed.');
    }
    function startSession(user){const token=randomBytes(32).toString('hex');db.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now());db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token),user.id,Date.now()+7*86400000);res.setHeader('Set-Cookie',`studio_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${origin.startsWith('https:')?'; Secure':''}`);}
@@ -234,6 +242,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(await handleReminders({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handlePipeline({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin}))return;
+    if(await handleBookingIntegrations({db,req,route,body,studio,owner,reply}))return;
     if(await handleWebhooks({db,req,route,body,studio,owner,user,reply,delivery:webhookIntervalMs>0}))return;
     if(route==='/api/stripe/connect/status'&&req.method==='GET'){
      requireOwner();if(!stripe) return reply(200,{onboarding:{studioId:studio.id,status:'unavailable',chargesEnabled:false,detailsSubmitted:false,payoutsEnabled:false,country:''}});
@@ -796,7 +805,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  // Outgoing webhooks: find new events and send what is due every 15 seconds.
  let webhookRun=null;const tickWebhooks=()=>{if(webhookRun)return;webhookRun=runWebhooks(db).catch(error=>console.error('Webhook delivery failed:',error?.stack||error)).finally(()=>{webhookRun=null;});};
  const webhookTimer=webhookIntervalMs>0?setInterval(tickWebhooks,webhookIntervalMs):null;webhookTimer?.unref();
- server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);if(webhookTimer)clearInterval(webhookTimer);});
+ // Connected calendars: selected project dates and booking links and events, every five minutes.
+ let calendarRun=null;const tickCalendars=()=>{if(calendarRun)return;calendarRun=syncAllCalendars(db).then(()=>syncBookingIntegrations(db)).catch(error=>console.error('Calendar sync failed:',error?.stack||error)).finally(()=>{calendarRun=null;});};
+ const calendarTimer=calendarIntervalMs>0?setInterval(tickCalendars,calendarIntervalMs):null;calendarTimer?.unref();
+ server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);if(webhookTimer)clearInterval(webhookTimer);if(calendarTimer)clearInterval(calendarTimer);});
  return {server,db};
 }
 // The demo seeds accounts with a published password, so a production process needs an explicit opt-in to run it.
