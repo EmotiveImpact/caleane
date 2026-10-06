@@ -2,6 +2,21 @@
 .cf-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
 .cf-tags>li{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border:1px solid var(--studio-rule,#e2e2df);border-radius:4px;background:var(--studio-surface,#f7f7f6);color:var(--studio-ink,#202326);font-size:12px;line-height:1.2;white-space:nowrap}
 .cf-tags.is-compact>li{min-height:20px;padding:0 6px;font-size:11px}
+.cf-tags>li.cf-tags-more{background:transparent;color:var(--studio-muted,#6e7274);cursor:default}
+
+/* Tags under the client's name in the record header. */
+.folio-identity .folio-identity-tags{margin-top:8px}
+
+/* The client record's studio details lead the right-hand column, above the project summary. */
+.cf-details.is-record-summary{padding:16px;margin:0 0 22px}
+.cf-details.is-record-summary>header{margin-bottom:12px}
+.cf-details.is-record-summary .cf-values{grid-template-columns:minmax(0,1fr);gap:6px;margin-top:12px}
+.cf-details.is-record-summary .cf-values>div{padding:8px 12px}
+.cf-details.is-record-summary .cf-field-grid{grid-template-columns:minmax(0,1fr)}
+.studio-client-record .folio-context .cf-details.is-record-summary>header p{font-size:12px}
+.studio-client-record .folio-context .cf-details.is-record-summary p.cf-muted{font-size:13px}
+.studio-client-record .folio-context .cf-details.is-record-summary dd{font-size:14px}
+@media(max-width:1100px){.cf-details.is-record-summary .cf-values,.cf-details.is-record-summary .cf-field-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
 
 .cf-details{box-sizing:border-box;margin:0 0 20px;padding:18px 20px;background:var(--studio-paper,#fff);border:1px solid var(--studio-rule,#e2e2df);border-radius:8px}
 .cf-details>header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
