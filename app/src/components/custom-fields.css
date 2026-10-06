@@ -1,0 +1,72 @@
+/* Custom fields and tags. Boxed like the rest of the workspace: white, 1px studio rule, 8px radius. */
+.cf-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.cf-tags>li{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border:1px solid var(--studio-rule,#e2e2df);border-radius:4px;background:var(--studio-surface,#f7f7f6);color:var(--studio-ink,#202326);font-size:12px;line-height:1.2;white-space:nowrap}
+.cf-tags.is-compact>li{min-height:20px;padding:0 6px;font-size:11px}
+
+.cf-details{box-sizing:border-box;margin:0 0 20px;padding:18px 20px;background:var(--studio-paper,#fff);border:1px solid var(--studio-rule,#e2e2df);border-radius:8px}
+.cf-details>header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.cf-details h3{margin:0;font-size:15px;font-weight:560;color:var(--studio-ink,#202326)}
+.cf-details>header p{display:flex;align-items:center;gap:5px;margin:4px 0 0;font-size:12px;color:var(--studio-muted,#6e7274)}
+.cf-values{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin:14px 0 0}
+.cf-values>div{padding:10px 12px;border:1px solid var(--studio-rule,#e2e2df);border-radius:6px}
+.cf-values dt{margin:0 0 3px;font-size:11px;color:var(--studio-muted,#6e7274);letter-spacing:.01em}
+.cf-values dd{margin:0;font-size:14px;color:var(--studio-ink,#202326);overflow-wrap:anywhere}
+.cf-values dd.is-empty{color:var(--studio-muted,#6e7274)}
+.cf-muted{margin:0;font-size:13px;line-height:1.5;color:var(--studio-muted,#6e7274)}
+.cf-details .cf-muted+.cf-muted{margin-top:10px}
+.cf-link{padding:0;border:0;background:none;color:var(--studio-ink,#202326);font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.cf-field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:14px}
+.cf-actions{display:flex;gap:8px;margin-top:16px}
+.cf-error{margin:12px 0 0;font-size:13px;color:#a3362b}
+.cf-saved{font-size:13px;color:var(--studio-muted,#6e7274)}
+
+.cf-tag-input{display:grid;gap:6px}
+.cf-label{font-size:12px;font-weight:500;color:#4c5155}
+.cf-tag-input small{font-size:12px;color:var(--studio-muted,#6e7274)}
+.cf-tag-box{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:42px;box-sizing:border-box;padding:6px 8px;border:1px solid var(--studio-rule,#e2e2df);border-radius:6px;background:var(--studio-surface,#f7f7f6)}
+.cf-tag-box:focus-within{border-color:var(--studio-ink,#202326)}
+.cf-tag-box input{flex:1;min-width:120px;border:0;outline:0;background:transparent;font:inherit;font-size:14px;padding:4px 2px}
+.cf-tag-edit{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 8px;border:1px solid var(--studio-rule,#e2e2df);border-radius:4px;background:var(--studio-paper,#fff);font-size:12px}
+.cf-tag-edit button{display:grid;place-items:center;width:18px;height:18px;padding:0;border:0;border-radius:3px;background:none;color:var(--studio-muted,#6e7274);cursor:pointer}
+.cf-tag-edit button:hover{background:var(--studio-surface,#f7f7f6);color:var(--studio-ink,#202326)}
+
+/* Settings */
+.cf-setting-group{margin:0 0 28px}
+.cf-setting-group>header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.cf-setting-group h3{margin:0;font-size:15px;font-weight:560}
+.cf-setting-group>header span{font-size:12px;color:var(--studio-muted,#6e7274)}
+.cf-setting-group>ul{margin:0 0 12px;padding:0;list-style:none}
+.cf-setting-group .cf-muted{margin-bottom:12px}
+.cf-setting-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;box-sizing:border-box;margin-bottom:8px;padding:14px 16px;background:var(--studio-paper,#fff);border:1px solid var(--studio-rule,#e2e2df);border-radius:8px}
+.cf-setting-fields{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px}
+.cf-setting-wide{grid-column:1/-1}
+.cf-setting-actions{display:flex;gap:2px;padding-top:22px}
+.cf-ideas{display:grid;gap:6px;margin:0 0 20px;padding:0;list-style:none}
+.cf-ideas button{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--studio-rule,#e2e2df);border-radius:8px;background:var(--studio-paper,#fff);color:var(--studio-ink,#202326);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s}
+.cf-ideas button:hover{border-color:color-mix(in srgb,var(--studio-ink,#202326) 28%,transparent)}
+.cf-ideas span{display:grid;gap:2px}
+.cf-ideas strong{font-size:13px;font-weight:540}
+.cf-ideas small{font-size:12px;color:var(--studio-muted,#6e7274)}
+
+/* Tags in lists */
+.studio-client-row .cf-tags,.studio-project-list-row .cf-tags{margin-top:6px}
+.studio-client-preview .cf-tags{margin:10px 0 4px}
+.studio-client-tools>.ws-select.ws-select{width:160px;flex:none}
+.studio-client-tools>.ws-select.ws-select.cf-tag-filter{width:150px}
+
+@media(max-width:700px){
+ .cf-details{padding:16px}
+ .cf-setting-row{grid-template-columns:1fr;padding:14px}
+ .cf-setting-fields{grid-template-columns:1fr}
+ .cf-setting-actions{padding-top:0;justify-content:flex-end}
+}
+.studio-project-card .studio-project-tags{margin:10px 0 0}
+
+/* Clients on a phone: the stage tabs get their own row, as on Projects, so the tag and sort controls do not squeeze them. */
+@media(max-width:760px){
+ .workspace.folio-workspace .studio-client-directory .studio-collection-controls{grid-template-columns:minmax(0,1fr)}
+ .studio-client-directory .studio-client-tools{justify-content:flex-end;min-height:44px}
+}
+@media(max-width:480px){
+ .studio-client-directory .studio-client-tools>.ws-select.ws-select{width:auto;flex:1 1 0;min-width:0}
+}

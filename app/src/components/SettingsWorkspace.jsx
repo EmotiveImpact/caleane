@@ -12,9 +12,10 @@ import {XeroSettings} from './XeroSettings';
 import {BookingIntegrations} from './BookingIntegrations';
 import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
 import {StarterGallery} from './StarterGallery';
+import {CustomFieldSettings} from './CustomFields';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
-const sections=[['studio','Studio'],['appearance','Appearance'],['brand','Brand kit'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['connections','Connections'],['integrations','Integrations'],['data','Data'],['status','Status']];
+const sections=[['studio','Studio'],['appearance','Appearance'],['brand','Brand kit'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['fields','Custom fields'],['connections','Connections'],['integrations','Integrations'],['data','Data'],['status','Status']];
 export function settingsSection(search){
   const params=new URLSearchParams(search);
   if(params.has('calendar_callback')||['pending','connected'].includes(params.get('stripe')))return 'connections';
@@ -102,6 +103,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
       {panel('pricing',section==='pricing'&&<PricingSettings studio={studio} request={request}/>)}
       {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}
       {panel('templates',section==='templates'&&<><StarterGallery studio={studio} request={request} navigate={navigate} onAdded={()=>setTemplatesKey(key=>key+1)}/><TemplateSettings key={templatesKey} studio={studio} request={request}/></>)}
+      {panel('fields',section==='fields'&&<CustomFieldSettings studio={studio} request={request}/>)}
       {panel('connections',<div className="settings-connections"><CalendarSyncSettings studio={studio} request={request}/><StripeConnectSettings studio={studio} request={request}/></div>)}
       {panel('integrations',section==='integrations'&&<><XeroSettings studio={studio} request={request}/><WebhookSettings studio={studio} request={request}/></>)}
       {panel('data',<DataGovernanceSettings studio={studio} request={request} onChanged={reload}/>)}
