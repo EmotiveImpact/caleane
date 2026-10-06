@@ -1,4 +1,4 @@
-import {installInvoiceAdjustments} from './invoice-adjustments.mjs';
+import {installInvoiceAdjustments,invoiceCharges} from './invoice-adjustments.mjs';
 import {randomUUID,createHash} from 'node:crypto';
 import {transaction,now} from './store.mjs';
 
@@ -10,7 +10,7 @@ function accountId(value){if(typeof value!=='string'||!/^acct_[A-Za-z0-9]{8,}$/.
 function invoiceBalance(db,invoice){
  const paid=db.prepare('SELECT COALESCE(SUM(amount_minor),0) AS amount FROM invoice_payments WHERE studio_id=? AND invoice_id=?').get(invoice.studio_id,invoice.id).amount;
  const adjustments=db.prepare("SELECT (SELECT COALESCE(SUM(amount_minor),0) FROM invoice_credit_notes WHERE studio_id=? AND invoice_id=?) AS credited,(SELECT COALESCE(SUM(amount_minor),0) FROM invoice_refunds WHERE studio_id=? AND invoice_id=?) AS refunded").get(invoice.studio_id,invoice.id,invoice.studio_id,invoice.id);
- return invoice.amount_minor-adjustments.credited-(paid-adjustments.refunded);
+ return invoice.amount_minor+invoiceCharges(db,invoice.studio_id,invoice.id).chargesMinor-adjustments.credited-(paid-adjustments.refunded);
 }
 function invoiceRow(db,{studioId,projectId,invoiceId}){
  const row=db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=? AND project_id=?').get(invoiceId,studioId,projectId);
