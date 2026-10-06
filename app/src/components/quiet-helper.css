@@ -1,0 +1,17 @@
+/* Quiet helper: a boxed card in the contained look, holding a draft the owner edits before using. */
+.quiet-helper{box-sizing:border-box;margin:0 0 16px;padding:16px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule,#e2e2df);border-radius:var(--box-radius,8px);color:var(--studio-ink,#202326)}
+.quiet-helper>header{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+.quiet-helper>header svg{color:var(--studio-muted,#73737e)}
+.quiet-helper>header strong{font-size:13px;font-weight:560}
+.quiet-helper>header small{margin-left:auto;padding:3px 7px;border-radius:var(--ds-radius-status,4px);background:var(--studio-surface,#f4f4f2);color:var(--studio-muted,#73737e);font-size:10px;letter-spacing:.04em}
+.quiet-helper>p{margin:0 0 12px;color:var(--studio-muted,#62626c);font-size:12px;line-height:1.6}
+.quiet-helper-draft{display:block;margin:8px 0 6px}
+.quiet-helper-draft textarea{display:block;box-sizing:border-box;width:100%;min-height:120px;padding:12px 14px;background:var(--ds-field-surface,#f7f7f6);border:1px solid var(--box-rule,#e2e2df);border-radius:var(--ds-radius-control,6px);color:inherit;font-size:13px;line-height:1.65}
+.quiet-helper-draft textarea:focus-visible{outline:2px solid var(--studio-ink,#202326);outline-offset:1px}
+.quiet-helper>p.quiet-helper-note{margin:0 0 10px;font-size:11px}
+.quiet-helper-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.quiet-helper>p.quiet-helper-error{margin:10px 0 0;padding:10px 12px;border-radius:var(--ds-radius-control,6px);background:#f5e6dc;color:#7f3f26}
+/* Inside the conversation side panel the section already has a heading rhythm, so the card sits flush. */
+.ws-conversation-panel section.quiet-helper{border-top:1px solid var(--box-rule,#e2e2df);padding:14px;margin-bottom:16px}
+.ws-conversation-panel section.quiet-helper:first-child{padding-top:14px}
+@media(max-width:700px){.quiet-helper{padding:14px}.quiet-helper-actions>*{flex:1 1 auto}}

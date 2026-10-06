@@ -4,6 +4,7 @@ import './project-chat.css';
 import {WorkspaceButton,WorkspaceSearch,WorkspaceAvatar,WorkspacePopover} from './workspace/WorkspaceUI';
 import {TemplatePicker} from './TemplatePicker';
 import {loadDraft,saveDraft} from '../lib/message-drafts';
+import {USE_DRAFT_EVENT} from './QuietHelper';
 const day=at=>new Date(at).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'long'});
 const clock=at=>new Date(at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 export const plainText=text=>String(text||'').replace(/^Replying to [^\n]+:\n(?:>[^\n]*\n?)+/,'').replace(/\s+/g,' ').trim();
@@ -30,6 +31,7 @@ export function ProjectChat({p,studio,user,owner,request,conversationId,fileHref
  const revision=useRef(0),pending=useRef(null),scroll=useRef(null),nearBottom=useRef(true),input=useRef(null),fileInput=useRef(null),placed=useRef(false),holdSeen=useRef(false),unreadCaptured=useRef(!!firstUnreadId);
  const draftKey=conversationId||thread?.id;
  function setDraft(value){setDraftState(current=>{const next=typeof value==='function'?value(current):value;if(draftKey)saveDraft(draftKey,next);return next;});}
+ useEffect(()=>{const take=e=>{if(draftKey&&e.detail?.conversationId===draftKey){setDraft(e.detail.text);input.current?.focus();}};window.addEventListener(USE_DRAFT_EVENT,take);return()=>window.removeEventListener(USE_DRAFT_EVENT,take);},[draftKey]);
  function accept(conversation){setThread(conversation);onConversation?.(conversation);}
  useEffect(()=>{setThread(null);setReply(null);setAttachments([]);setMentionIds([]);setLoading(true);placed.current=false;holdSeen.current=false;pending.current=null;setDraftState(conversationId?loadDraft(conversationId):'');let active=true;const load=async()=>{const version=revision.current;try{const data=await request('/api/conversations?studio='+studio.id);if(active&&version===revision.current){const found=data.conversations.find(t=>conversationId?t.id===conversationId:t.projectId===p?.id)||null;setThread(found);if(found&&!unreadCaptured.current){unreadCaptured.current=true;setUnreadFrom(found.firstUnreadId||null);}if(found&&!conversationId)setDraftState(current=>current||loadDraft(found.id));setError('');}}catch(e){if(active)setError(e.message);}finally{if(active)setLoading(false);}};load();const timer=setInterval(()=>{if(document.visibilityState==='visible')load();},6000);return()=>{active=false;clearInterval(timer);};},[p?.id,studio.id,conversationId]);
  // Open at the first unread message when there is one, otherwise at the latest.

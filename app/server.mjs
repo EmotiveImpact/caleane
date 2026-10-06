@@ -6,6 +6,7 @@ import {installDocuments,listDocuments,changeDocument,downloadDocument,syncProje
 import {installTaskCollaboration,handleTaskCollaboration} from './task-collaboration.mjs';
 import {assertQuota,cleanupUnattachedUploads} from './uploads.mjs';
 import {handleConversationFileUpload} from './conversation-features.mjs';
+import {createAssistant,handleAssistant} from './ai-helper.mjs';
 import {handleConversationOrganiser} from './conversation-organiser.mjs';
 import {handleScheduledMessages,sendDueScheduled} from './conversation-scheduled.mjs';
 import {createAccountSecurity} from './account-security.mjs';
@@ -68,7 +69,8 @@ function previewAuthorized(header,userDigest,passDigest){
  const userMatches=timingSafeEqual(suppliedUser,userDigest),passMatches=timingSafeEqual(suppliedPass,passDigest);
  return userMatches&&passMatches;
 }
-export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,trustProxy=process.env.TRUST_PROXY||0,emailDelivery=null,emailIntervalMs=60000,scheduledIntervalMs=60000}={}){
+export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,trustProxy=process.env.TRUST_PROXY||0,emailDelivery=null,emailIntervalMs=60000,scheduledIntervalMs=60000,assistant}={}){
+ const helper=disableExternalServices?null:assistant===undefined?createAssistant():assistant;
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
@@ -237,6 +239,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(handleDocumentOpens({db,req,route,body,user,studio,owner,staffViewer,reply}))return;
     if(handleOnboarding({db,req,route,body,user,studio,reply}))return;
     if(await handleTaskCollaboration({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
+    if(await handleAssistant({db,req,route,body,studio,owner,reply,assistant:helper,rate}))return;
     if(await handleConversationFileUpload({db,req,res,url,route,body,user,studio,owner,staffViewer,reply}))return;
     if(await handleConversationOrganiser({db,req,route,body,user,studio,owner,reply}))return;
     if(handleScheduledMessages({db,req,route,body,user,studio,owner,reply,afterSend:queueMessage}))return;
