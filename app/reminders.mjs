@@ -3,6 +3,8 @@ import {readSetting,writeSetting} from './studio-commerce.mjs';
 import {getPlan} from './payment-plans.mjs';
 import {projectClientId} from './relationships.mjs';
 import {recordFollowUp,conversationRecipients} from './notification-feed.mjs';
+import {ensureInvoiceExtras,invoiceCharges} from './invoice-adjustments.mjs';
+import {applyLateFees} from './invoice-extras.mjs';
 
 // Automatic reminders. Client reminders are posted from the studio into the
 // project conversation, so they are visible and unread in the client portal.
@@ -14,7 +16,7 @@ const dayNumber=value=>Math.floor(Date.parse(value.slice(0,10)+'T12:00:00Z')/864
 const money=(minor,currency)=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(minor/100);}catch{return `${(minor/100).toFixed(2)} ${currency}`;}};
 const longDate=value=>new Date(value.slice(0,10)+'T12:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
 
-export function installReminders(db){db.exec('CREATE TABLE IF NOT EXISTS reminder_log(studio_id TEXT NOT NULL REFERENCES studios(id),key TEXT NOT NULL,project_id TEXT,kind TEXT NOT NULL,audience TEXT NOT NULL,summary TEXT NOT NULL,sent_at TEXT NOT NULL,PRIMARY KEY(studio_id,key)); CREATE INDEX IF NOT EXISTS reminder_log_recent ON reminder_log(studio_id,sent_at);');}
+export function installReminders(db){ensureInvoiceExtras(db);db.exec('CREATE TABLE IF NOT EXISTS reminder_log(studio_id TEXT NOT NULL REFERENCES studios(id),key TEXT NOT NULL,project_id TEXT,kind TEXT NOT NULL,audience TEXT NOT NULL,summary TEXT NOT NULL,sent_at TEXT NOT NULL,PRIMARY KEY(studio_id,key)); CREATE INDEX IF NOT EXISTS reminder_log_recent ON reminder_log(studio_id,sent_at);');}
 
 export function reminderSettings(db,studioId){return {...defaultReminderSettings,...readSetting(db,studioId,'reminders',{})};}
 export function saveReminderSettings(db,studioId,input){
@@ -30,7 +32,7 @@ function invoiceBalances(db,studioId,projectId){
   const paid=db.prepare('SELECT COALESCE(SUM(amount_minor),0) AS n FROM invoice_payments WHERE studio_id=? AND invoice_id=?').get(studioId,row.id).n;
   const credited=db.prepare('SELECT COALESCE(SUM(amount_minor),0) AS n FROM invoice_credit_notes WHERE studio_id=? AND invoice_id=?').get(studioId,row.id).n;
   const refunded=db.prepare('SELECT COALESCE(SUM(amount_minor),0) AS n FROM invoice_refunds WHERE studio_id=? AND invoice_id=?').get(studioId,row.id).n;
-  return {...row,balance:row.amount_minor-credited-(paid-refunded)};
+  return {...row,balance:row.amount_minor+invoiceCharges(db,studioId,row.id).chargesMinor-credited-(paid-refunded)};
  });
 }
 
@@ -145,7 +147,11 @@ export function runReminders(db,{studioId,today=now().slice(0,10),outbox=null,cl
 
 export function runAllReminders(db,{outbox=null,today}={}){
  installReminders(db);const results=[];
- for(const studio of db.prepare('SELECT id FROM studios').all()){try{results.push(...runReminders(db,{studioId:studio.id,today,outbox}));}catch(error){console.error('Reminder run failed for a studio:',error.message);}}
+ for(const studio of db.prepare('SELECT id FROM studios').all()){
+  // Late fees follow their own billing setting, which is off unless the studio turns it on.
+  try{applyLateFees(db,{studioId:studio.id,today});}catch(error){console.error('Late fee run failed for a studio:',error.message);}
+  try{results.push(...runReminders(db,{studioId:studio.id,today,outbox}));}catch(error){console.error('Reminder run failed for a studio:',error.message);}
+ }
  return results;
 }
 
@@ -157,6 +163,6 @@ export async function handleReminders({db,req,route,body,studio,owner,reply,outb
  if(req.method==='GET')return reply(200,view()),true;
  if(req.method!=='POST')fail(405,'Method not allowed.');
  if(body.action==='save'){saveReminderSettings(db,studio.id,body.settings||{});return reply(200,view()),true;}
- if(body.action==='run'){const sent=runReminders(db,{studioId:studio.id,outbox});return reply(200,view({sent})),true;}
+ if(body.action==='run'){applyLateFees(db,{studioId:studio.id});const sent=runReminders(db,{studioId:studio.id,outbox});return reply(200,view({sent})),true;}
  fail(400,'Choose a reminder action.');
 }

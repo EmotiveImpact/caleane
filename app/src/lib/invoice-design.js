@@ -2,6 +2,7 @@
 // view, Print or save PDF and the settings preview all use the same HTML, so
 // what the studio designs is what the client sees and prints.
 import {brandStyle,readableOn} from './brand-kit.js';
+import {lateFeeTerms} from './invoice-charges.js';
 
 export const invoiceLayouts=[
  ['atelier','Atelier','Centred logo, fine rules and generous space.'],
@@ -54,15 +55,19 @@ export function invoicePageHtml(invoice,{studio={},design,brandKit,estimate}={})
  const from=`<div class="party"><span class="label">From</span><strong>${escape(seller)}</strong><p>${lines(s.sellerAddress)}</p>${s.sellerContact?`<small>${escape(s.sellerContact)}</small>`:''}${s.taxRegistration?`<small>VAT / tax no. ${escape(s.taxRegistration)}</small>`:''}</div>`;
  const to=`<div class="party"><span class="label">Billed to</span><strong>${escape(s.billToName)}</strong><p>${lines(s.customerAddress)}</p>${s.billToEmail?`<small>${escape(s.billToEmail)}</small>`:''}</div>`;
  const items=d.showItems&&Array.isArray(estimate?.items)&&estimate.items.length?estimate.items:null;
- const isPart=items&&estimate.total&&estimate.total!==invoice.amountMinor;
- const share=isPart?Math.round(invoice.amountMinor/estimate.total*1000)/10:100;
+ const shareMinor=invoice.shareMinor??invoice.amountMinor,discountNet=invoice.discountNetMinor||0;
+ const isPart=items&&estimate.total&&estimate.total!==shareMinor;
+ const share=isPart?Math.round(shareMinor/estimate.total*1000)/10:100;
  const table=items
   ?`<table class="items"><thead><tr><th>${isPart?'Project scope':'Description'}</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Amount</th></tr></thead><tbody>${items.map(item=>`<tr><td>${escape(item.title)}</td><td class="num">${escape(item.quantity)}</td><td class="num">${escape(money(item.unitAmount))}</td><td class="num">${escape(money(item.quantity*item.unitAmount))}</td></tr>`).join('')}</tbody>${isPart?`<tfoot><tr><td colspan="3">Project total${estimate.taxRate?` including ${escape(estimate.taxRate)}% tax`:''}</td><td class="num">${escape(money(estimate.total))}</td></tr><tr class="this"><td colspan="3"><strong>${escape(lineTitle(invoice))}</strong><small>${escape(share)}% of the project total</small></td><td class="num"><strong>${escape(money(invoice.amountMinor))}</strong></td></tr></tfoot>`:''}</table>`
   :`<table class="items"><thead><tr><th>Description</th><th class="num">Amount</th></tr></thead><tbody><tr><td><strong>${escape(lineTitle(invoice))}</strong><small>${escape(s.projectTitle||'')}${invoice.estimateVersion?` · Estimate version ${escape(invoice.estimateVersion)}`:''}</small></td><td class="num">${escape(money(invoice.netMinor))}</td></tr></tbody></table>`;
- const totals=[['Subtotal',money(invoice.netMinor)],[`Tax (${invoice.taxRate||0}%)`,money(invoice.taxMinor)],['Invoice total',money(invoice.amountMinor),'strong'],
+ const charges=(invoice.charges||[]).filter(item=>!item.waivedAt);
+ const totals=[...(discountNet?[['Subtotal',money(invoice.netMinor+discountNet)],[invoice.discountLabel||'Discount','− '+money(discountNet)],['Net',money(invoice.netMinor)]]:[['Subtotal',money(invoice.netMinor)]]),[`Tax (${invoice.taxRate||0}%)`,money(invoice.taxMinor)],['Invoice total',money(invoice.amountMinor),'strong'],
+  ...charges.map(item=>[item.kind==='tip'?'Tip, thank you':`${item.label}, added ${date(item.addedAt)}`,'+ '+money(item.amountMinor)]),
   ...(credited?[['Credit notes','− '+money(credited)]]:[]),...(paid?[['Paid','− '+money(paid)]]:[]),...(refunded?[['Refunded','+ '+money(refunded)]]:[])];
  const totalsHtml=`<section class="totals">${totals.map(([k,v,c])=>`<div class="${c||''}"><span>${escape(k)}</span><span>${escape(v)}</span></div>`).join('')}<div class="due"><span>${escape(due[0])}</span><strong>${escape(due[1])}</strong></div></section>`;
- const pay=!cancelled?`<div class="pay"><span class="label">How to pay</span><p>${lines(invoice.paymentInstructions||'Contact the studio for payment instructions.')}</p>${invoice.dueDate&&balance>0?`<p class="pay-by">Please pay by ${escape(date(invoice.dueDate))}, quoting ${escape(invoice.number)}.</p>`:''}</div>`:'';
+ const terms=invoice.lateFeeRule&&!cancelled&&balance>0&&!charges.some(item=>item.kind==='late_fee')?`<p class="pay-by">${escape(lateFeeTerms(invoice.lateFeeRule,currency))}</p>`:'';
+ const pay=!cancelled?`<div class="pay"><span class="label">How to pay</span><p>${lines(invoice.paymentInstructions||'Contact the studio for payment instructions.')}</p>${invoice.dueDate&&balance>0?`<p class="pay-by">Please pay by ${escape(date(invoice.dueDate))}, quoting ${escape(invoice.number)}.</p>`:''}${terms}</div>`:'';
  const note=invoice.note?`<div class="note"><span class="label">Notes</span><p>${lines(invoice.note)}</p></div>`:'';
  const project=s.projectTitle?`<p class="project"><span class="label">Project</span>${escape(s.projectTitle)}</p>`:'';
  const thanks=d.thankYou?`<p class="thanks">${escape(d.thankYou)}</p>`:'';

@@ -233,3 +233,39 @@
 .billing-autopay .billing-autopay-failed { color: #8b2e22; }
 .billing-autopay .billing-plan-actions { margin-top: 12px; }
 .commerce-payment-fields { margin-top: 18px; }
+
+/* Discounts, late fees and tips */
+.billing-extras { border: 1px solid #e0e2e5; border-radius: 6px; background: #fff; padding: 16px 18px 4px; margin: 0 0 18px; min-width: 0; }
+.billing-extras legend { padding: 0 6px; margin-left: -6px; font-size: 11px; font-weight: 600; color: #535a62; }
+.billing-discount-row { display: grid; grid-template-columns: minmax(0,160px) minmax(0,1fr) minmax(0,1fr); gap: 0 14px; }
+.billing-extras-note { font-size: 12px; line-height: 1.55; color: #5f656d; margin: -6px 0 14px; }
+.billing-extras-note.is-error { color: #a03a32; }
+.billing-extras .billing-refund-choice { margin: 0 0 14px; }
+.billing-extras .billing-refund-choice small { display: block; margin-top: 3px; font-size: 11.5px; color: #6f757d; }
+.billing-totals .billing-discount dt, .billing-totals .billing-discount dd { color: #2f6b4f; }
+.billing-totals s { color: #9a9fa6; }
+.billing-late-terms { font-size: 12px; line-height: 1.55; color: #5f656d; background: #f6f6f4; border: 1px solid #e6e6e1; border-radius: 6px; padding: 11px 14px; margin: -14px 0 24px; }
+.billing-tip { background: #fff; border: 1px solid #e0e2e5; border-radius: 6px; padding: 18px 20px; margin: 0 0 24px; }
+.billing-tip h4 { margin: 0 0 4px; font-size: 14px; font-weight: 560; }
+.billing-tip p { margin: 0 0 14px; font-size: 12px; line-height: 1.55; color: #6f757d; }
+.billing-tip-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.billing-tip-options button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 92px; padding: 10px 14px; border: 1px solid #d8dbe0; border-radius: 6px; background: #fafafa; color: #25292e; font: inherit; cursor: pointer; }
+.billing-tip-options button strong { font-size: 14px; font-weight: 600; }
+.billing-tip-options button span { font-size: 11px; color: #6f757d; }
+.billing-tip-options button[aria-pressed="true"] { border-color: #25292e; background: #25292e; color: #fff; }
+.billing-tip-options button[aria-pressed="true"] span { color: rgba(255,255,255,.75); }
+.billing-tip-options button:disabled { opacity: .6; cursor: default; }
+.billing-tip-custom { display: flex; align-items: flex-end; gap: 10px; margin-top: 14px; }
+.billing-tip-custom label { margin: 0; max-width: 200px; }
+.billing-tip-custom label span { display: block; font-size: 11px; font-weight: 520; color: #535a62; margin: 0 0 7px; }
+.billing-tip-custom input { width: 100%; border: 1px solid #d8dbe0; border-radius: 3px; padding: 10px 11px; min-height: 42px; font: inherit; font-size: 13px; }
+.commerce-late-fee { margin: 4px 0 8px; }
+.commerce-late-fee-preview { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 620px) {
+ .billing-discount-row { grid-template-columns: 1fr; }
+ .billing-tip-options button { flex: 1 1 40%; }
+ .billing-tip-custom { flex-wrap: wrap; }
+}
+.billing-issue-form .billing-extras label.billing-refund-choice { display: flex; }
+.billing-issue-form .billing-extras .billing-refund-choice input { width: auto; min-height: 0; padding: 0; flex: none; }
+.billing-issue-form .billing-extras .billing-refund-choice strong { font-size: 13px; font-weight: 560; color: #25292e; }
