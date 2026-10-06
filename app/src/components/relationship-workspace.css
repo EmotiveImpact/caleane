@@ -12,13 +12,36 @@
 
 .studio-client-tools{display:flex;align-items:center;gap:10px;flex:none;min-width:0}.studio-client-sort{min-width:150px}.studio-client-row{cursor:pointer}.studio-client-more{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 0;color:var(--studio-muted);font-size:12px}@media(max-width:700px){.studio-client-tools{flex-wrap:wrap}.studio-client-sort{min-width:0}}
 /* Messages triage: filters, status labels, status switch and the details panel. */
-.folio-workspace .ws-inbox.has-panel .relationship-inbox-grid{grid-template-columns:270px minmax(0,1fr) 270px;gap:24px}
-.folio-workspace .ws-inbox .ws-inbox-filters{display:flex;flex-wrap:wrap;gap:6px;border:0;margin:4px 0 12px}
-/* Five filters do not fit as underlined tabs in the list column, so they use chips here. */
-.folio-workspace .ws-inbox .ws-inbox-filters>button{border:1px solid var(--studio-rule);border-radius:20px;padding:5px 10px!important;font-size:12px!important;min-height:0;margin:0;color:var(--studio-muted)!important;background:none;display:flex;align-items:center;gap:6px}
+.folio-workspace .ws-inbox.has-panel .relationship-inbox-grid{grid-template-columns:288px minmax(0,1fr) 270px;gap:24px}
+/* Filters: the three everyday views as one segmented control, with Unread and Mentions in a small menu beside it. */
+.ws-inbox-filter-row{display:flex;align-items:stretch;gap:6px;margin:8px 0 12px;min-width:0;container-type:inline-size}
+.folio-workspace .ws-inbox .relationship-thread-list .ws-inbox-filters{display:flex;flex:1 1 auto;min-width:0;gap:0;margin:0;border:1px solid var(--studio-rule);border-radius:6px;overflow:hidden}
+.folio-workspace .ws-inbox .ws-inbox-filters>button{flex:1 1 auto;justify-content:center;gap:5px;min-width:0;min-height:30px;margin:0;padding:5px 6px!important;border:0;border-radius:0;background:none;color:var(--studio-muted);font-size:12px!important;font-weight:500;white-space:nowrap}
+.folio-workspace .ws-inbox .ws-inbox-filters>button+button{border-left:1px solid var(--studio-rule)}
+.folio-workspace .ws-inbox .ws-inbox-filters>button:hover{color:var(--studio-ink)}
 .folio-workspace .ws-inbox .ws-inbox-filters>button:after{display:none}
-.folio-workspace .ws-inbox .ws-inbox-filters>button[data-state=on]{background:var(--studio-ink)!important;border-color:var(--studio-ink);color:var(--studio-paper)!important}
-.folio-workspace .ws-inbox .ws-inbox-filters>button>span{font-size:10.5px;background:none;padding:0;min-width:0;color:inherit;opacity:.75}
+.folio-workspace .ws-inbox .ws-inbox-filters>button[data-state=on]{background:var(--studio-ink);color:var(--studio-paper)!important;font-weight:550}
+.folio-workspace .ws-inbox .ws-inbox-filters>button>span{min-width:0;height:auto;padding:0;background:none;color:inherit;font-size:10.5px;opacity:.7}
+.ws-inbox .ws-inbox-more{position:relative;display:inline-flex;align-items:center;gap:4px;flex:none;padding:5px 6px 5px 8px;border:1px solid var(--studio-rule);border-radius:6px;background:var(--studio-paper);color:var(--studio-muted);font:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
+.ws-inbox .ws-inbox-more:hover,.ws-inbox .ws-inbox-more[data-state=open]{color:var(--studio-ink);border-color:color-mix(in srgb,var(--studio-ink) 28%,var(--studio-rule))}
+.ws-inbox .ws-inbox-more.is-active{background:var(--studio-ink);border-color:var(--studio-ink);color:var(--studio-paper)}
+.ws-inbox-more>b{font-size:10.5px;font-weight:500;opacity:.75}
+.ws-inbox-more>i{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--studio-accent);box-shadow:0 0 0 2px var(--studio-paper)}
+.ws-inbox .ws-inbox-more:focus-visible,.folio-workspace .ws-inbox .ws-inbox-filters>button:focus-visible{outline:2px solid var(--studio-ink);outline-offset:-2px}
+.ws-inbox-more-menu{min-width:176px}
+/* In the narrowest list column, the All count steps aside so every label stays whole. */
+@container (max-width:240px){.folio-workspace .ws-inbox .ws-inbox-filters>button{padding:5px 4px!important;gap:4px}.folio-workspace .ws-inbox .ws-inbox-filters>button:last-child>span{display:none}.ws-inbox .ws-inbox-more{padding:5px 4px 5px 7px;gap:2px}}
+.ws-inbox-more-check{display:inline-flex;width:14px;flex:none}
+/* Conversations as boxed cards, each holding its picture, latest line, time and status. */
+.ws-inbox .relationship-thread-list>nav{display:grid;gap:8px}
+.folio-workspace .ws-inbox .relationship-thread-list .relationship-thread{align-items:flex-start;gap:11px;min-height:0;padding:12px;border:1px solid var(--studio-rule);border-radius:8px;background:var(--studio-paper);cursor:pointer;transition:border-color .12s}
+.folio-workspace .ws-inbox .relationship-thread-list .relationship-thread:hover{border-color:color-mix(in srgb,var(--studio-ink) 28%,var(--studio-rule))}
+.folio-workspace .ws-inbox .relationship-thread-list .relationship-thread.active{border-color:var(--studio-ink);background:var(--studio-paper);box-shadow:inset 0 0 0 1px var(--studio-ink)}
+.ws-inbox .relationship-thread-list .relationship-thread.active:before{display:none}
+.ws-inbox .relationship-thread-list .relationship-thread .studio-project-image,.ws-inbox .relationship-thread-list .relationship-thread>.ws-avatar{border-radius:6px!important}
+.ws-inbox .relationship-thread-list .relationship-thread small{margin-top:3px}
+.ws-inbox .relationship-thread-list .relationship-thread .ws-triage{margin-top:8px}
+.ws-inbox .relationship-thread-list .relationship-thread:focus-visible{outline:2px solid var(--studio-ink);outline-offset:2px}
 .ws-inbox .relationship-thread.is-unread strong{font-weight:650}
 .ws-triage{display:inline-block;margin-top:6px;padding:2px 6px;border-radius:4px;font-style:normal;font-size:10.5px;font-weight:550;line-height:1.5;white-space:nowrap}
 .relationship-conversation-head h2 .ws-triage{margin:0 0 0 10px;vertical-align:middle;letter-spacing:0}
