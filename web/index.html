@@ -29,11 +29,9 @@
   <link rel="stylesheet" href="styles.css?v=20261001radix1">
   <link rel="stylesheet" href="editorial.css?v=20261001radix1">
   <link rel="stylesheet" href="layout.css?v=20261001radix1">
-  <link rel="stylesheet" href="product-review.css?v=20261001radix1">
   <link rel="stylesheet" href="page-finish.css?v=20261001radix1">
 <script src="assets/website-ui.js?v=20261001radix1" defer></script>
 <script src="page-finish.js?v=20261001radix1" defer></script>
-  <script src="product-review.js?v=20261001radix1" defer></script>
   <script src="config.js?v=20261001flow" defer></script>
   <script src="site.js?v=20261001radix1" defer></script>
 
@@ -42,6 +40,8 @@
 <link rel="stylesheet" href="page-polish.css?v=20261001radix1">
 <link rel="stylesheet" href="ui/website-ui.css?v=20261001radix1">
 <link rel="stylesheet" href="site-refresh.css?v=20261006">
+<link rel="stylesheet" href="home-story.css?v=20261006">
+<script src="home-story.js?v=20261006" defer></script>
 <script src="site-shell.js?v=20261001radix1" defer></script>
 </head>
 <body id="top" class="cal-home">
@@ -79,164 +79,225 @@
       </div>
     </section>
 
-    <section class="product review-product" id="product" aria-labelledby="product-title">
-      <div class="review-heading">
-        <div><p class="eyebrow">THE WORKSPACE</p><h2 id="product-title">The right version.<br>A clear decision.</h2></div>
-        <p>Share the design, gather feedback<br class="desktop-break"> and keep the approval beside the work.</p>
-      </div>
-      <div class="review-workspace" id="sample-workspace" aria-label="Interactive sample project">
-        <div class="review-topline"><span>AMELIA’S WEDDING</span><span data-review-status>Design review · Version 03</span></div>
-        <div class="review-body">
-          <div class="review-canvas">
-            <div class="review-image-wrap">
-              <img id="review-image" src="assets/review-reception.webp" alt="Candlelit reception with low ivory floral centrepieces" loading="lazy">
-              <button class="review-pin" type="button" aria-label="Read feedback on the table flowers" aria-controls="review-feedback">1</button>
-            </div>
-            <div class="review-thumbnails" aria-label="Design references">
-              <button type="button" aria-label="View reception design" aria-pressed="true" data-reference="reception"><img src="assets/review-reception.webp" alt="" loading="lazy"></button>
-              <button type="button" aria-label="View floral reference" aria-pressed="false" data-reference="florals"><img src="assets/candlelit-table.webp" alt="" loading="lazy"></button>
-              <button type="button" aria-label="View material references" aria-pressed="false" data-reference="materials"><img src="assets/studio-worktable.webp" alt="" loading="lazy"></button>
-              <button type="button" aria-label="View interior palette" aria-pressed="false" data-reference="palette"><img src="assets/interior-outcome.webp" alt="" loading="lazy"></button>
-              <button type="button" aria-label="View table styling" aria-pressed="false" data-reference="styling"><img src="assets/hospitality-studio.webp" alt="" loading="lazy"></button>
-              <button type="button" aria-label="View event setting" aria-pressed="false" data-reference="setting"><img src="assets/event-outcome.webp" alt="" loading="lazy"></button>
-            </div>
-          </div>
-          <div class="review-sidebar">
-            <section id="review-brief-panel" role="tabpanel" aria-labelledby="review-tab-brief" hidden>
-              <h3>A shared starting point.</h3>
-              <p class="review-summary">An intimate reception, warm light and flowers that leave room for conversation.</p>
-              <dl class="review-facts"><div><dt>Occasion</dt><dd>Wedding reception</dd></div><div><dt>Palette</dt><dd>Ivory, natural linen, warm wood</dd></div><div><dt>Direction</dt><dd>Low florals. Candlelit tables.</dd></div><div><dt>Brief revision</dt><dd>03 · Shared with Amelia</dd></div></dl>
-              <button class="review-primary" type="button" data-stage-next="design">Review the design</button>
-            </section>
-            <section id="review-design-panel" role="tabpanel" aria-labelledby="review-tab-design">
-              <h3 id="review-feedback" tabindex="-1">One detail to resolve.</h3>
-              <div class="review-conversation">
-                <article class="review-comment"><img class="review-avatar" src="assets/cal-hero-portrait.webp" alt="" loading="lazy"><div><div class="review-author"><strong>Amelia</strong><span>2h ago</span></div><p>Love this direction. Could we make the table flowers a little lower?</p></div></article>
-                <article class="review-comment"><img class="review-avatar studio-avatar" src="assets/cal-hero-interior-original-grade.webp" alt="" loading="lazy"><div><div class="review-author"><strong>Nadia / Studio</strong><span>1h ago</span></div><p>Updated in version 03. There’s more room across the table now.</p></div></article>
-                <article class="review-comment review-new-comment" hidden><img class="review-avatar" src="assets/cal-hero-portrait.webp" alt="" loading="lazy"><div><div class="review-author"><strong>Amelia</strong><span>Just now</span></div><p data-new-feedback></p></div></article>
+    <section class="hs-flow" id="product" aria-labelledby="flow-title" data-hs-flow>
+      <div class="hs-wrap">
+        <header class="hs-head">
+          <p class="eyebrow">ONE PROJECT, START TO FINISH</p>
+          <h2 id="flow-title">Now it all lives in one place.</h2>
+          <p>Follow one wedding from the first enquiry to the final thank you, and watch Caleane carry it at every step.</p>
+        </header>
+        <div class="hs-flow-grid">
+          <div class="hs-stage" aria-hidden="true">
+            <div class="hs-frame" data-hs-frame>
+              <div class="hs-app" data-hs-app data-step="1">
+                <aside class="hs-rail">
+                  <div class="hs-rail-brand"><span>N</span>Nadia Studio</div>
+                  <nav>
+                    <span data-nav="1 2">Pipeline</span>
+                    <span data-nav="3 4">Projects</span>
+                    <span data-nav="6">Messages</span>
+                    <span data-nav="5">Finances</span>
+                    <span>Calendar</span>
+                    <span>Forms</span>
+                  </nav>
+                  <div class="hs-rail-foot"><span class="hs-avatar is-studio">N</span>Nadia Clarke</div>
+                </aside>
+                <div class="hs-main">
+                  <div class="hs-topbar"><span class="hs-crumb" data-hs-crumb>Pipeline · New enquiry</span><span class="hs-search">Search</span></div>
+
+                  <div class="hs-screen is-on" data-screen="1">
+                    <div class="hs-enquiry hs-in">
+                      <div class="hs-enquiry-head">
+                        <span class="hs-avatar">A</span>
+                        <div><strong>Amelia Taylor</strong><small>Wedding · from your website form</small></div>
+                        <span class="hs-chip is-new">New</span>
+                      </div>
+                      <dl class="hs-facts">
+                        <div class="hs-in" style="--d:.15s"><dt>Date</dt><dd>12 June 2027</dd></div>
+                        <div class="hs-in" style="--d:.25s"><dt>Guests</dt><dd>60</dd></div>
+                        <div class="hs-in" style="--d:.35s"><dt>Budget</dt><dd>£8,000 to £10,000</dd></div>
+                        <div class="hs-in" style="--d:.45s"><dt>Venue</dt><dd>The Orangery, Bath</dd></div>
+                      </dl>
+                      <blockquote class="hs-in" style="--d:.6s">“We’d love candlelit tables and low, soft florals, so everyone can talk across the table.”</blockquote>
+                      <div class="hs-actions hs-in" style="--d:.75s"><span class="hs-btn is-dark">Reply</span><span class="hs-btn">Offer a call</span><span class="hs-btn">Send a proposal</span></div>
+                    </div>
+                    <div class="hs-toast" style="--d:1.1s"><i></i>New enquiry from your website form</div>
+                  </div>
+
+                  <div class="hs-screen" data-screen="2">
+                    <div class="hs-board">
+                      <div class="hs-col"><h4>Enquiry <small>3</small></h4><div class="hs-slot"></div><div class="hs-card"><strong>Jas Patel</strong><small>Brand launch · May</small></div><div class="hs-card"><strong>Theo Marsh</strong><small>Kitchen redesign</small></div></div>
+                      <div class="hs-col"><h4>Call booked <small>2</small></h4><div class="hs-slot"></div><div class="hs-card"><strong>Noah Bennett</strong><small>Thu 10:00 · Video call</small></div></div>
+                      <div class="hs-col"><h4>Proposal <small>2</small></h4><div class="hs-slot"></div><div class="hs-card"><strong>Olivia Grant</strong><small>Follow-up sent today</small></div></div>
+                      <div class="hs-col"><h4>Booked <small>4</small></h4><div class="hs-slot"></div><div class="hs-card"><strong>Ruth &amp; Sam</strong><small>Deposit paid</small></div><div class="hs-card"><strong>Kiln &amp; Co.</strong><small>Deposit paid</small></div></div>
+                      <div class="hs-card hs-mover">
+                        <strong>Amelia Taylor</strong>
+                        <span class="hs-mover-states"><small>Wedding · £9,000</small><small>Call booked · Tue</small><small>Proposal accepted</small><small>Deposit paid</small></span>
+                      </div>
+                    </div>
+                    <div class="hs-toast" style="--d:1.6s"><i></i>Follow-up sent to Olivia automatically</div>
+                  </div>
+
+                  <div class="hs-screen" data-screen="3">
+                    <div class="hs-brief">
+                      <div class="hs-brief-head hs-in"><div><strong>Amelia’s wedding</strong><small>Brief · Revision 03 · Shared with Amelia</small></div><span class="hs-chip">Shared</span></div>
+                      <div class="hs-mood">
+                        <img class="hs-in" style="--d:.1s" src="assets/candlelit-table.webp" alt="" loading="lazy">
+                        <img class="hs-in" style="--d:.2s" src="assets/review-reception.webp" alt="" loading="lazy">
+                        <img class="hs-in" style="--d:.3s" src="assets/event-outcome.webp" alt="" loading="lazy">
+                        <img class="hs-in" style="--d:.4s" src="assets/studio-worktable.webp" alt="" loading="lazy">
+                      </div>
+                      <div class="hs-brief-cols">
+                        <div class="hs-in" style="--d:.55s"><h5>Palette</h5><div class="hs-swatches"><span><i style="background:#f1ece1"></i>Ivory</span><span><i style="background:#a9b5a0"></i>Sage</span><span><i style="background:#d8c5a0"></i>Champagne</span></div></div>
+                        <div class="hs-in" style="--d:.7s"><h5>Must haves</h5><ul><li>Low florals, room to talk</li><li>Candlelit long tables</li><li>Seating for 60</li></ul></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="hs-screen" data-screen="4">
+                    <div class="hs-review">
+                      <div class="hs-review-image hs-in"><img src="assets/review-reception.webp" alt="" loading="lazy"><span class="hs-pin">1</span></div>
+                      <div class="hs-thread">
+                        <div class="hs-version hs-in" style="--d:.1s">Reception design · <b>Version 03</b></div>
+                        <div class="hs-comment hs-in" style="--d:.35s"><span class="hs-avatar">A</span><p><strong>Amelia</strong>Could the table flowers be a little lower?</p></div>
+                        <div class="hs-comment hs-in" style="--d:.9s"><span class="hs-avatar is-studio">N</span><p><strong>Nadia</strong>Updated in version 03. There’s more room across the table now.</p></div>
+                        <div class="hs-approved hs-in" style="--d:1.6s"><i></i>Approved by Amelia<small>Kept with version 03</small></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="hs-screen" data-screen="5">
+                    <div class="hs-invoice">
+                      <div class="hs-invoice-head hs-in"><div class="hs-invoice-brand"><span>N</span><div><strong>Nadia Studio</strong><small>Invoice INV-0042 · Amelia Taylor</small></div></div><div class="hs-total"><small>Total</small><strong>£9,000</strong></div></div>
+                      <ol class="hs-plan">
+                        <li class="hs-in is-paid" style="--d:.2s"><span>Deposit</span><span>Paid 14 Nov 2026</span><b>£2,700</b><em>Paid</em></li>
+                        <li class="hs-in" style="--d:.35s"><span>Instalment 2</span><span>Due 12 Mar 2027</span><b>£3,150</b><em>Scheduled</em></li>
+                        <li class="hs-in" style="--d:.5s"><span>Final balance</span><span>Due 12 May 2027</span><b>£3,150</b><em>Scheduled</em></li>
+                      </ol>
+                      <p class="hs-note hs-in" style="--d:.7s">A friendly reminder goes to Amelia seven days before each payment is due.</p>
+                    </div>
+                    <div class="hs-toast" style="--d:1.2s"><i></i>£2,700 received from Amelia</div>
+                  </div>
+
+                  <div class="hs-screen" data-screen="6">
+                    <div class="hs-done">
+                      <div class="hs-done-head hs-in"><div><strong>Amelia’s wedding</strong><small>12 June 2027 · The Orangery, Bath</small></div><span class="hs-chip is-done">Complete</span></div>
+                      <ul class="hs-checks">
+                        <li class="hs-in" style="--d:.15s">Final table plan shared</li>
+                        <li class="hs-in" style="--d:.3s">Supplier timings confirmed</li>
+                        <li class="hs-in" style="--d:.45s">Final balance paid</li>
+                        <li class="hs-in" style="--d:.6s">Photos added to the project</li>
+                      </ul>
+                      <div class="hs-comment is-big hs-in" style="--d:1s"><span class="hs-avatar">A</span><p><strong>Amelia</strong>It was perfect. Thank you for everything, we’ll be telling everyone about you.</p></div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p class="review-version" data-version-note>Version 03 · Ready for review</p>
-              <button class="review-primary" type="button" data-review-approve>Approve this version</button>
-              <button class="review-secondary" type="button" data-review-request aria-expanded="false" aria-controls="review-change-form">Request a change</button>
-              <form id="review-change-form" hidden>
-                <label for="review-change">What would you like to change?</label>
-                <textarea id="review-change" name="feedback" rows="3" maxlength="600" required placeholder="Add your feedback to this version…"></textarea>
-                <div class="review-form-actions"><button class="review-primary" type="submit">Save feedback</button><button class="review-secondary" type="button" data-review-cancel>Cancel</button></div>
-              </form>
-            </section>
-            <section id="review-decision-panel" role="tabpanel" aria-labelledby="review-tab-decision" hidden>
-              <p class="review-outcome-label" data-outcome-label>THE DECISION</p><h3 data-decision-heading>A clear answer, kept here.</h3>
-              <p class="review-summary" data-decision-copy>Review version 03 and approve the direction or request a change. The response will stay beside this exact version.</p>
-              <dl class="review-facts"><div><dt>Design version</dt><dd>03 · Reception</dd></div><div><dt>Brief revision</dt><dd>03 · Shared brief</dd></div><div><dt>Response</dt><dd data-decision-response>Awaiting Amelia’s review</dd></div></dl>
-              <button class="review-primary" type="button" data-stage-next="design">Return to the design</button>
-              <button class="review-secondary" type="button" data-review-reset hidden>Reset example</button>
-            </section>
+            </div>
+            <div class="hs-dots"><span data-dot="1" class="is-on"></span><span data-dot="2"></span><span data-dot="3"></span><span data-dot="4"></span><span data-dot="5"></span><span data-dot="6"></span></div>
+          </div>
+          <ol class="hs-steps">
+            <li class="hs-step is-on" data-step="1"><span>01</span><h3>The enquiry arrives.</h3><p>Your own form, on your own site. Every answer lands in one place, ready for a reply.</p></li>
+            <li class="hs-step" data-step="2"><span>02</span><h3>It keeps moving.</h3><p>Calls book themselves. Proposals, date holds, deposits and follow-ups carry each enquiry forward, so nothing goes cold.</p></li>
+            <li class="hs-step" data-step="3"><span>03</span><h3>The brief takes shape.</h3><p>References, colours and requirements become one brief that you and your client can both return to.</p></li>
+            <li class="hs-step" data-step="4"><span>04</span><h3>Your client says yes.</h3><p>Feedback is pinned to the detail it’s about, and the approval is kept against the exact version they saw.</p></li>
+            <li class="hs-step" data-step="5"><span>05</span><h3>You get paid.</h3><p>Branded invoices, a deposit and instalments, with reminders sent before each payment is due.</p></li>
+            <li class="hs-step" data-step="6"><span>06</span><h3>The work is delivered.</h3><p>The last tasks, the final files and the thank you, all kept with the project for next time.</p></li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="hs-client" id="client-side" aria-labelledby="client-title">
+      <div class="hs-wrap hs-client-grid">
+        <div class="hs-phone-wrap" aria-hidden="true">
+          <div class="hs-phone">
+            <div class="hs-phone-screen">
+              <div class="hs-phone-status"><span>9:41</span><span class="hs-phone-notch"></span><span>●●●</span></div>
+              <div class="hs-portal-brand"><span>N</span>Nadia Studio</div>
+              <div class="hs-portal-hero"><img src="assets/candlelit-table.webp" alt="" loading="lazy"><div><small>Your wedding · 12 June 2027</small><strong>Hello Amelia</strong></div></div>
+              <p class="hs-portal-label">Ready for you</p>
+              <div class="hs-portal-card hs-rise" style="--d:.1s"><div><strong>Approve the table design</strong><small>Version 03 · Updated today</small></div><span class="hs-pbtn">Review</span></div>
+              <div class="hs-portal-card hs-rise" style="--d:.25s"><div><strong>Deposit due</strong><small>£2,700 · by 21 November</small></div><span class="hs-pbtn is-dark">Pay</span></div>
+              <div class="hs-portal-card hs-rise" style="--d:.4s"><div><strong>1 new message</strong><small>Nadia · “Version 03 is ready”</small></div><span class="hs-pdot"></span></div>
+              <div class="hs-portal-tabs"><span class="is-on">Home</span><span>Brief</span><span>Designs</span><span>Billing</span></div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="review-navigation"><span>Interactive example <small>Sample project</small></span><div role="tablist" aria-label="Explore the sample workflow"><button type="button" role="tab" id="review-tab-brief" aria-controls="review-brief-panel" aria-selected="false" tabindex="-1" data-review-stage="brief"><span>01</span> Set the brief</button><button type="button" role="tab" id="review-tab-design" aria-controls="review-design-panel" aria-selected="true" data-review-stage="design"><span>02</span> Review the design</button><button type="button" role="tab" id="review-tab-decision" aria-controls="review-decision-panel" aria-selected="false" tabindex="-1" data-review-stage="decision"><span>03</span> Keep the decision</button></div></div>
-      <p class="review-live sr-only" role="status" aria-live="polite"></p>
-    </section>
-
-    <section class="journey review-method" id="method" aria-labelledby="journey-title">
-      <div class="review-method-inner"><p class="eyebrow">FROM FIRST BRIEF TO FINAL YES</p><h2 id="journey-title">One project. Nothing lost between steps.</h2>
-        <div class="review-method-steps"><div><h3>The brief</h3><p>References and requirements<br> in one place.</p></div><div><h3>The review</h3><p>Feedback on the version<br> it belongs to.</p></div><div><h3>The decision</h3><p>A clear answer, saved with the work.</p></div></div>
-      </div>
-    </section>
-
-    <div class="story-reel" data-story-reel>
-    <div class="story-stage">
-      <div class="story-progress" aria-hidden="true"><span data-story-count>01 / 03</span><span class="story-progress-track"><span data-story-progress></span></span><span>Relationship · Brief · Decision</span></div>
-    <section class="feature relationship" id="relationship" aria-labelledby="relationship-title">
-      <div class="relationship-media"><img src="assets/event-creative-client-back.webp" alt="Nadia, the studio designer, discussing Amelia’s reception project with her" loading="lazy"></div>
-      <div class="feature-copy relationship-copy">
-        <p class="eyebrow">01 / THE RELATIONSHIP</p>
-        <h2 id="relationship-title">Every project begins with a person.</h2>
-        <p>Keep the enquiry, the client and the people around a project connected from the first conversation.</p>
-        <div class="feature-detail"><span>WHO IS THIS FOR?</span><strong>The people behind the work.</strong></div>
-      </div>
-    </section>
-
-    <section class="feature brief" id="brief" aria-labelledby="brief-title">
-      <div class="brief-media"><img src="assets/story-interior-review-v1.webp" alt="Lena and Maya connecting a room plan with material selections" loading="lazy"></div>
-      <div class="feature-copy brief-copy">
-        <p class="eyebrow">02 / THE SHARED BRIEF</p>
-        <h2 id="brief-title">Give the brief a place to live.</h2>
-        <p>Requirements, references and revisions remain with the project as the direction takes shape.</p>
-        <div class="feature-detail"><span>WHAT ARE WE MAKING?</span><strong>One current direction.</strong></div>
-      </div>
-    </section>
-
-    <section class="feature decision" id="decision" aria-labelledby="decision-title">
-      <div class="decision-stage"><img src="assets/story-brand-review-v2.webp" alt="Sofia and Daniel reviewing a packaging direction in the workspace" loading="lazy"></div>
-      <div class="decision-heading feature-copy">
-        <p class="eyebrow">03 / THE DECISION</p>
-        <h2 id="decision-title">See the version. Know the decision.</h2>
-        <p>Client feedback and approval stay attached to the design they reviewed.</p>
-        <div class="feature-detail"><span>WHAT WAS AGREED?</span><strong>The decision beside the work.</strong></div>
-      </div>
-    </section>
-    </div>
-    </div>
-
-    <section class="professions" id="professions" aria-labelledby="professions-title">
-      <div class="professions-inner">
-        <div class="professions-intro">
-          <p class="eyebrow">FOR PEOPLE WHO MAKE THINGS</p>
-          <h2 id="professions-title">A home for visual work.</h2>
-          <p>Different disciplines. The same need to keep the brief, the people and the decision in view.</p>
-          <a href="studios.html">See who it’s for</a>
-        </div>
-        <div class="profession-list" aria-label="Creative professions">
-          <a href="studios.html#kind-events">Event stylists &amp; planners</a>
-          <a href="studios.html#kind-weddings">Wedding planners &amp; florists</a>
-          <a href="studios.html#kind-interiors" class="is-active">Interior designers</a>
-          <a href="studios.html#kind-photo-film">Photographers &amp; filmmakers</a>
-          <a href="studios.html#kind-brands">Brand &amp; graphic designers</a>
-          <a href="studios.html#kind-makers">Makers &amp; bespoke businesses</a>
+        <div class="hs-client-copy">
+          <p class="eyebrow">YOUR CLIENT’S SIDE</p>
+          <h2 id="client-title">They’ll feel looked after, too.</h2>
+          <p class="hs-lead">Every client gets a calm space for their project, with your name on it. No digging through emails for the latest version or the right invoice.</p>
+          <ul class="hs-points">
+            <li><strong>Your brand, start to finish</strong><span>Your studio name and brand on what they see, down to the invoice.</span></li>
+            <li><strong>One list of what needs them</strong><span>An approval, a payment or a reply, waiting in one place.</span></li>
+            <li><strong>Easy on a phone</strong><span>Review a design, answer a question or pay from wherever they are.</span></li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <section class="studios" id="studios" aria-labelledby="studios-title">
-      <div class="studios-heading">
-        <div><p class="eyebrow">IN YOUR STUDIO</p><h2 id="studios-title">Different studios.
-The same clarity.</h2></div>
-        <a href="platform.html">Explore the platform</a>
-      </div>
-      <div class="studio-grid">
-        <article id="events"><img src="assets/story-event-handover-v1.webp" alt="Nadia and Amelia checking the reception setting against the agreed direction" loading="lazy"><div><span>EVENTS &amp; EXPERIENCES</span><h3>Every detail, before the day.</h3><p>Bring the setting, guest experience and client feedback into one shared direction.</p><details class="studio-example"><summary>Inside the project</summary><dl><div><dt>The brief</dt><dd>Guest numbers, venue, palette and atmosphere.</dd></div><div><dt>The review</dt><dd>Table styling and floral references, with feedback beside each version.</dd></div><div><dt>The decision</dt><dd>The agreed direction, ready for the team.</dd></div></dl><a href="#sample-workspace">Try the sample project</a></details><a class="text-link" href="event-story.html">Follow the full project</a></div></article>
-        <article id="interiors"><img src="assets/interior-outcome.webp" alt="An interior designer and client in a finished living room" loading="lazy"><div><span>INTERIORS &amp; SPACES</span><h3>A room, with a shared point of view.</h3><p>Keep the materials, layout and every revision connected to the space.</p><details class="studio-example"><summary>Inside the project</summary><dl><div><dt>The brief</dt><dd>How the room should feel and how it needs to work.</dd></div><div><dt>The review</dt><dd>Finishes, furniture and layouts in context.</dd></div><div><dt>The decision</dt><dd>A record of the selections the client agreed to.</dd></div></dl><a href="#brief">Explore the shared brief</a></details><a class="text-link" href="interior-story.html">Follow the full project</a></div></article>
-        <article id="brands"><img src="assets/story-brand-handover-v2.webp" alt="Sofia and Daniel studying the same printed detail at the print workshop" loading="lazy"><div><span>BRANDS &amp; CAMPAIGNS</span><h3>An identity, from first sketch to final proof.</h3><p>Bring print proofs, packaging and identity design into the same client conversation.</p><details class="studio-example"><summary>Inside the project</summary><dl><div><dt>The brief</dt><dd>The audience, message and creative references.</dd></div><div><dt>The review</dt><dd>Art direction and image selections, version by version.</dd></div><div><dt>The decision</dt><dd>The approved creative, with its feedback attached.</dd></div></dl><a href="#decision">Explore design decisions</a></details><a class="text-link" href="brand-story.html">Follow the full project</a></div></article>
-      </div>
-      <p class="studio-disclosure">Illustrative scenarios and concept photography, not customer case studies.</p>
-    </section>
-
-    <section class="connection" id="connection" aria-labelledby="connection-title">
-      <div class="connection-copy"><p class="eyebrow">WORK TOGETHER, WITH CLARITY</p><h2 id="connection-title">Your studio.<br>Their view of the work.</h2><p>Keep the working notes with your team. Give your client a clear place to see the brief, review a design and respond.</p><p class="access-instruction">Switch views to explore the example.</p></div>
-      <div class="connection-visual">
-        <div class="access-demo">
-          <div class="access-demo-header"><span>Amelia’s wedding</span><span>Sample project</span></div>
-          <div class="access-switch" role="tablist" aria-label="Project perspective"><button type="button" role="tab" id="access-studio-tab" aria-selected="true" aria-controls="access-panel" data-access="studio">Studio view</button><button type="button" role="tab" id="access-client-tab" aria-selected="false" aria-controls="access-panel" tabindex="-1" data-access="client">Client view</button></div>
-          <div id="access-panel" role="tabpanel" aria-labelledby="access-studio-tab">
-            <div class="access-person"><img src="assets/cal-hero-interior-original-grade.webp" alt="" loading="lazy"><div><strong data-access-name>Nadia’s workspace</strong><span data-access-caption>The complete project, for your team.</span></div></div>
-            <div class="access-private"><div><span>Studio notes</span><small>Team only</small></div><p>Check the candle heights with the venue before the next review.</p></div>
-            <div class="access-document"><div><span>Shared brief</span><small>Revision 03</small></div><p>Ivory, natural linen and warm light.</p></div>
-            <div class="access-document"><div><span>Reception design</span><small>Ready for review</small></div><p>Version 03 · Low florals, room for conversation.</p></div>
-            <a class="access-review-link" href="#sample-workspace">Open design review</a>
+    <section class="hs-engine" id="features" aria-labelledby="engine-title">
+      <div class="hs-wrap">
+        <header class="hs-head is-split">
+          <div><p class="eyebrow">QUIETLY, IN THE BACKGROUND</p><h2 id="engine-title">It keeps working while you create.</h2></div>
+          <p>The follow-ups, reminders and confirmations that used to live in your head now take care of themselves.</p>
+        </header>
+        <div class="hs-engine-grid">
+          <div class="hs-feed" aria-hidden="true">
+            <div class="hs-feed-head"><span class="hs-live"></span>Today in your studio</div>
+            <ul data-hs-feed>
+              <li><i class="is-pay">£</i><p><strong>Deposit received</strong>£2,700 from Amelia Taylor</p><time>Just now</time></li>
+              <li><i>✓</i><p><strong>Version 03 approved</strong>Amelia’s reception design</p><time>12m</time></li>
+              <li><i class="is-cal">◷</i><p><strong>Consultation booked</strong>Noah Bennett, Thursday at 10:00</p><time>40m</time></li>
+              <li><i>↗</i><p><strong>Follow-up sent</strong>To Olivia Grant, as planned</p><time>1h</time></li>
+              <li><i>✓</i><p><strong>Contract accepted</strong>Ruth &amp; Sam, studio wedding</p><time>2h</time></li>
+              <li><i class="is-pay">£</i><p><strong>Instalment paid</strong>£1,200 from Kiln &amp; Co.</p><time>3h</time></li>
+            </ul>
           </div>
-          <p class="access-example-note" aria-live="polite">Studio notes are only shown in the studio view.</p>
+          <ul class="hs-features">
+            <li><a href="platform.html#workspace"><strong>Enquiry forms</strong><span>Your questions, on your site, answered in one place.</span></a></li>
+            <li><a href="platform.html#workspace"><strong>Consultation booking</strong><span>Clients choose a time that suits you both.</span></a></li>
+            <li><a href="platform.html#workspace"><strong>Pipeline</strong><span>Every enquiry, and what it is waiting on.</span></a></li>
+            <li><a href="shared-briefs.html"><strong>Briefs &amp; moodboards</strong><span>References, colours and requirements, shared.</span></a></li>
+            <li><a href="design-reviews.html"><strong>Design reviews</strong><span>Feedback pinned to the detail it is about.</span></a></li>
+            <li><a href="approvals.html"><strong>Approvals</strong><span>Every yes kept with the version it approved.</span></a></li>
+            <li><a href="studio-operations.html"><strong>Proposals &amp; contracts</strong><span>Clear terms your client can accept online.</span></a></li>
+            <li><a href="studio-operations.html"><strong>Branded invoices</strong><span>Your logo and colours on every invoice.</span></a></li>
+            <li><a href="studio-operations.html"><strong>Payment plans</strong><span>Deposits and instalments, with reminders.</span></a></li>
+            <li><a href="client-relationships.html"><strong>Messages</strong><span>Each conversation kept with its project.</span></a></li>
+            <li><a href="studio-operations.html"><strong>Calendar sync</strong><span>Works alongside Google Calendar or Outlook.</span></a></li>
+            <li><a href="client-relationships.html"><strong>Client workspace</strong><span>A calm, branded space for every client.</span></a></li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <section class="closing" aria-labelledby="closing-title">
+    <section class="hs-kinds" id="professions" aria-labelledby="kinds-title">
+      <div class="hs-wrap">
+        <header class="hs-head is-split">
+          <div><p class="eyebrow">FOR PEOPLE WHO MAKE THINGS</p><h2 id="kinds-title">Shaped around the work you do.</h2></div>
+          <p>Pick the kind of work you do, and Caleane sets up the right questions, stages and wording from day one.</p>
+        </header>
+        <div class="hs-kinds-row">
+          <a class="hs-kind" href="studios.html#kind-events"><img src="assets/event-outcome.webp" alt="" loading="lazy"><span><small>Events</small>Event stylists &amp; planners</span></a>
+          <a class="hs-kind" href="studios.html#kind-weddings"><img src="assets/candlelit-table.webp" alt="" loading="lazy"><span><small>Weddings</small>Wedding planners &amp; florists</span></a>
+          <a class="hs-kind" href="studios.html#kind-interiors"><img src="assets/interior-outcome.webp" alt="" loading="lazy"><span><small>Interiors</small>Interior designers</span></a>
+          <a class="hs-kind" href="studios.html#kind-photo-film"><img src="assets/campaign-set.webp" alt="" loading="lazy"><span><small>Photo &amp; film</small>Photographers &amp; filmmakers</span></a>
+          <a class="hs-kind" href="studios.html#kind-brands"><img src="assets/story-brand-review-v2.webp" alt="" loading="lazy"><span><small>Brand &amp; design</small>Brand &amp; graphic designers</span></a>
+          <a class="hs-kind" href="studios.html#kind-makers"><img src="assets/studio-worktable.webp" alt="" loading="lazy"><span><small>Makers</small>Makers &amp; bespoke businesses</span></a>
+        </div>
+        <a class="hs-kinds-other" href="studios.html#kind-other"><span>Something else creative? There’s a general setup that bends to fit.</span><b>See who it’s for</b></a>
+      </div>
+    </section>
+
+    <section class="closing hs-closing" aria-labelledby="closing-title">
       <img class="closing-image" src="assets/creative-partnership-closing.webp" alt="Concept photograph of three women sharing a quiet smile beside a finished creative installation" loading="lazy">
       <div class="closing-content">
         <p class="eyebrow eyebrow-light">A WORKSPACE FOR CREATIVES</p>
-        <h2 id="closing-title">Make room for the work.</h2>
-        <p>Give the people, project and next decision a clear place.</p>
-        <div class="closing-actions"><a class="button button-light" data-app-link="start" data-keep-label href="https://app.caleane.com/login">Start now</a><a href="#product">Explore the workspace</a></div>
+        <h2 id="closing-title">Finally, a workspace made for you.</h2>
+        <p>Your enquiries, clients, designs and payments, together in one considered place. Built for the way creative work really happens.</p>
+        <div class="closing-actions"><a class="button button-light" data-app-link="start" data-keep-label href="https://app.caleane.com/login">Explore the sample workspace</a><a href="platform.html">See the platform</a></div>
       </div>
     </section>
   </main>
