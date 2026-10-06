@@ -1,0 +1,5 @@
+/* "Opened by the client" line shown to the studio on shared documents. */
+.opened-note{display:inline-flex;align-items:center;gap:7px;margin:6px 0 10px;padding:4px 10px;border:1px solid var(--studio-rule,#e2e2df);border-radius:999px;background:var(--studio-paper,#fff);color:var(--studio-muted,#6e7274);font-size:12px;line-height:1.4}
+.opened-note svg{flex:none}
+.opened-note.is-opened{color:#2f5d46;border-color:#cfe0d5;background:#f3f8f4}
+.opened-note.is-unopened{color:#6f6a5e}

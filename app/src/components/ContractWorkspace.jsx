@@ -1,12 +1,14 @@
 import React,{useEffect,useState} from 'react';
 import {FileText,Plus,PenLine,Printer,Check,Clock} from 'lucide-react';
 import {AgreementComposer,AgreementPages,printAgreement} from './AgreementDocument';
+import {OpenedNote,useRecordOpen} from './OpenedNote';
 export function ProjectContracts({p,studio,owner,request,userName}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[selected,setSelected]=useState(''),[compose,setCompose]=useState(null);
  const base=`/api/projects/${p.id}/engagements`,list=data?.agreements||[],a=list.find(x=>x.id===selected)||list[0];
  async function load(){try{setData(await request(`${base}?studio=${studio.id}`));setError('');}catch(e){setError(e.message);}}
  useEffect(()=>{let active=true;request(`${base}?studio=${studio.id}`).then(d=>{if(active)setData(d);}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};},[base,studio.id,request]);
  async function change(action,body){setBusy(true);setError('');try{const result=await request(`${base}/${action}?studio=${studio.id}`,'POST',body);setData(result);return result;}catch(e){setError(e.message);return null;}finally{setBusy(false);}}
+ useRecordOpen(p,owner,'contract',a&&a.status!=='Draft'?a.id:null);
  const status=a?.status==='Issued'&&a.expiresOn<new Date().toISOString().slice(0,10)?'Expired':a?.status;
  return <section className="contract-workspace contract-workspace-v2" aria-label="Contract workspace">
   <header className="contract-top"><div><h2>{compose?'Prepare agreement':a?.title||'Contracts'}</h2></div>{owner&&!compose&&<button className="doc-primary" onClick={()=>setCompose({})}><Plus size={15}/>New contract</button>}</header>
@@ -16,7 +18,7 @@ export function ProjectContracts({p,studio,owner,request,userName}){
     {compose?<AgreementComposer key={compose.id||'new'} agreement={compose} busy={busy} onCancel={()=>setCompose(null)} onSave={async values=>{const result=await change(compose.id?'update-agreement':'create-agreement',{...values,id:compose.id,revision:compose.revision});if(result){setSelected(compose.id||result.agreements[0]?.id);setCompose(null);}}}/>:a?<>
      <header className="contract-document-bar"><div><h3>Document preview</h3><span className="doc-status" data-status={status}>{status}</span></div><div className="doc-actions"><button className="doc-quiet" onClick={()=>printAgreement(a)}><Printer size={15}/>Print / PDF</button>{owner&&a.status==='Draft'&&<><button className="doc-quiet" disabled={busy} onClick={()=>setCompose(a)}><PenLine size={15}/>Edit</button><button className="doc-primary" disabled={busy} onClick={()=>change('issue-agreement',{id:a.id,revision:a.revision})}>Issue to client</button></>}</div></header>
      <div className="contract-meta"><span>Version {a.version}</span><span>Brief {a.briefRevision}</span><span><Clock size={13}/>Reply by {a.expiresOn}</span></div>
-     <AgreementPages agreement={a} hideControls/>
+     <OpenedNote p={p} owner={owner} kind="contract" itemId={a.id} shared={a.status!=='Draft'}/><AgreementPages agreement={a} hideControls/>
 
     </>:<div className="doc-empty"><FileText size={30} strokeWidth={1.2}/><h3>A clear agreement before the work begins.</h3><p>{owner?'Write your terms on a paginated document, save a private draft, then issue a version for your client to review.':'Your studio will share the contract here when it is ready.'}</p>{owner&&<button className="doc-primary" onClick={()=>setCompose({})}>Create your first contract</button>}</div>}
    </div>

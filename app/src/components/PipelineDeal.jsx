@@ -46,6 +46,8 @@ export function whyFor(o,signal,issue){
   else if(f.kind==='changes')parts.push('They asked for changes to the quote.');
   else if(f.kind==='deposit')parts.push('Accepted. Issue the deposit invoice and the date confirms itself once it is paid.');
   else if(f.kind==='waiting')parts.push(`${f.label}. Waiting on their reply.`);
+  else if(f.kind==='opened')parts.push(`They opened the proposal on ${day(s.proposal?.openedAt)}.`);
+  else if(f.kind==='unopened')parts.push('They have not opened the proposal yet. Check the invitation reached them.');
   else if(f.kind==='fit')parts.push('The date is free and the budget and area fit.');
  }
  if(issue?.kind==='review')parts.unshift('New enquiry. Review their request and reply.');
