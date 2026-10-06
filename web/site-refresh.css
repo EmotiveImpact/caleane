@@ -55,6 +55,4 @@
 @media(max-width:1100px){.kinds-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.kinds{padding-block:50px 20px}.kinds-heading{grid-template-columns:1fr;gap:20px;margin-bottom:28px}.kinds-grid{grid-template-columns:1fr;gap:12px}.kind-card.is-other{grid-column:auto}.kind-card img{aspect-ratio:16/9}}
 
-/* The film is not ready, so its button stays hidden until it is. */
-.film-trigger{display:none !important}
 .cal-page .discipline-nav span{color:var(--site-muted);padding:8px 0}
