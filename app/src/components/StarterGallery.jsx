@@ -8,7 +8,10 @@ import '../starter-gallery.css';
 
 const money=minor=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(minor/100);
 const units={each:'',hour:'per hour',day:'per day',person:'per person',item:'per item',set:'per set'};
-const same=(a,b)=>a.trim().toLowerCase()===b.trim().toLowerCase();
+// Matched by name, ignoring case and spacing, so an item the owner already
+// has (from here or typed in by hand) is not offered twice.
+const key=value=>String(value||'').trim().replace(/\s+/g,' ').toLowerCase();
+const same=(a,b)=>key(a)===key(b);
 
 // Owner-only. Adds starters through the same endpoints as the Templates,
 // Pricing and Forms screens, so every starter is checked and stored exactly
@@ -31,7 +34,7 @@ export function StarterGallery({studio,request,navigate,onAdded}){
  const addItems=list=>run('prices',async()=>{let items=saved.items;for(const item of list){items=(await request(`/api/catalogue?studio=${studio.id}`,'POST',{action:'create',item})).items;}setSaved(s=>({...s,items}));setNotice(list.length===1?`Added “${list[0].name}” to your price list.`:`Added ${list.length} items to your price list.`);});
  const createForm=()=>run('form',async()=>{const definition=starterFormDefinition(kind,{accent:accentContrast(studio.accent)>=4.5?studio.accent:'#202326',logoUrl:studio.branding?.logoUrl||''});const result=await request(`/api/forms?studio=${studio.id}`,'POST',{slug:starterFormSlug(kind),definition});setSaved(s=>({...s,forms:[...(s.forms||[]),result.form]}));setNotice(`Created “${definition.name}” as a draft in Forms.`);});
  const missingTemplates=kit.messages.filter(item=>!hasTemplate(item)),missingItems=kit.prices.filter(item=>!hasItem(item));
- const added=<span className="starter-added"><Check size={14}/>Added</span>;
+ const added=<WorkspaceButton variant="ghost" size="small" className="starter-added" disabled><Check size={14} aria-hidden="true"/>Added</WorkspaceButton>;
 
  return <section className="starter-gallery" aria-labelledby="starter-gallery-title">
   <header className="settings-pane-heading"><h2 id="starter-gallery-title">Starter gallery</h2><p>Ready-made messages, prices, a contract and an enquiry form for your kind of work. Add what fits, then make it your own.</p></header>
