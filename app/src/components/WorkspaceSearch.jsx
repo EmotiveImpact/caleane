@@ -46,7 +46,7 @@ export function WorkspaceSearch({studio,section,request,onOpenResult}){
  let offset=0;
  const scopeName=scope==='all'?'your workspace':scopes[scope].toLowerCase();
  return <Dialog.Root open={open} onOpenChange={changeOpen}>
-  <Dialog.Trigger asChild><button className="workspace-search-trigger" type="button" aria-label="Search workspace"><Search size={16}/><span>Search workspace</span><kbd>⌘ K</kbd></button></Dialog.Trigger>
+  <Dialog.Trigger asChild><button className="workspace-search-trigger" type="button" aria-label="Search workspace" title="Search (⌘K)"><Search size={16}/><span>Search workspace</span><kbd>⌘ K</kbd></button></Dialog.Trigger>
   <Dialog.Portal><Dialog.Overlay className="workspace-search-overlay"/><Dialog.Content className="workspace-search-dialog" aria-describedby={undefined}>
    <Dialog.Title className="folio-sr-only">Search workspace</Dialog.Title>
    <div className="workspace-search-input"><Search size={19}/><input ref={input} autoFocus role="combobox" aria-autocomplete="list" aria-expanded={items.length>0} aria-controls={listId} aria-activedescendant={items.length&&!loading?optionId(active):undefined} aria-label="Search workspace records" placeholder={`Search ${scopeName}…`} value={query} onChange={event=>setQuery(event.target.value)} onKeyDown={keyDown}/><button type="button" aria-label="Close search" onClick={()=>setOpen(false)}>Esc</button></div>
