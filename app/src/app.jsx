@@ -51,6 +51,7 @@ import './components/workspace/workspace-ui.css';
 import './components/workspace/workspace-controls.css';
 import './form-design.css';
 import './form-studio.css';
+import './brief-form.css';
 import './sidebar-gradient.css';
 import './settings-polish.css';
 import './auth-entry.css';

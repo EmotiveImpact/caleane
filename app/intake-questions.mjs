@@ -20,12 +20,19 @@ export function validateIntakeQuestions(input){
    options=item.options.map(value=>string(value,100,'a choice')).filter(Boolean);
    if(options.length!==item.options.length||new Set(options.map(value=>value.toLowerCase())).size!==options.length)bad('Give each choice a different name.');
   }
+  // Picture choices and short notes under each choice, aligned with the choices.
+  let optionImages=[],optionNotes=[];
+  if(['choice','multi'].includes(type)){
+   if(item.optionImages!==undefined){if(!Array.isArray(item.optionImages)||item.optionImages.length>options.length)bad('Check the choice pictures.');optionImages=item.optionImages.map(value=>{const link=string(value||'',2000,'a choice picture');if(!link)return '';try{const url=new URL(link);if(url.protocol!=='https:'||url.username||url.password)throw 0;return url.href;}catch{bad('Use a complete https link for each choice picture.');}});}
+   if(item.optionNotes!==undefined){if(!Array.isArray(item.optionNotes)||item.optionNotes.length>options.length)bad('Check the notes under each choice.');optionNotes=item.optionNotes.map(value=>string(value||'',100,'a choice note'));}
+  }
+  if(item.pictures!==undefined&&typeof item.pictures!=='boolean')bad('Check the picture choice setting.');
   let showWhen=null;
   if(item.showWhen!==undefined&&item.showWhen!==null){
    if(!item.showWhen||typeof item.showWhen!=='object'||Array.isArray(item.showWhen))bad('Check when this question should appear.');
    showWhen={questionId:string(item.showWhen.questionId,66,'the condition'),equals:string(item.showWhen.equals,100,'the condition answer')};
   }
-  return {id,label,type,required:item.required,options,showWhen,order:index,help:string(item.help||'',300,'the question help'),placeholder:string(item.placeholder||'',120,'the answer hint')};
+  return {id,label,type,required:item.required,options,...(optionImages.some(Boolean)?{optionImages}:{}),...(optionNotes.some(Boolean)?{optionNotes}:{}),...(item.pictures&&['choice','multi'].includes(type)?{pictures:true}:{}),showWhen,order:index,help:string(item.help||'',300,'the question help'),placeholder:string(item.placeholder||'',120,'the answer hint')};
  });
  for(const [index,question] of questions.entries()){
   if(!question.showWhen)continue;
