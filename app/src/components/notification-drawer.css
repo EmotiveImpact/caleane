@@ -1,28 +1,62 @@
-/* Saved notification history. Uses the shared Radix drawer; the bell popover stays separate. */
-.notification-drawer.ws-dialog{width:440px;max-width:100vw;display:flex;flex-direction:column;overflow:hidden;padding:26px}
+/* Notifications drawer: each item is its own boxed card, grouped by day, with the drawer foot pinned below. */
+.notification-drawer.ws-dialog{width:460px;max-width:100vw;display:flex;flex-direction:column;overflow:hidden;padding:26px 26px 0}
 .notification-drawer.ws-dialog>header{flex-shrink:0}
-.notification-drawer .ws-dialog-content{display:flex;flex-direction:column;min-height:0;overflow:auto;padding-top:20px;overscroll-behavior:contain}
-.notification-drawer-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--studio-line,#e3e5e7)}
+.notification-drawer .ws-dialog-content{display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto;padding-top:18px;overscroll-behavior:contain}
+.notification-drawer-main{flex:1 0 auto;padding-bottom:20px}
+.notification-drawer-tabs>[role=tablist]{margin-bottom:0}
+.notification-drawer-tabs>[role=tabpanel]{padding-top:18px}
+
+/* Updates toolbar: All and Unread as a quiet segmented choice, so it does not read as a second row of tabs. */
+.notification-drawer-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+.notification-drawer-toolbar .ws-filters{gap:2px;padding:2px;border:1px solid var(--box-rule,#e2e2df);border-radius:8px;background:var(--studio-paper,#fff)}
+.notification-drawer-toolbar .ws-filters>button{padding:4px 12px;border-radius:6px;font-size:12px;line-height:20px}
+.notification-drawer-toolbar .ws-filters>button[data-state=on]{background:var(--studio-surface,#f6f6f5);color:var(--studio-ink,#202326)}
+.notification-drawer-toolbar .ws-filters>button[data-state=on]:after{display:none}
+.notification-drawer-toolbar .ws-filters>button:focus-visible{outline:2px solid var(--studio-ink,#202326);outline-offset:1px}
+
+/* Day groups */
+.notification-group+.notification-group{margin-top:18px}
+.notification-group-label{margin:12px 0 8px;font-size:12px;font-weight:550;line-height:1.4;letter-spacing:0;color:var(--studio-muted,#6b7078)}
+
+/* Cards */
+.notification-card-list{display:grid;gap:8px;list-style:none;margin:0;padding:0}
+.notification-card{position:relative;display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;padding:14px 14px 12px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule,#e2e2df);border-radius:var(--box-radius,8px);color:var(--studio-ink,#252932);cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.notification-card:hover{border-color:var(--box-hover,#c4c4c2);box-shadow:0 2px 8px #0000000a}
+.notification-card:focus-within{border-color:var(--box-hover,#c4c4c2)}
+.notification-card-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--studio-surface,#f2f2f3);color:var(--studio-muted,#61666e)}
+.notification-card.is-unread .notification-card-icon{background:var(--studio-accent-soft,#ecebf0);color:var(--studio-accent,#181925)}
+.notification-card-body{display:flex;flex-direction:column;gap:3px;min-width:0}
+.notification-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.notification-card-head strong{min-width:0;font-size:13px;font-weight:550;line-height:1.45;color:var(--studio-ink,#202326);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.notification-card.is-read .notification-card-head strong{font-weight:420;color:var(--studio-muted,#565b63)}
+.notification-card-time{flex:none;display:inline-flex;align-items:center;gap:6px;padding-top:1px;font-size:11px;line-height:1.45;color:var(--studio-muted,#80858d);white-space:nowrap}
+.notification-card.is-unread .notification-card-time:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--studio-accent,#181925)}
+.notification-card-context{margin:0;font-size:12px;line-height:1.45;color:var(--studio-muted,#80858d);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.notification-card-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.notification-card-action.ws-button{min-height:28px;padding:3px 12px}
+.notification-card-action.ws-button:focus-visible{outline:2px solid var(--studio-ink,#202326);outline-offset:2px}
+.notification-card-unread{border:0;background:none;padding:4px 2px;font:inherit;font-size:11px;color:var(--studio-muted,#80858d);opacity:0;cursor:pointer}
+.notification-card-unread:hover{color:var(--studio-ink,#202326)}
+.notification-card:hover .notification-card-unread,.notification-card-unread:focus-visible{opacity:1}
+.notification-card-unread:focus-visible{outline:2px solid var(--studio-ink,#202326);outline-offset:2px;border-radius:4px}
+@media(hover:none){.notification-card-unread{opacity:1}}
+
 .notification-drawer-error{margin:12px 0 0;font-size:12px;color:#8a4b2f}
-.notification-drawer-list{list-style:none;margin:0;padding:0}
-.notification-drawer-list>li{position:relative;border-bottom:1px solid var(--studio-line,#e3e5e7)}
-.notification-drawer-item{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;width:100%;padding:16px 4px 16px 14px;border:0;background:none;text-align:left;color:var(--studio-ink,#252932);cursor:pointer}
-.notification-drawer-item:hover{background:var(--studio-surface,#f6f6f6)}
-.notification-drawer-item:focus-visible{outline:2px solid var(--studio-accent,#181925);outline-offset:-2px}
-.notification-drawer-list>li.is-unread::before{content:"";position:absolute;left:2px;top:28px;width:6px;height:6px;border-radius:50%;background:var(--studio-accent,#181925)}
-.notification-drawer-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--studio-surface,#f2f2f3);color:var(--studio-muted,#61666e)}
-.notification-drawer-list>li.is-unread .notification-drawer-icon{background:var(--studio-accent-soft,#ecebf0);color:var(--studio-accent,#181925)}
-.notification-drawer-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
-.notification-drawer-kind{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--studio-muted,#7a7f87)}
-.notification-drawer-copy strong{font-size:13px;font-weight:500;line-height:1.45;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.notification-drawer-list>li:not(.is-unread) .notification-drawer-copy strong{font-weight:420;color:var(--studio-muted,#565b63)}
-.notification-drawer-copy small{font-size:11px;line-height:1.45;color:var(--studio-muted,#80858d);overflow-wrap:anywhere}
-.notification-drawer-unread{position:absolute;right:4px;bottom:10px;border:0;background:none;padding:4px 6px;font-size:11px;color:var(--studio-muted,#80858d);opacity:0;cursor:pointer}
-.notification-drawer-list>li:hover .notification-drawer-unread,.notification-drawer-unread:focus-visible{opacity:1}
-.notification-drawer-more{display:flex;justify-content:center;padding:18px 0 4px}
+.notification-drawer-note{margin:12px 0 0;font-size:11px;color:var(--studio-muted,#80858d)}
+.notification-drawer-more{display:flex;justify-content:center;padding:16px 0 0}
 .notification-drawer .ws-empty{margin-top:28px}
-@media(max-width:720px){.notification-drawer.ws-dialog{width:100vw;padding:20px 16px}.notification-drawer-unread{opacity:1;position:static;margin:0 0 10px 58px}}
-@media(hover:none){.notification-drawer-unread{opacity:1}}
-.notification-drawer-tabs>[role=tablist]{margin-bottom:16px}
-.notification-drawer-note{margin:14px 0 0;font-size:11px;color:var(--studio-muted,#80858d)}
-.notification-drawer-email{margin-top:22px;padding-top:16px;border-top:1px solid var(--studio-rule,#e2e2df)}.notification-drawer-email .ws-switch-row small{font-size:11px;line-height:1.5}
+
+/* Foot: a quiet link to the email setting, kept at the bottom of the drawer however short the list is. */
+.notification-drawer-foot{position:sticky;bottom:0;display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:auto;padding:12px 0 16px;border-top:1px solid var(--studio-rule,#e2e2df);background:var(--studio-paper,#fff)}
+.notification-drawer-link{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:4px 0;font:inherit;font-size:12px;font-weight:500;color:var(--studio-muted,#61666e);cursor:pointer}
+.notification-drawer-link:hover{color:var(--studio-ink,#202326);text-decoration:underline;text-underline-offset:3px}
+.notification-drawer-link:focus-visible{outline:2px solid var(--studio-ink,#202326);outline-offset:2px;border-radius:4px}
+.notification-drawer-email{padding:14px 0 18px;border-top:1px solid var(--studio-rule,#e2e2df)}
+.notification-drawer-email .ws-switch-row small{font-size:11px;line-height:1.5}
+.message-email-error{margin:6px 0 0;font-size:12px;color:#8a4b2f}
+
+/* Phones: the drawer takes the whole screen, edge to edge and top to bottom. */
+@media(max-width:720px){
+ .notification-drawer.ws-dialog{inset:0;width:100vw;height:100vh;height:100dvh;max-height:none;padding:20px 16px 0;border-radius:0!important}
+ .notification-card{padding:12px 12px 10px;gap:10px}
+}

@@ -13,6 +13,7 @@ import {BookingIntegrations} from './BookingIntegrations';
 import {BookingSettings,InvoiceDefaultsSettings,InvoiceDesignSection,LateFeeSettings,PriceListSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
 import {StarterGallery} from './StarterGallery';
 import {CustomFieldSettings} from './CustomFields';
+import {MessageEmailSetting} from './MessageEmailSetting';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
 // Settings are grouped the way a studio thinks about them. On a phone the groups
@@ -56,7 +57,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
   useEffect(()=>{if(!dirty){setLeaving(false);return;}const savedURL=location.href;const guard=event=>{event.preventDefault();event.returnValue='';},internal=event=>{event.preventDefault();history.replaceState(null,'',savedURL);setLeaving(true);};window.addEventListener('beforeunload',guard);window.addEventListener('caleane:before-navigate',internal);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('caleane:before-navigate',internal);};},[dirty]);
   function discard(){setIdentity(JSON.parse(baseline.studio));setOrigins(baseline.website);setAccentDraft(baseline.appearance);setAccentKey(key=>key+1);setLeaving(false);}
   const code=`<script src="${location.origin}/embed.js" data-studio="${studio.slug}" data-label="Plan your project" defer></script>`;
-  useEffect(()=>{const restore=()=>{setSection(settingsSection(location.search));setListOpen(!namesSection(location.search));};window.addEventListener('popstate',restore);return()=>window.removeEventListener('popstate',restore);},[]);
+  useEffect(()=>{const restore=()=>{setSection(settingsSection(location.search));setListOpen(!namesSection(location.search));};window.addEventListener('popstate',restore);window.addEventListener('caleane:settings-section',restore);return()=>{window.removeEventListener('popstate',restore);window.removeEventListener('caleane:settings-section',restore);};},[]);
   const phone=()=>window.matchMedia?.('(max-width: 760px)').matches;
   function choose(next){
     const fromList=listOpen&&phone();
@@ -135,7 +136,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
       {panel('late-fees',section==='late-fees'&&<LateFeeSettings studio={studio} request={request}/>)}
       {panel('invoice-design',section==='invoice-design'&&<InvoiceDesignSection studio={studio} request={request}/>)}
       {panel('price-list',section==='price-list'&&<PriceListSettings studio={studio} request={request}/>)}
-      {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}
+      {panel('reminders',section==='reminders'&&<><section className="settings-pane-layout settings-notification-email" aria-labelledby="settings-notification-email-title"><div className="settings-pane-form"><header className="settings-pane-heading"><h2 id="settings-notification-email-title">Your notifications</h2><p>How Caleane lets you know about new client messages. This choice is yours alone and does not change anyone else’s.</p></header><MessageEmailSetting className="settings-notification-email-box" studio={studio} request={request}/></div></section><ReminderSettings studio={studio} request={request}/></>)}
       {panel('templates',section==='templates'&&<><StarterGallery studio={studio} request={request} navigate={navigate} onAdded={()=>setTemplatesKey(key=>key+1)}/><TemplateSettings key={templatesKey} studio={studio} request={request}/></>)}
       {panel('fields',section==='fields'&&<CustomFieldSettings studio={studio} request={request}/>)}
       {panel('connections',<div className="settings-connections"><CalendarSyncSettings studio={studio} request={request}/><StripeConnectSettings studio={studio} request={request}/></div>)}
