@@ -16,3 +16,7 @@ for (const directory of ['assets', 'partials']) {
   await cp(join(root, directory), join(output, directory), { recursive: true });
 }
 console.log('Built public website in dist/');
+
+// The Radix islands share this stylesheet; keep authored JSX out of the public build.
+await mkdir(join(output, 'ui'), { recursive: true });
+await cp(join(root, 'ui/website-ui.css'), join(output, 'ui/website-ui.css'));

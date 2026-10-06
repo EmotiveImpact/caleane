@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-site.mjs"
+    "build": "node scripts/build-site.mjs",
+    "check:build": "node scripts/check-build.mjs"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "1.1.20",

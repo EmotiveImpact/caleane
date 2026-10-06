@@ -41,6 +41,6 @@ The hosted sample is not production customer storage. Do not replace the browser
 
 ## Deployment command
 
-From `web/`, run `npm run build`, then `vercel deploy --prod --yes`. The local `.vercel/project.json` links that folder to the existing website project. No GitHub automatic deployment connection was configured in this release.
+The existing Vercel `web` project is connected to `EmotiveImpact/caleane` on GitHub. Production tracks `main`, with root directory `web`, install command `npm ci`, build command `npm run build` and output directory `dist`. Pushes to `main` trigger production builds from GitHub. GitHub Actions also builds the website and checks the packaged page resources. Publish website changes through GitHub; avoid deploying an older local checkout over production.
 
 From `app/`, run `vercel deploy --prod --yes` to publish the demo. Its `vercel.json` sets `VITE_HOSTED_DEMO=1` during the remote build. A normal local `npm run build` does not activate the hosted demo transport.
