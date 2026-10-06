@@ -269,7 +269,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     const studio=memberships.find(s=>s.id===url.searchParams.get('studio'));if(!studio)fail(403,'You do not have access to this studio.');const owner=studio.role==='owner',staffViewer=studio.role==='staff_viewer',bookkeeper=studio.role==='staff_bookkeeper';
     // Bookkeepers read the money and nothing else: no project content, messages, files, settings or changes of any kind.
-    if(bookkeeper&&!(req.method==='GET'&&(['/api/invoices','/api/projects',`/api/studios/${studio.id}/stripe-status`].includes(route)||/^\/api\/projects\/[a-f0-9-]+\/invoices(?:\/(?:plan|[a-f0-9-]+))?$/.test(route))))fail(403,'Bookkeeper access is read-only and limited to finances.');const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
+    if(bookkeeper&&!(req.method==='GET'&&(['/api/invoices','/api/projects',`/api/studios/${studio.id}/stripe-status`,'/api/expenses','/api/finance-report'].includes(route)||/^\/api\/projects\/[a-f0-9-]+\/invoices(?:\/(?:plan|[a-f0-9-]+))?$/.test(route)||/^\/api\/expenses\/[a-f0-9-]{36}\/receipt$/.test(route))))fail(403,'Bookkeeper access is read-only and limited to finances.');const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
     if(req.method==='POST'&&((route.startsWith('/api/conversations/')&&route.endsWith('/files'))||(route.startsWith('/api/task-workspace/')&&body.action==='file')||(route==='/api/expenses'&&body.receipt)))rate(req,'upload',40);
     const formRoute=route.match(/^\/api\/forms(?:\/([a-f0-9-]+)(?:\/(responses|export))?)?$/);
     if(formRoute){requireOwner();const formId=formRoute[1],action=formRoute[2];
@@ -304,7 +304,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(await handleBookingIntegrations({db,req,route,body,studio,owner,reply}))return;
     if(await handleXero({db,req,route,body,studio,user,owner,reply,origin,delivery:calendarIntervalMs>0}))return;
     if(await handleWebhooks({db,req,route,body,studio,owner,user,reply,delivery:webhookIntervalMs>0}))return;
-    if(await handleFinances({db,req,res,url,route,body,studio,owner,user,reply,listInvoices:()=>invoiceRows(db,studio.id).map(row=>invoiceDTO(db,row))}))return;
+    if(await handleFinances({db,req,res,url,route,body,studio,owner,bookkeeper,user,reply,listInvoices:()=>invoiceRows(db,studio.id).map(row=>invoiceDTO(db,row))}))return;
     if(route==='/api/card-payments'){
      requireOwner();const available=cardPaymentsReady&&studioConnected(studio.id);
      if(req.method==='GET')return reply(200,{settings:cardPaymentSettings(db,studio.id),available});

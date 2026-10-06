@@ -74,12 +74,12 @@ function reportInputs(db,studioId){
  return {projects,opportunities};
 }
 
-// Costs and reports are the studio's own books, so only the owner sees them.
+// Costs and reports are the studio's own books: the owner manages them and a bookkeeper can read them.
 // Clients, project approvers and studio viewers never do.
-export async function handleFinances({db,req,res,url,route,body,studio,owner,user,reply,listInvoices}){
+export async function handleFinances({db,req,res,url,route,body,studio,owner,bookkeeper=false,user,reply,listInvoices}){
  const receiptMatch=route.match(/^\/api\/expenses\/([a-f0-9-]{36})\/receipt$/);
  if(route!=='/api/expenses'&&route!=='/api/finance-report'&&!receiptMatch)return false;
- if(!owner)fail(403,'Only the studio owner can see costs and reports.');
+ if(!owner&&!(bookkeeper&&req.method==='GET'))fail(403,'Only the studio owner can see costs and reports.');
  if(receiptMatch){
   if(req.method!=='GET')fail(405,'Method not allowed.');
   const row=db.prepare('SELECT r.name,r.mime,r.content FROM expense_receipts r JOIN expenses e ON e.id=r.expense_id AND e.studio_id=r.studio_id WHERE r.expense_id=? AND r.studio_id=?').get(receiptMatch[1],studio.id);

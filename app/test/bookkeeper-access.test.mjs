@@ -50,6 +50,14 @@ test('a bookkeeper reads studio finances and nothing else, and cannot change any
   assert.equal(projectInvoices.data.invoices[0].id,invoice.id);
   assert.equal((await call(`/api/projects/${project.id}/invoices/${invoice.id}${q}`,'GET',undefined,'books')).status,200);
   assert.equal((await call(`/api/projects/${project.id}/invoices/plan${q}`,'GET',undefined,'books')).status,200);
+  // Costs and reports are readable too, but a bookkeeper cannot record a cost.
+  const cost=await call('/api/expenses'+q,'POST',{action:'create',amountMinor:4500,currency:'GBP',spentOn:today,category:'Materials',projectId:project.id,description:'Paper stock'},'owner');
+  assert.equal(cost.status,201,JSON.stringify(cost.data));
+  const costs=await call('/api/expenses'+q,'GET',undefined,'books');
+  assert.equal(costs.status,200);
+  assert.equal(costs.data.expenses[0].description,'Paper stock');
+  assert.equal((await call('/api/finance-report'+q,'GET',undefined,'books')).status,200);
+  assert.equal((await call('/api/expenses'+q,'POST',{action:'create',amountMinor:100,currency:'GBP',spentOn:today,category:'Materials',description:'Not allowed'},'books')).status,403);
 
   // Projects come back as a finance summary only: no brief detail, messages, designs, tasks or activity.
   const projects=(await call('/api/projects'+q,'GET',undefined,'books')).data.projects;
