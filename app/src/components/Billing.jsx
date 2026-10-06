@@ -1,7 +1,8 @@
 import {CollectionFilter} from './CollectionFilter';
 import {InvoicePreview,printInvoice} from './InvoiceDocument';
 import {invoicePageHtml} from '../lib/invoice-design';
-import {discountFor,lateFeeTerms,tipFor,tipPercents} from '../lib/invoice-charges';
+import {discountFor,invoiceFigures,lateFeeShort,lateFeeTerms,tipFor,tipPercents} from '../lib/invoice-charges';
+import {WorkspaceSwitch} from './workspace/WorkspaceUI';
 import React,{useEffect,useMemo,useState} from 'react';
 import {Check,Copy,Download,FileText,Plus} from 'lucide-react';
 import '../folio-billing.css';
@@ -45,6 +46,34 @@ function InvoiceList({invoices,selected,onSelect}){
  return <div className="billing-invoice-list" role="group" aria-label="Project invoices">{invoices.map(invoice=><button key={invoice.id} className={selected===invoice.id?'selected':''} onClick={()=>onSelect(invoice.id)} aria-pressed={selected===invoice.id}><span><strong>{invoice.number}</strong><small>{invoice.label||invoice.kind} · Issued {date(invoice.issuedAt)}</small></span><span className="billing-list-end"><strong>{money(invoice.amountMinor,invoice.currency)}</strong><Status invoice={invoice}/></span></button>)}</div>;
 }
 
+// A boxed part of the issue form: a heading and a short hint above its fields.
+function IssueSection({title,hint,children}){
+ return <section className="billing-issue-section"><header><h4>{title}</h4>{hint&&<p>{hint}</p>}</header>{children}</section>;
+}
+
+// What the invoice will say, updated as the studio fills in the form.
+function IssueSummary({figures,currency,taxRate,discount,lateFee,tips,waiting}){
+ const row=(label,value,className)=><div className={className}><dt>{label}</dt><dd>{value}</dd></div>;
+ return <aside className="billing-issue-summary" aria-label="Invoice summary" aria-live="polite">
+  <h4>Summary</h4>
+  {waiting?<p className="billing-issue-summary-empty">Enter the deposit amount to see the figures.</p>:<>
+  <dl>
+   {row('Price before tax',money(figures.priceNetMinor,currency))}
+   {discount&&row(discount.label,`− ${money(figures.discountNetMinor,currency)}`,'is-discount')}
+   {row('Amount before tax',money(figures.netMinor,currency))}
+   {row(`Tax (${taxRate}%)`,money(figures.taxMinor,currency))}
+   {row('Invoice amount',money(figures.amountMinor,currency),'is-amount')}
+  </dl>
+  {(lateFee||tips)&&<dl className="billing-issue-summary-extras">
+   {lateFee&&row('Late fee terms',lateFeeShort(lateFee,currency))}
+   {tips&&row('Tips','The client can add one before paying')}
+  </dl>}
+  <div className="billing-issue-summary-total"><span>Client pays</span><strong>{money(figures.amountMinor,currency)}</strong></div>
+  {(lateFee||tips)&&<p className="billing-issue-summary-note">{[tips&&'Plus any tip they choose.',lateFee&&'A late fee is added only if the invoice is still unpaid after the grace period.'].filter(Boolean).join(' ')}</p>}
+  </>}
+ </aside>;
+}
+
 function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  const latestEstimate=p.estimates?.at(-1);
  const confirmed=latestEstimate?.status==='Budget confirmed'&&latestEstimate.briefRevision===p.briefRevision?[latestEstimate]:[];
@@ -74,6 +103,7 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  let discount=null,discountError='';
  if(discountInput&&discountValue!==''&&shareMinor>0){try{discount=discountFor(discountInput,{shareMinor,shareNetMinor});}catch(error){discountError=error.message;}}
  const lateFeeRule=saved.lateFee?.enabled?saved.lateFee:null,tipsAvailable=!!saved.tips?.enabled&&kind!=='Deposit';
+ const currency=estimate?.currency||'GBP',figures=invoiceFigures({shareMinor,shareNetMinor,discount});
  return <form className="billing-issue-form" onSubmit={async event=>{
   event.preventDefault();setFormError('');
   const data=Object.fromEntries(new FormData(event.currentTarget));
@@ -88,22 +118,34 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
   if(result?.invoice)onIssued(result.invoice);
  }}>
   <div className="billing-form-heading"><div><h3>Issue an invoice</h3><p>This appears in the client’s private project. No email or payment request is sent elsewhere.</p></div><button type="button" className="billing-text-button" onClick={onCancel}>Close</button></div>
-  <div className="billing-form-grid"><label><span>Confirmed estimate</span><select name="estimateId" value={estimateId} onChange={event=>setEstimateId(event.target.value)}>{confirmed.map(item=><option key={item.id} value={item.id}>{item.title} · version {item.version}</option>)}</select></label><label><span>Invoice type</span><select name="kind" value={kind} onChange={event=>setKind(event.target.value)}>{!hasPrior&&<><option value="Deposit">Deposit</option><option value="Full">Full amount</option></>}{hasPrior&&remaining>0&&<><option value="Balance">Remaining balance</option><option value="Deposit">Further deposit</option></>}</select></label></div>
-  {estimate&&<div className="billing-scope-line"><span>Estimate total <strong>{money(estimate.total,estimate.currency)}</strong></span><span>Available to invoice <strong>{money(remaining,estimate.currency)}</strong></span></div>}
-  {kind==='Deposit'&&<label className="billing-amount-field"><span>Deposit amount ({estimate?.currency||'GBP'})</span><input name="amount" type="number" min="0.01" max={Math.max(0,(remaining-1)/100).toFixed(2)} step="0.01" value={amount} onChange={event=>setAmount(event.target.value)} required placeholder="0.00"/></label>}
-  <fieldset className="billing-extras"><legend>Discount (optional)</legend>
-   <div className="billing-discount-row"><label><span>Type</span><select value={discountType} onChange={event=>{setDiscountType(event.target.value);setDiscountValue('');}}><option value="none">No discount</option><option value="percent">Percentage</option><option value="amount">Fixed amount</option></select></label>
-   {discountType!=='none'&&<><label><span>{discountType==='percent'?'Percentage off':`Amount off before tax (${estimate?.currency||'GBP'})`}</span><input type="number" min="0.01" step="0.01" max={discountType==='percent'?'99.99':undefined} value={discountValue} onChange={event=>setDiscountValue(event.target.value)} placeholder={discountType==='percent'?'10':'0.00'}/></label>
-   <label><span>Shown as (optional)</span><input maxLength="60" value={discountReason} onChange={event=>setDiscountReason(event.target.value)} placeholder="For example, returning client"/></label></>}</div>
-   {discountType!=='none'&&(discountError?<p className="billing-extras-note is-error">{discountError}</p>:discount?<p className="billing-extras-note">The client pays <strong>{money(shareMinor-discount.grossMinor,estimate?.currency)}</strong> instead of {money(shareMinor,estimate?.currency)}. The discount comes off the price before tax, so the tax goes down with it.</p>:null)}
-  </fieldset>
-  {(lateFeeRule||tipsAvailable)&&<fieldset className="billing-extras"><legend>Late fee and tip</legend>
-   {lateFeeRule&&<label className="billing-refund-choice"><input type="checkbox" checked={lateFeeOn} onChange={event=>setLateFeeOn(event.target.checked)}/><span><strong>Include your late fee terms</strong><small>{lateFeeTerms(lateFeeRule,estimate?.currency||'GBP')} The client sees this on the invoice. No message or email is sent when a fee is added.</small></span></label>}
-   {tipsAvailable&&<label className="billing-refund-choice"><input type="checkbox" checked={tipsOn} onChange={event=>setTipsOn(event.target.checked)}/><span><strong>Let the client add a tip</strong><small>They can choose a tip on this invoice before paying. Tips carry no tax.</small></span></label>}
-  </fieldset>}
-  <div className="billing-form-grid"><label><span>Due date</span><input name="dueDate" type="date" defaultValue={dueFromTerms} required/></label><label><span>Internal note or payment context (optional)</span><input name="note" maxLength="2000" placeholder="For example, first instalment"/></label></div>
-  <div className="billing-issue-details"><h4>Details shown on the invoice</h4><p>These are saved with this issued version. Check them before sharing the invoice with your client.</p><div className="billing-form-grid"><label><span>Studio address</span><textarea name="sellerAddress" rows="2" maxLength="500" required placeholder="Business address" defaultValue={saved.sellerAddress||''}/></label><label><span>Client billing address</span><textarea name="customerAddress" rows="2" maxLength="500" required placeholder="Client or company address" defaultValue={lastAddress}/></label><label><span>Studio contact</span><input name="sellerContact" maxLength="300" required placeholder="Email or phone number" defaultValue={saved.sellerContact||''}/></label><label><span>Service or supply date</span><input name="supplyDate" type="date" required defaultValue={p.brief?.date||''}/></label><label><span>Tax registration number (if applicable)</span><input name="taxRegistration" maxLength="100" placeholder="VAT or other tax number" defaultValue={saved.taxRegistration||''}/></label></div></div>
-  <label><span>Bank transfer or alternative payment instructions</span><textarea name="paymentInstructions" rows="3" maxLength="1000" required placeholder="Include the bank or external payment details and the reference the client should use." defaultValue={saved.paymentInstructions||''}/><small>Check these details before issuing. They are shown separately from any Stripe Checkout option.</small></label>
+  <div className="billing-issue-shell"><div className="billing-issue-layout"><div className="billing-issue-main">
+   <IssueSection title="Invoice" hint="Choose what this invoice asks for from the confirmed estimate.">
+    <div className="billing-form-grid billing-issue-choose"><label><span>Confirmed estimate</span><select name="estimateId" value={estimateId} onChange={event=>setEstimateId(event.target.value)}>{confirmed.map(item=><option key={item.id} value={item.id}>{item.title} · version {item.version}</option>)}</select></label><label><span>Invoice type</span><select name="kind" value={kind} onChange={event=>setKind(event.target.value)}>{!hasPrior&&<><option value="Deposit">Deposit</option><option value="Full">Full amount</option></>}{hasPrior&&remaining>0&&<><option value="Balance">Remaining balance</option><option value="Deposit">Further deposit</option></>}</select></label></div>
+    {estimate&&<div className="billing-scope-line"><span>Estimate total <strong>{money(estimate.total,estimate.currency)}</strong></span><span>Available to invoice <strong>{money(remaining,estimate.currency)}</strong></span></div>}
+    {kind==='Deposit'&&<label className="billing-amount-field"><span>Deposit amount ({currency})</span><input name="amount" type="number" min="0.01" max={Math.max(0,(remaining-1)/100).toFixed(2)} step="0.01" value={amount} onChange={event=>setAmount(event.target.value)} required placeholder="0.00"/></label>}
+   </IssueSection>
+   <IssueSection title="Discount" hint="Optional. It comes off the price before tax, so the tax goes down with it.">
+    <div className="billing-discount-row"><label><span>Type</span><select value={discountType} onChange={event=>{setDiscountType(event.target.value);setDiscountValue('');}}><option value="none">No discount</option><option value="percent">Percentage</option><option value="amount">Fixed amount</option></select></label>
+    {discountType!=='none'&&<><label><span>{discountType==='percent'?'Percentage off':`Amount off before tax (${currency})`}</span><input type="number" min="0.01" step="0.01" max={discountType==='percent'?'99.99':undefined} value={discountValue} onChange={event=>setDiscountValue(event.target.value)} placeholder={discountType==='percent'?'10':'0.00'}/></label>
+    <label><span>Shown as (optional)</span><input maxLength="60" value={discountReason} onChange={event=>setDiscountReason(event.target.value)} placeholder="For example, returning client"/></label></>}</div>
+    {discountType!=='none'&&discountError&&<p className="billing-extras-note is-error" role="alert">{discountError}</p>}
+   </IssueSection>
+   {(lateFeeRule||tipsAvailable)&&<IssueSection title="Late fee and tip" hint="Both are shown to the client on the invoice. No message or email is sent when a fee is added.">
+    {lateFeeRule&&<WorkspaceSwitch label="Include your late fee terms" description={lateFeeTerms(lateFeeRule,currency)} checked={lateFeeOn} onCheckedChange={setLateFeeOn}/>}
+    {tipsAvailable&&<WorkspaceSwitch label="Let the client add a tip" description="They can choose a tip on this invoice before paying. Tips carry no tax." checked={tipsOn} onCheckedChange={setTipsOn}/>}
+   </IssueSection>}
+   <IssueSection title="Due date and note" hint="The note is shown to the client as the payment context.">
+    <div className="billing-form-grid"><label><span>Due date</span><input name="dueDate" type="date" defaultValue={dueFromTerms} required/></label><label><span>Note or payment context (optional)</span><input name="note" maxLength="2000" placeholder="For example, first instalment"/></label></div>
+   </IssueSection>
+   <IssueSection title="Details shown on the invoice" hint="Saved with this issued version. Check them before sharing the invoice with your client.">
+    <div className="billing-form-grid"><label><span>Studio address</span><textarea name="sellerAddress" rows="2" maxLength="500" required placeholder="Business address" defaultValue={saved.sellerAddress||''}/></label><label><span>Client billing address</span><textarea name="customerAddress" rows="2" maxLength="500" required placeholder="Client or company address" defaultValue={lastAddress}/></label><label><span>Studio contact</span><input name="sellerContact" maxLength="300" required placeholder="Email or phone number" defaultValue={saved.sellerContact||''}/></label><label><span>Service or supply date</span><input name="supplyDate" type="date" required defaultValue={p.brief?.date||''}/></label><label><span>Tax registration number (if applicable)</span><input name="taxRegistration" maxLength="100" placeholder="VAT or other tax number" defaultValue={saved.taxRegistration||''}/></label></div>
+   </IssueSection>
+   <IssueSection title="Payment instructions" hint="Bank transfer or other ways to pay. Shown separately from any Stripe Checkout option.">
+    <label><span>Instructions for the client</span><textarea name="paymentInstructions" rows="3" maxLength="1000" required placeholder="Include the bank or external payment details and the reference the client should use." defaultValue={saved.paymentInstructions||''}/></label>
+   </IssueSection>
+  </div>
+  <IssueSummary figures={figures} currency={currency} taxRate={estimate?.taxRate||0} discount={discount} lateFee={lateFeeRule&&lateFeeOn?lateFeeRule:null} tips={tipsAvailable&&tipsOn} waiting={kind==='Deposit'&&!(shareMinor>0)}/>
+  </div></div>
   {formError&&<p className="billing-error" role="alert">{formError}</p>}
   <div className="billing-form-foot"><button className="billing-primary" disabled={busy||remaining<=0}>Issue invoice </button><p>An invoice is a request for payment. Its status changes only when the studio records money received.</p></div>
  </form>;
@@ -176,6 +218,7 @@ function InvoiceDetail({invoice,design,brandKit,p,studio,owner,request,run,busy,
  const checkoutStatus=invoice.checkout?.status;
  const discounted=(invoice.discountNetMinor||0)>0,lateFee=(invoice.charges||[]).find(item=>item.kind==='late_fee');
  const [tipping,setTipping]=useState(false),[tipError,setTipError]=useState('');
+ const lateFeeNote=invoice.lateFeeRule&&!lateFee&&isOpen(invoice)?lateFeeTerms(invoice.lateFeeRule,invoice.currency):'';
  async function saveTip(amountMinor){setTipError('');if(!Number.isSafeInteger(amountMinor)||amountMinor<0||amountMinor>invoice.amountMinor){setTipError('Enter a tip between zero and the invoice amount.');return;}const result=await run(()=>request(`/api/projects/${p.id}/invoices/${invoice.id}/tip?studio=${studio.id}`,'POST',{amountMinor}));if(result?.invoice){onChanged(result.invoice);setTipping(false);}}
  async function waiveFee(){const result=await run(()=>request(`/api/projects/${p.id}/invoices/${invoice.id}/late-fee?studio=${studio.id}`,'POST',{action:'waive'}));if(result?.invoice)onChanged(result.invoice);}
  const checkoutActive=['creating','open','processing'].includes(checkoutStatus);
@@ -198,15 +241,14 @@ function InvoiceDetail({invoice,design,brandKit,p,studio,owner,request,run,busy,
   <div className="doc-actions"><button className="doc-quiet" aria-pressed={!documentView} onClick={()=>setDocumentView(false)}>Account details</button><button className="doc-quiet" aria-pressed={documentView} onClick={()=>setDocumentView(true)}>Invoice document</button></div>
   {documentView&&<InvoicePreview html={invoicePage} title={`Invoice ${invoice.number}`}/>}
   {!documentView&&<><div className="billing-document-parties"><div><span>FROM</span><strong>{snapshot.sellerName||studio.name}</strong><p>{snapshot.sellerAddress||'—'}</p>{snapshot.sellerContact&&<small>{snapshot.sellerContact}</small>}{snapshot.taxRegistration&&<small>Tax registration: {snapshot.taxRegistration}</small>}</div><div><span>BILL TO</span><strong>{snapshot.billToName||p.brief.name}</strong><p>{snapshot.customerAddress||'—'}</p>{snapshot.billToEmail&&<small>{snapshot.billToEmail}</small>}</div></div>
-  <div className="billing-document-grid"><div><span>ISSUED</span><strong>{date(invoice.issuedAt)}</strong></div><div><span>DUE</span><strong>{date(invoice.dueDate)}</strong></div><div><span>SERVICE / SUPPLY DATE</span><strong>{date(snapshot.supplyDate)}</strong></div><div><span>BASED ON</span><strong>Estimate version {invoice.estimateVersion}</strong></div></div>
+  <div className="billing-document-grid"><div><span>ISSUED</span><strong>{date(invoice.issuedAt)}</strong></div><div><span>DUE</span><strong>{date(invoice.dueDate)}</strong>{lateFeeNote&&<small className="billing-due-terms">{lateFeeNote}</small>}</div><div><span>SERVICE / SUPPLY DATE</span><strong>{date(snapshot.supplyDate)}</strong></div><div><span>BASED ON</span><strong>Estimate version {invoice.estimateVersion}</strong></div></div>
   <div className="billing-line"><div><strong>{invoice.label?`${invoice.label} towards project scope`:invoice.kind==='Deposit'?'Deposit towards project scope':invoice.kind==='Balance'?'Remaining project balance':'Agreed project scope'}</strong><small>{snapshot.projectTitle||p.title}</small></div><strong>{money(invoice.shareMinor??invoice.amountMinor,invoice.currency)}</strong></div>
-  <dl className="billing-totals">{discounted&&<><div><dt>Price before tax</dt><dd>{money(invoice.netMinor+invoice.discountNetMinor,invoice.currency)}</dd></div><div className="billing-discount"><dt>{invoice.discountLabel||'Discount'}</dt><dd>− {money(invoice.discountNetMinor,invoice.currency)}</dd></div></>}<div><dt>Amount before tax</dt><dd>{money(invoice.netMinor,invoice.currency)}</dd></div><div><dt>Tax ({invoice.taxRate||0}%)</dt><dd>{money(invoice.taxMinor,invoice.currency)}</dd></div><div><dt>Invoice amount</dt><dd>{money(invoice.amountMinor,invoice.currency)}</dd></div>{lateFee&&<div><dt>{lateFee.waivedAt?`Late fee, waived ${date(lateFee.waivedAt)}`:`Late fee, added ${date(lateFee.addedAt)}`}</dt><dd>{lateFee.waivedAt?<s>+ {money(lateFee.amountMinor,invoice.currency)}</s>:`+ ${money(lateFee.amountMinor,invoice.currency)}`}</dd></div>}{(invoice.tipMinor||0)>0&&<div><dt>Tip, thank you</dt><dd>+ {money(invoice.tipMinor,invoice.currency)}</dd></div>}{(invoice.creditedMinor||0)>0&&<div><dt>Credit notes</dt><dd>− {money(invoice.creditedMinor,invoice.currency)}</dd></div>}{(invoice.grossPaidMinor??invoice.paidMinor??0)>0&&<div><dt>Payments recorded</dt><dd>− {money(invoice.grossPaidMinor??invoice.paidMinor,invoice.currency)}</dd></div>}{(invoice.refundedMinor||0)>0&&<div><dt>Refunded to client</dt><dd>+ {money(invoice.refundedMinor,invoice.currency)}</dd></div>}<div className="billing-balance"><dt>{invoice.refundDueMinor?'Refund owed to client':'Amount remaining'}</dt><dd>{money(invoice.refundDueMinor||balance,invoice.currency)}</dd></div></dl>
-  {invoice.lateFeeRule&&!lateFee&&isOpen(invoice)&&<p className="billing-late-terms">{lateFeeTerms(invoice.lateFeeRule,invoice.currency)}</p>}
   {!owner&&invoice.tipsAllowed&&isOpen(invoice)&&!checkoutActive&&<section className="billing-tip"><div><h4>Add a tip</h4><p>Entirely optional. If you would like to say thank you, a tip is added to this invoice and goes to the studio.</p></div>
    <div className="billing-tip-options" role="group" aria-label="Tip amount">{tipPercents.map(percent=>{const value=tipFor(invoice.amountMinor,percent);return <button key={percent} type="button" aria-pressed={invoice.tipMinor===value} disabled={busy} onClick={()=>saveTip(value)}><strong>{percent}%</strong><span>{money(value,invoice.currency)}</span></button>;})}<button type="button" aria-pressed={tipping} disabled={busy} onClick={()=>setTipping(!tipping)}><strong>Other</strong><span>Your amount</span></button>{invoice.tipMinor>0&&<button type="button" className="billing-tip-clear" disabled={busy} onClick={()=>saveTip(0)}><strong>No tip</strong><span>Remove</span></button>}</div>
    {tipping&&<form className="billing-tip-custom" onSubmit={event=>{event.preventDefault();saveTip(minorFromInput(new FormData(event.currentTarget).get('tip')));}}><label><span>Tip ({invoice.currency})</span><input name="tip" type="number" min="0" step="0.01" max={(invoice.amountMinor/100).toFixed(2)} defaultValue={invoice.tipMinor?(invoice.tipMinor/100).toFixed(2):''} required/></label><button className="billing-outline" disabled={busy}>Add tip</button></form>}
    {tipError&&<p className="billing-error" role="alert">{tipError}</p>}
   </section>}
+  <dl className="billing-totals">{discounted&&<><div><dt>Price before tax</dt><dd>{money(invoice.netMinor+invoice.discountNetMinor,invoice.currency)}</dd></div><div className="billing-discount"><dt>{invoice.discountLabel||'Discount'}</dt><dd>− {money(invoice.discountNetMinor,invoice.currency)}</dd></div></>}<div><dt>Amount before tax</dt><dd>{money(invoice.netMinor,invoice.currency)}</dd></div><div><dt>Tax ({invoice.taxRate||0}%)</dt><dd>{money(invoice.taxMinor,invoice.currency)}</dd></div><div><dt>Invoice amount</dt><dd>{money(invoice.amountMinor,invoice.currency)}</dd></div>{lateFee&&<div><dt>{lateFee.waivedAt?`Late fee, waived ${date(lateFee.waivedAt)}`:`Late fee, added ${date(lateFee.addedAt)}`}</dt><dd>{lateFee.waivedAt?<s>+ {money(lateFee.amountMinor,invoice.currency)}</s>:`+ ${money(lateFee.amountMinor,invoice.currency)}`}</dd></div>}{(invoice.tipMinor||0)>0&&<div><dt>Tip, thank you</dt><dd>+ {money(invoice.tipMinor,invoice.currency)}</dd></div>}{(invoice.creditedMinor||0)>0&&<div><dt>Credit notes</dt><dd>− {money(invoice.creditedMinor,invoice.currency)}</dd></div>}{(invoice.grossPaidMinor??invoice.paidMinor??0)>0&&<div><dt>Payments recorded</dt><dd>− {money(invoice.grossPaidMinor??invoice.paidMinor,invoice.currency)}</dd></div>}{(invoice.refundedMinor||0)>0&&<div><dt>Refunded to client</dt><dd>+ {money(invoice.refundedMinor,invoice.currency)}</dd></div>}<div className="billing-balance"><dt>{invoice.refundDueMinor?'Refund owed to client':'Amount remaining'}</dt><dd>{money(invoice.refundDueMinor||balance,invoice.currency)}</dd></div></dl>
   {invoice.note&&<section className="billing-note"><h4>About this invoice</h4><p>{invoice.note}</p></section>}
   {invoice.status!=='Cancelled'&&<section className="billing-instructions"><div><h4>Payment instructions</h4><p>{invoice.paymentInstructions||'Ask the studio for payment instructions.'}</p></div>{invoice.paymentInstructions&&<button className="billing-copy" onClick={async()=>{try{await navigator.clipboard.writeText(invoice.paymentInstructions);setCopy(true);setTimeout(()=>setCopy(false),2500);}catch{setCopy(false);}}}><Copy size={14}/>{copy?'Copied':'Copy'}</button>}</section>}
   </>}
@@ -252,10 +294,11 @@ export function Billing({p,studio,owner,request,run,mutate,busy,onNavigate,onInv
 const FINANCE_SECTIONS=[['invoices','Invoices'],['costs','Costs'],['reports','Reports']];
 export function StudioBilling({projects,studio,request,run,openProject}){
  const [section,setSection]=useState(()=>{const value=new URLSearchParams(window.location.search).get('money');return FINANCE_SECTIONS.some(([key])=>key===value)?value:'invoices';});
- function chooseSection(value){setSection(value);const query=new URLSearchParams(window.location.search);if(value==='invoices')query.delete('money');else query.set('money',value);history.replaceState(null,'','/?'+query);}
+ const [startCost,setStartCost]=useState(false);
+ function chooseSection(value,recordCost=false){setStartCost(recordCost);setSection(value);const query=new URLSearchParams(window.location.search);if(value==='invoices')query.delete('money');else query.set('money',value);history.replaceState(null,'','/?'+query);}
  const head=<><header className="studio-billing-head workspace-page-heading"><div><p className="billing-kicker">STUDIO / FINANCES</p><h1>Money in motion.</h1><p>Invoices, costs and the profit left over, in one place.</p></div></header>
  <div className="studio-tabs finance-sections" role="tablist" aria-label="Finance sections">{FINANCE_SECTIONS.map(([value,label])=><button key={value} type="button" role="tab" id={`finance-tab-${value}`} aria-selected={section===value} aria-controls="finance-section" className={section===value?'active':''} onClick={()=>chooseSection(value)}>{label}</button>)}</div></>;
- if(section!=='invoices')return <div className="studio-billing">{head}<div id="finance-section" role="tabpanel" aria-labelledby={`finance-tab-${section}`}>{section==='costs'?<StudioCosts projects={projects} studio={studio} request={request} openProject={openProject} readOnly={studio.role==='staff_bookkeeper'}/>:<StudioReports projects={projects} studio={studio} request={request} openProject={openProject}/>}</div></div>;
+ if(section!=='invoices')return <div className="studio-billing">{head}<div id="finance-section" role="tabpanel" aria-labelledby={`finance-tab-${section}`}>{section==='costs'?<StudioCosts projects={projects} studio={studio} request={request} openProject={openProject} readOnly={studio.role==='staff_bookkeeper'} startRecording={startCost}/>:<StudioReports projects={projects} studio={studio} request={request} openProject={openProject} openCosts={studio.role==='staff_bookkeeper'?null:()=>chooseSection('costs',true)}/>}</div></div>;
  return <div className="studio-billing">{head}<div id="finance-section" role="tabpanel" aria-labelledby="finance-tab-invoices"><InvoiceLedger projects={projects} studio={studio} request={request} openProject={openProject}/></div></div>;
 }
 

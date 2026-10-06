@@ -6,7 +6,7 @@ import path from 'node:path';
 import {createWorkspace} from '../server.mjs';
 import {applyLateFees,dueLateFees} from '../invoice-extras.mjs';
 import {runAllReminders} from '../reminders.mjs';
-import {discountFor,lateFeeTerms} from '../src/lib/invoice-charges.js';
+import {discountFor,invoiceFigures,lateFeeShort,lateFeeTerms} from '../src/lib/invoice-charges.js';
 
 const origin='http://127.0.0.1:4320';
 const addDays=(day,days)=>new Date(Date.parse(day+'T12:00:00Z')+days*86400000).toISOString().slice(0,10);
@@ -18,6 +18,16 @@ test('a discount comes off the price before tax and keeps the tax in proportion'
  assert.throws(()=>discountFor({type:'percent',percent:100},{shareMinor:12000,shareNetMinor:10000}),/below 100/);
  assert.throws(()=>discountFor({type:'amount',amountMinor:10000},{shareMinor:12000,shareNetMinor:10000}),/below the amount before tax/);
  assert.match(lateFeeTerms({type:'fixed',amountMinor:2500,percent:5,afterDays:7},'GBP'),/£25\.00 is added once, if this invoice is still unpaid 7 days after the due date/);
+});
+
+test('the issue form summary uses the same figures the server saves',()=>{
+ // The deposit from the test below: a 10000 share, 8333 of it before tax, with 10.00 off before tax.
+ const discount=discountFor({type:'amount',amountMinor:1000},{shareMinor:10000,shareNetMinor:8333});
+ assert.deepEqual(invoiceFigures({shareMinor:10000,shareNetMinor:8333,discount}),{priceMinor:10000,priceNetMinor:8333,discountMinor:1200,discountNetMinor:1000,netMinor:7333,taxMinor:1467,amountMinor:8800});
+ assert.deepEqual(invoiceFigures({shareMinor:12000,shareNetMinor:10000}),{priceMinor:12000,priceNetMinor:10000,discountMinor:0,discountNetMinor:0,netMinor:10000,taxMinor:2000,amountMinor:12000});
+ assert.equal(lateFeeShort({type:'fixed',amountMinor:2500,percent:5,afterDays:7},'GBP'),'£25.00, 7 days after the due date');
+ assert.equal(lateFeeShort({type:'percent',amountMinor:2500,percent:5,afterDays:1},'GBP'),'5% of the unpaid balance, 1 day after the due date');
+ assert.equal(lateFeeShort(null,'GBP'),'');
 });
 
 test('discounts, late fees and tips on issued invoices',async()=>{

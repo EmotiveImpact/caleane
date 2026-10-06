@@ -26,7 +26,8 @@ export function planSplit(template,total){
 export function Chip({tone,children}){return <span className={'pl-chip'+(tone?' is-'+tone:'')}>{children}</span>;}
 
 export function SignalChips({signal,limit=2}){
- const flags=(signal?.flags||[]).slice(0,limit);
+ // The opened line under the card says this already, with who and when.
+ const flags=(signal?.flags||[]).filter(f=>!(f.kind==='opened'&&signal.opened?.kind==='proposal')).slice(0,limit);
  if(!flags.length)return null;
  return <span className="pl-chips">{flags.map(f=><Chip key={f.kind} tone={f.tone}>{f.label}</Chip>)}</span>;
 }
@@ -46,7 +47,7 @@ export function whyFor(o,signal,issue){
   else if(f.kind==='changes')parts.push('They asked for changes to the quote.');
   else if(f.kind==='deposit')parts.push('Accepted. Issue the deposit invoice and the date confirms itself once it is paid.');
   else if(f.kind==='waiting')parts.push(`${f.label}. Waiting on their reply.`);
-  else if(f.kind==='opened')parts.push(`They opened the proposal on ${day(s.proposal?.openedAt)}.`);
+  else if(f.kind==='opened'){if(s.opened?.kind!=='proposal')parts.push(`They opened the proposal on ${day(s.proposal?.openedAt)}.`);}
   else if(f.kind==='unopened')parts.push('They have not opened the proposal yet. Check the invitation reached them.');
   else if(f.kind==='fit')parts.push('The date is free and the budget and area fit.');
  }

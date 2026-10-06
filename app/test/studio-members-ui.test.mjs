@@ -64,7 +64,9 @@ test('a bookkeeper can be invited, and a member can be switched to bookkeeper af
  await input.type(screen.getByLabelText('Email address'),'books@example.test');
  await input.click(screen.getByRole('button',{name:'Create invitation'}));
  await waitFor(()=>assert.deepEqual(posts,[{email:'books@example.test',access:'bookkeeper'}]));
- assert.match(screen.getByText('books@example.test').closest('.member-row').textContent,/Bookkeeper · Expires/);
+ const invited=screen.getByText('books@example.test').closest('.member-row');
+ assert.match(invited.textContent,/Invitation pending · Expires/);
+ assert.equal(invited.querySelector('.member-role').textContent,'Bookkeeper','the role shows as a chip');
  await input.click(screen.getByRole('button',{name:'Access for Tom Field'}));
  const memberChoice=screen.getByRole('group',{name:'Access for Tom Field'});
  await input.click(within(memberChoice).getByRole('radio',{name:/Bookkeeper/}));
@@ -73,6 +75,6 @@ test('a bookkeeper can be invited, and a member can be switched to bookkeeper af
  await input.click(within(dialog).getByRole('button',{name:'Make bookkeeper'}));
  await waitFor(()=>assert.deepEqual(patches,[['/api/staff/m1?studio=studio-test',{access:'bookkeeper'}]]));
  const row=(await screen.findByText(/Finances only, read-only/)).closest('.member-row');
- assert.ok(within(row).getByText('Bookkeeper'));
+ assert.equal(row.querySelector('.member-role').textContent,'Bookkeeper');
  assert.equal(screen.queryByRole('checkbox',{name:/Spring wedding/}),null);
 });

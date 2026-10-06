@@ -28,6 +28,7 @@
 .booking-honeypot { position: absolute !important; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .booking-back { display: inline-flex; gap: 6px; align-items: center; justify-self: start; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; color: #6e7069; cursor: pointer; }
 .booking-primary { justify-self: start; min-height: 48px; padding: 0 22px; border: 0; border-radius: 6px; background: var(--booking-accent); color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.booking-link { display: inline-flex; align-items: center; text-decoration: none; margin-top: 8px; }
 .booking-primary:disabled { opacity: .6; cursor: progress; }
 .booking-muted { font-size: 13px; line-height: 1.6; color: #6e7069; }
 .booking-error { margin: 0 0 16px; padding: 12px 14px; border-radius: 6px; background: #fbe9e5; color: #8b2e22; font-size: 14px; }

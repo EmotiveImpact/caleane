@@ -13,9 +13,19 @@ export function useFieldDefinitions(studio,request){
  return fields;
 }
 
-export function TagChips({tags,className=''}){
+// With max set, the first few tags show and the rest fold into a quiet "+2".
+export function TagChips({tags,className='',max}){
  if(!tags?.length)return null;
- return <ul className={'cf-tags '+className} aria-label="Tags">{tags.map(tag=><li key={tag}>{tag}</li>)}</ul>;
+ const shown=max?tags.slice(0,max):tags,rest=tags.slice(shown.length);
+ return <ul className={'cf-tags '+className} aria-label="Tags">{shown.map(tag=><li key={tag}>{tag}</li>)}{rest.length>0&&<li className="cf-tags-more" title={rest.join(', ')}><span aria-hidden="true">+{rest.length}</span><span className="sr-only">and {rest.length} more: {rest.join(', ')}</span></li>}</ul>;
+}
+
+// True while the record lays out in one column, so the studio details can sit
+// high on the page instead of under everything else.
+export function useMediaQuery(query){
+ const [matches,setMatches]=useState(()=>typeof window!=='undefined'&&!!window.matchMedia?.(query).matches);
+ useEffect(()=>{const media=window.matchMedia?.(query);if(!media)return;const update=()=>setMatches(media.matches);update();media.addEventListener('change',update);return()=>media.removeEventListener('change',update);},[query]);
+ return matches;
 }
 
 function TagInput({value,onChange,suggestions=[]}){
@@ -38,13 +48,13 @@ function FieldInput({field,value,onChange}){
 
 // The studio's private tags and fields on one client or project, shown as a
 // box beside the record's other details and edited in place.
-export function StudioDetails({kind,record,definitions,tagSuggestions,onSave,onManage,busy}){
+export function StudioDetails({kind,record,definitions,tagSuggestions,onSave,onManage,busy,className=''}){
  const fields=definitions?.[kind]||[],[editing,setEditing]=useState(false),[tags,setTags]=useState([]),[values,setValues]=useState({}),[error,setError]=useState('');
  useEffect(()=>{setEditing(false);setError('');},[record.id]);
  function start(){setTags(record.tags||[]);setValues(Object.fromEntries(fields.map(f=>[f.id,record.customFields?.[f.id]??''])));setError('');setEditing(true);}
  async function save(e){e.preventDefault();setError('');try{const ok=await onSave({tags,fields:values});if(ok)setEditing(false);}catch(err){setError(err.message);}}
  const filled=fields.filter(f=>record.customFields?.[f.id]!==undefined&&record.customFields[f.id]!=='');
- return <section className="cf-details" aria-label="Studio details">
+ return <section className={'cf-details '+className} aria-label="Studio details">
   <header><div><h3>Studio details</h3><p><LockKeyhole size={12}/>Only visible to your studio</p></div>{!editing&&<WorkspaceButton variant="ghost" size="small" onClick={start}>Edit</WorkspaceButton>}</header>
   {editing?<form onSubmit={save}>
    <TagInput value={tags} onChange={setTags} suggestions={tagSuggestions}/>

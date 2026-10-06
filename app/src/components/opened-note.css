@@ -3,3 +3,7 @@
 .opened-note svg{flex:none}
 .opened-note.is-opened{color:#2f5d46;border-color:#cfe0d5;background:#f3f8f4}
 .opened-note.is-unopened{color:#6f6a5e}
+/* On Pipeline cards and rows: the same words as a plain line, so it wraps calmly in a narrow card. */
+.opened-note.is-opened.is-compact{display:flex;align-items:flex-start;width:auto;max-width:100%;margin:6px 0 0;padding:0;border:0;border-radius:0;background:none;font-size:12px;line-height:1.45;gap:6px;font-weight:400;text-align:left}
+.opened-note.is-compact svg{margin-top:2px}
+.opened-note.is-compact>span{min-width:0;overflow-wrap:anywhere}
