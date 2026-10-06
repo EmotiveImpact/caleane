@@ -2,6 +2,8 @@ import {formPath,formFields,screensFor,describeCondition} from './form-flow.js';
 
 // The brief look asks one question at a time. Screens still own layout and logic;
 // each question on a screen becomes its own step, grouped into chapters.
+// New and existing step forms use the brief look unless a studio keeps the classic one.
+export function usesBriefLook(d){return d.layout!=='page'&&(d.theme?.look||'brief')==='brief';}
 export const IMAGE_LAYOUTS=['image-left','image-right','cover'];
 const CONTACT=new Set(['core:name','core:email']);
 

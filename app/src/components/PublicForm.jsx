@@ -2,9 +2,10 @@ import React,{useEffect,useRef,useState} from 'react';
 import {formPath,formFields,screensFor} from '../lib/form-flow.js';
 import {QuestionInput,ChoiceInput,answerText} from './QuestionInput';
 import {BriefForm} from './BriefForm';
+import {usesBriefLook} from '../lib/brief-steps.js';
+export {usesBriefLook};
 const Field=({label,children,hideLabel=false,...props})=><label className="field"><span className={hideLabel?'sr-only':undefined}>{label}</span>{children?React.cloneElement(children,{'aria-label':label}):<input aria-label={label} {...props}/>}</label>;
 // New forms and the website enquiry use the brief look. Studios can keep the classic look, and single-page forms stay classic.
-export function usesBriefLook(d){return d.layout!=='page'&&(d.theme?.look||'brief')==='brief';}
 export function PublicForm(props){return usesBriefLook(props.form.definition)?<BriefForm {...props}/>:<ClassicForm {...props}/>;}
 export function ClassicForm({studio,form,preview=false,startScreenId}){
  const d=form.definition,storageKey=`caleane-form:${studio.slug}:${form.slug}:${form.version||'draft'}`;

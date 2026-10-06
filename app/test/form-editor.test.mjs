@@ -63,7 +63,7 @@ test('adding a question screen creates one usable field and selects its content'
 
 test('logic is local to the selected screen and a removable rule preserves fallback',async()=>{
  const input=user();mount(h(Fixture));
- await input.click(screen.getByRole('tab',{name:'Logic'}));
+ await input.click(screen.getByRole('tab',{name:'Rules'}));
  assert.ok(screen.getByText('Continue to'));assert.ok(screen.getAllByText('Contact',{exact:true}).length);
  await input.click(screen.getByRole('button',{name:'Add a rule'}));
  assert.equal(last.screens[1].jumps.length,1);assert.equal(last.screens[1].jumps[0].to,'s-contact');

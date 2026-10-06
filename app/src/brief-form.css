@@ -189,3 +189,4 @@ textarea.bf-field{min-height:0;overflow:hidden}
  .bf-slide{justify-self:stretch;width:100%}
  .bf-ch.on{flex:2.4}.bf-ch:not(.on) span{visibility:hidden}
 }
+.bf-proof-empty{margin:14px 0 4px;font-size:13px;color:var(--muted)}

@@ -85,7 +85,8 @@
  .is-form-editing .forms-heading .ws-button{padding:8px;font-size:11px}
  .is-form-editing .forms-heading h1{font-size:16px!important;max-width:19ch}
  .form-build-navigation{flex-wrap:wrap;gap:0;margin-bottom:10px}
- .form-build-navigation .forms-tabs{gap:20px;flex:1}
+ .form-build-navigation .forms-tabs{gap:18px;flex:1 0 100%;border-bottom:1px solid var(--studio-rule)!important}
+ .form-build-tools{margin-left:auto}
  .form-build-navigation .forms-tabs button{font-size:12px;min-height:44px}
  .form-build-tools .ws-button{padding:8px;font-size:11px;min-height:44px}
  .form-focus-editor .screen-preview-controls{gap:3px;padding:5px}
@@ -174,3 +175,70 @@
 .form-focal-sliders label>span{display:flex;justify-content:space-between;gap:12px}
 .form-focal-sliders output{font-variant-numeric:tabular-nums;color:var(--studio-ink)}
 .form-focal-sliders input[type=range]{width:100%;min-height:36px;margin:0;accent-color:var(--studio-accent);cursor:pointer}
+
+/* Logic: the route map beside the selected screen's rules. Editing needs room, so small screens get a read-only summary. */
+.is-form-editing .form-section-content:has(.form-logic-workspace){overflow:hidden;padding-bottom:12px;display:flex}
+.form-logic-workspace{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0 22px;flex:1;min-height:0;width:100%}
+.form-logic-map{position:relative;overflow:auto;min-height:0;border:1px solid var(--studio-rule);border-radius:var(--ws-radius);background-color:var(--studio-surface);background-image:radial-gradient(var(--studio-rule) 1px,transparent 1px);background-size:18px 18px}
+.form-logic-head{position:sticky;top:0;left:0;z-index:3;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 18px;background:color-mix(in srgb,var(--studio-surface) 92%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--studio-rule)}
+.form-logic-head h2{font-size:14px;font-weight:600;margin:0}
+.form-logic-head p{font-size:12px;color:var(--studio-muted);margin:3px 0 0}
+.form-logic-head .ws-button{display:inline-flex;align-items:center;gap:6px}
+.form-logic-state{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;font-weight:500;padding:6px 10px;border-radius:999px;border:0}
+.form-logic-state.ok{background:color-mix(in srgb,var(--studio-accent) 9%,transparent);color:var(--studio-ink)}
+.form-logic-state.warn{background:#fbf0dc;color:#7a4b0c;cursor:pointer}
+.form-logic-issues{list-style:none;margin:12px 18px 0;padding:0;display:grid;gap:6px;position:relative;z-index:2}
+.form-logic-issues button{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;border:1px solid #ecd3a4;background:#fbf0dc;color:#7a4b0c;border-radius:8px;padding:9px 12px;font:inherit;font-size:12px;cursor:pointer}
+.form-logic-issues svg{flex:none;margin-top:1px}
+.form-logic-canvas{position:relative;margin:20px 0 32px}
+.form-logic-canvas>svg{position:absolute;inset:0;overflow:visible;pointer-events:none}
+.form-logic-canvas path{fill:none;stroke:var(--studio-muted);stroke-width:1.5;opacity:.55}
+.form-logic-canvas path.jump,.form-logic-canvas path.skip{stroke-dasharray:5 4;opacity:.7}
+.form-logic-canvas path.hot{stroke:var(--studio-ink);opacity:1;stroke-width:2}
+.form-logic-canvas marker path{fill:var(--studio-muted);stroke:none;opacity:1}
+.form-logic-node{position:absolute;display:flex;gap:10px;align-items:flex-start;text-align:left;font:inherit;color:var(--studio-ink);background:var(--studio-paper);border:1px solid var(--studio-rule);border-radius:10px;padding:11px 12px;box-shadow:0 1px 2px rgba(0,0,0,.04);cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.form-logic-node:hover{border-color:var(--studio-muted)}
+.form-logic-node:focus-visible{outline:2px solid var(--studio-accent);outline-offset:3px}
+.form-logic-node>span:last-child{min-width:0}
+.form-logic-node strong{display:block;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.form-logic-node small{display:flex;align-items:center;gap:4px;color:var(--studio-muted);font-size:11px;margin-top:4px}
+.form-logic-node .screen-number{font-size:11px;color:var(--studio-muted);font-variant-numeric:tabular-nums;padding-top:2px}
+.form-logic-node.conditional{border-style:dashed}
+.form-logic-node.selected{border-color:var(--studio-ink);box-shadow:0 0 0 1px var(--studio-ink),0 6px 18px -8px rgba(0,0,0,.25)}
+.form-logic-node.warn{border-color:#ecd3a4;background:#fbf0dc}
+.form-logic-node.end{cursor:default;background:var(--studio-surface)}
+.form-logic-pill{position:absolute;z-index:1;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;background:var(--studio-paper);color:var(--studio-muted);border:1px solid var(--studio-rule);white-space:nowrap;transform:translate(-50%,-50%);pointer-events:none;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.form-logic-pill.jump{color:var(--studio-ink)}
+.form-logic-pill.hot{background:var(--studio-ink);color:var(--studio-paper);border-color:transparent}
+.form-logic-side{min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 0 18px 20px;border-left:1px solid var(--studio-rule)}
+.form-logic-side .screen-inspector-heading{display:flex;margin:0 0 16px}
+.form-logic-side .screen-inspector-heading h2{font-size:15px;line-height:1.4;margin:4px 0 0}
+.form-logic-side>.ws-button{display:inline-flex;align-items:center;gap:6px;margin-top:8px}
+.form-logic-gate{display:none}
+.form-logic-gate-card{border:1px solid var(--studio-rule);border-radius:12px;background:var(--studio-paper);padding:22px 20px}
+.form-logic-gate-card h2{font-size:17px;font-weight:600;letter-spacing:-.015em;margin:12px 0 6px}
+.form-logic-gate-card p{font-size:13px;line-height:1.55;color:var(--studio-muted);margin:0 0 16px}
+.form-logic-gate-card .ws-button{display:inline-flex;align-items:center;gap:6px}
+.form-logic-gate h3{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;margin:22px 0 10px}
+.form-logic-warning{font-size:13px;line-height:1.5;color:#7a4b0c;background:#fbf0dc;border-radius:8px;padding:9px 12px;margin:0 0 6px}
+.form-logic-sentences{list-style:none;margin:0;padding:0;border-top:1px solid var(--studio-rule)}
+.form-logic-sentences li{padding:11px 0;border-bottom:1px solid var(--studio-rule)}
+.form-logic-sentences strong{display:block;font-size:13px;font-weight:500}
+.form-logic-sentences small{display:flex;gap:5px;align-items:baseline;font-size:12px;line-height:1.5;color:var(--studio-muted);margin-top:4px}
+.form-logic-sentences small svg{flex:none;transform:translateY(2px)}
+@media (max-width:860px){
+ .is-form-editing .form-section-content:has(.form-logic-workspace){overflow:auto;display:block}
+ .form-logic-workspace{display:block}
+ .form-logic-map,.form-logic-side{display:none}
+ .form-logic-gate{display:block;padding-bottom:24px}
+}
+
+/* Design: choose the look first; the options below follow it. */
+.form-look-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 22px}
+.form-look-choice{display:grid;gap:6px;align-content:start;text-align:left;font:inherit;color:var(--studio-ink);background:var(--studio-paper);border:1px solid var(--studio-rule);border-radius:var(--ws-radius);padding:14px 16px;cursor:pointer}
+.form-look-choice strong{font-size:14px;font-weight:550}
+.form-look-choice span{font-size:12px;line-height:1.5;color:var(--studio-muted)}
+.form-look-choice[data-state=checked]{border-color:var(--studio-ink);box-shadow:0 0 0 1px var(--studio-ink)}
+.form-look-choice:focus-visible{outline:2px solid var(--studio-accent);outline-offset:2px}
+.form-special-screen .field{margin-bottom:14px}
+@media (max-width:560px){.form-look-choices{grid-template-columns:1fr}}
