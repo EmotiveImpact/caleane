@@ -4,7 +4,7 @@ import React from 'react';
 import {setupDom,bundle} from './ui-harness.mjs';
 
 const dom=setupDom();
-const {module:ui,remove}=await bundle("export {ClientDirectory} from './src/components/ClientDirectory.jsx'; export {StudioDetails} from './src/components/CustomFields.jsx'; export {WorkspaceUIProvider} from './src/components/workspace/WorkspaceUI.jsx';",'custom-fields-ui');
+const {module:ui,remove}=await bundle("export {ClientDirectory} from './src/components/ClientDirectory.jsx'; export {StudioDetails,TagChips} from './src/components/CustomFields.jsx'; export {WorkspaceUIProvider} from './src/components/workspace/WorkspaceUI.jsx';",'custom-fields-ui');
 const {render,screen,cleanup,within}=await import('@testing-library/react');
 const {default:userEvent}=await import('@testing-library/user-event');
 const h=React.createElement,user=()=>userEvent.setup({document:dom.window.document,pointerEventsCheck:0});
@@ -40,4 +40,15 @@ test('studio details show each field and save tags and values together',async()=
  await input.click(screen.getByRole('button',{name:'Remove tag Summer'}));
  await input.click(screen.getByRole('button',{name:'Save details'}));
  assert.deepEqual(saves,[{tags:['Garden'],fields:{g:120,s:'',v:'Kew'}}]);
+});
+
+test('tag chips in lists show the first three and count the rest',()=>{
+ render(h(ui.TagChips,{tags:['Wedding','Referral','VIP','2027','Summer'],max:3}));
+ const items=within(screen.getByRole('list',{name:'Tags'})).getAllByRole('listitem');
+ assert.deepEqual(items.slice(0,3).map(li=>li.textContent),['Wedding','Referral','VIP']);
+ assert.equal(items.length,4);assert.match(items[3].textContent,/^\+2and 2 more: 2027, Summer$/);
+ assert.equal(items[3].title,'2027, Summer');
+ cleanup();
+ render(h(ui.TagChips,{tags:['Wedding','Referral'],max:3}));
+ assert.equal(within(screen.getByRole('list',{name:'Tags'})).getAllByRole('listitem').length,2);
 });

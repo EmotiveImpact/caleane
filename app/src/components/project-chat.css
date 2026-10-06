@@ -39,3 +39,21 @@
 .project-talk-later-custom{display:grid;gap:5px;margin-bottom:10px;font-size:12px;color:var(--studio-muted,#6f7378)}
 .project-talk-later-custom input{font:inherit;font-size:14px;padding:8px;border:1px solid var(--studio-rule,#e2e2df);border-radius:6px;background:var(--studio-paper,#fff);color:var(--studio-ink,#1a1b25)}
 @media(max-width:760px){.project-talk-scheduled{margin:0 12px 6px}.project-talk-scheduled>div{flex-wrap:wrap}.project-talk-scheduled>div>span{flex-basis:calc(100% - 30px)}}
+/* Composer: the strip of scheduled messages and the message box move together, so the Send later options open above both. */
+.project-talk-dock{flex:none;min-width:0}
+.project-talk-scheduled>div{min-width:0}
+.project-talk-split{gap:0}
+.project-talk-split>.ws-button[type=submit]{border-radius:var(--ws-radius,6px) 0 0 var(--ws-radius,6px)}
+.project-chat .project-talk-composer .project-talk-split>.project-talk-split-more{width:32px;min-width:32px;padding:0;border-radius:0 var(--ws-radius,6px) var(--ws-radius,6px) 0;box-shadow:inset 1px 0 0 color-mix(in srgb,#fff 28%,transparent)}
+.project-chat .project-talk-composer .project-talk-split>.project-talk-split-more[data-state=open]{background:var(--studio-accent-hover)}
+.project-talk-drafted{display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:6px 6px 6px 10px;border:1px solid var(--studio-rule,#e2e2df);border-radius:6px;background:var(--studio-paper,#fff);font-size:12px;line-height:1.4;color:var(--studio-ink)}
+.project-talk-drafted>svg{flex:none;color:var(--studio-muted)}
+.project-talk-drafted>span{flex:1;min-width:0}
+.project-chat .project-talk-composer .project-talk-drafted>button{display:inline-flex;align-items:center;gap:5px;flex:none;padding:4px 8px;border:0;border-radius:4px;background:none;color:var(--studio-ink);font:inherit;font-size:12px;font-weight:550;cursor:pointer}
+.project-chat .project-talk-composer .project-talk-drafted>button:hover{background:var(--studio-surface,#f7f7f6)}
+.folio-workspace .ws-conversation .project-talk-composer-tools .ws-button.project-talk-draft{width:auto;padding:6px 8px;gap:6px;white-space:nowrap}
+/* When the helper's button joins the tools, the keyboard hint steps aside in a narrow composer (it stays on the Send button's tooltip). */
+.project-talk-composer{container-type:inline-size}
+@container (max-width:640px){.project-talk-draft~span.is-hint{display:none}}
+/* On a phone the helper keeps only its pen, so Send and its options stay in view; the label is still read out. */
+@container (max-width:440px){.folio-workspace .ws-conversation .project-talk-composer-tools .ws-button.project-talk-draft{width:30px;padding:6px}.project-talk-draft-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}

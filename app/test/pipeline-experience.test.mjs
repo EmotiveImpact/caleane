@@ -182,3 +182,16 @@ test('follow-ups can be sent early or paused, full dates offer alternatives and 
  const preview=await screen.findByRole('dialog',{name:'Wedding flowers'});
  assert.match(preview.textContent,/£300.00 deposit/);assert.match(preview.textContent,/Balance £700.00 14 days before the event/);
 });
+
+test('Today, All enquiries and Board show who opened the latest proposal, in place of the Opened chip',async()=>{
+ const at=new Date();at.setHours(9,5,0,0);
+ const signal={opportunityId:'o1',projectId:'p1',eventDate:'2027-06-12',venue:'',estimate:null,proposal:{id:'q1',openedAt:at.toISOString()},hold:null,deposit:null,fit:[],
+  opened:{kind:'proposal',people:['Amelia Taylor'],firstOpenedAt:at.toISOString(),lastOpenedAt:at.toISOString(),opens:1},
+  flags:[{kind:'opened',tone:'info',label:'Opened today',rank:5},{kind:'waiting',tone:'info',label:'Proposal sent today',rank:6}]};
+ const input=user();fixture({pipeline:{settings:{dailyCapacity:1},dates:[],insights:null,signals:{o1:signal}}});
+ const line=await screen.findByText('Opened by Amelia today at 09:05');
+ assert.ok(line.closest('.opened-note'));
+ assert.equal(screen.queryByText('Opened today'),null,'the chip would say the same thing twice');
+ assert.doesNotMatch(document.querySelector('.pl-why')?.textContent||'',/opened the proposal/);
+ for(const view of ['All enquiries','Board']){await input.click(screen.getByRole('radio',{name:view}));assert.ok(await screen.findByText('Opened by Amelia today at 09:05'),view);}
+});

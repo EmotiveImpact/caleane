@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState} from 'react';
-import {ArrowLeft,CalendarCheck,Clock,CreditCard,MapPin,Phone,Video} from 'lucide-react';
+import {ArrowLeft,CalendarCheck,Clock,CreditCard,Mail,MapPin,Phone,Video} from 'lucide-react';
 import '../public-booking.css';
 
 const dayKey=(iso,zone)=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
@@ -12,9 +12,9 @@ const meeting={video:['Video call',Video],phone:['Phone call',Phone],in_person:[
 
 // Public page where a prospective client books a consultation with a studio.
 export function PublicBooking({slug}){
- const [page,setPage]=useState(null),[error,setError]=useState(''),[day,setDay]=useState(''),[slot,setSlot]=useState(''),[busy,setBusy]=useState(false),[done,setDone]=useState(null),[key,setKey]=useState(newKey),[confirming,setConfirming]=useState(false),[notice,setNotice]=useState('');
+ const [page,setPage]=useState(null),[closed,setClosed]=useState(null),[error,setError]=useState(''),[day,setDay]=useState(''),[slot,setSlot]=useState(''),[busy,setBusy]=useState(false),[done,setDone]=useState(null),[key,setKey]=useState(newKey),[confirming,setConfirming]=useState(false),[notice,setNotice]=useState('');
  const visitorZone=Intl.DateTimeFormat().resolvedOptions().timeZone;
- function load(){return fetch('/api/booking/'+slug).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error);setPage(d);}).catch(e=>setError(e.message));}
+ function load(){return fetch('/api/booking/'+slug).then(async r=>{const d=await r.json();if(r.status===404&&d.studio){setClosed(d.studio);return;}if(!r.ok)throw new Error(d.error);setPage(d);}).catch(e=>setError(e.message));}
  useEffect(()=>{load();},[slug]);
  // Back from Stripe: a cancelled payment releases the held time; a finished one waits for Stripe's confirmation.
  useEffect(()=>{
@@ -43,6 +43,10 @@ export function PublicBooking({slug}){
   catch(e){setError(e.message);setKey(newKey());setBusy(false);}
  }
  if(confirming)return <div className="booking-page"><main className="booking-main"><p role="status">Confirming your payment with Stripe…</p></main></div>;
+ if(closed&&!page)return <div className="booking-page" style={{'--booking-accent':closed.accent}}>
+  <aside className="booking-aside"><strong className="booking-studio">{closed.name}</strong><h1>Bookings are closed for now.</h1><p>{closed.name} is not taking online bookings at the moment.</p></aside>
+  <main className="booking-main"><div className="booking-done"><Mail size={32}/><h2>You can still get in touch.</h2><p>Tell {closed.name} about your project and they will reply to arrange a time.</p><a className="booking-primary booking-link" href={'/intake/'+closed.slug}>Send an enquiry</a></div></main>
+ </div>;
  if(!page)return <div className="booking-page"><main className="booking-main"><p role={error?'alert':'status'}>{error||'Loading available times…'}</p></main></div>;
  const [meetingLabel,MeetingIcon]=meeting[page.booking.location.type]||meeting.video,fee=page.booking.payment;
  return <div className="booking-page" style={{'--booking-accent':page.studio.accent}}>

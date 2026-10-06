@@ -5,6 +5,22 @@ const money=(minor,currency='GBP')=>{try{return new Intl.NumberFormat('en-GB',{s
 const autopayReturn=()=>new URLSearchParams(window.location.search).get('autopay');
 const date=value=>value?new Date(value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'—';
 
+const shortDay=value=>{const at=new Date(value+'T12:00:00');return at.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:at.getFullYear()===new Date().getFullYear()?undefined:'numeric'});};
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+
+// With autopay on, what will happen to one issued plan invoice. Nothing for a
+// payment not yet issued, or one settled some other way.
+export function autopayChip(autopay,invoice){
+ if(autopay?.status!=='active'||!invoice||invoice.status==='Cancelled')return null;
+ const charge=autopay.charges.filter(item=>item.invoiceId===invoice.id).at(-1);
+ if(charge?.status==='paid')return {label:'Charged by card',tone:'done'};
+ if(charge&&['creating','processing'].includes(charge.status))return {label:'Card payment processing'};
+ if(charge?.status==='needs_review')return {label:'Card charge needs checking',tone:'warn'};
+ if(charge?.status==='failed')return {label:'Card declined',tone:'warn'};
+ if(!(invoice.balanceMinor>0)||!invoice.dueDate)return null;
+ return {label:invoice.dueDate<=today()?'Card charged today':`Card charged ${shortDay(invoice.dueDate)}`};
+}
+
 // Scheduled payments for a confirmed estimate. Owners start, adjust and issue
 // them; the project approver sees the same schedule read-only.
 export function PaymentPlan({p,studio,owner,request,run,busy,invoices,onIssued}){
@@ -35,11 +51,11 @@ export function PaymentPlan({p,studio,owner,request,run,busy,invoices,onIssued})
    {error&&<p className="billing-error" role="alert">{error}</p>}
    <div className="billing-plan-actions"><button className="billing-primary" disabled={busy||total!==plan.totalMinor}>Save plan</button><button type="button" className="billing-text-button" disabled={editing.length>=6} onClick={()=>setEditing([...editing,{label:'Further payment',amount:'',dueDate:new Date().toISOString().slice(0,10)}])}>Add a payment</button>{editing.length>1&&!editing.at(-1).locked&&<button type="button" className="billing-text-button" onClick={()=>setEditing(editing.slice(0,-1))}>Remove last payment</button>}<button type="button" className="billing-text-button" onClick={()=>setEditing(null)}>Cancel</button></div>
   </form>:<>
-   <ol className="billing-plan-steps">{plan.steps.map((step,index)=>{const issued=step.invoice&&step.invoice.status!=='Cancelled';return <li key={step.id} className={issued?'is-issued':''}><span>{index+1}</span><div><strong>{step.label}</strong><small>{issued?`Invoice ${step.invoice.number} · ${step.invoice.status}`:`Due ${date(step.dueDate)}`}</small></div><span className="billing-plan-amount">{money(step.amountMinor,plan.currency)}</span>{owner&&plan.current&&index===nextIndex&&!issuing?<button className="billing-outline" onClick={()=>setIssuing(step.id)}>Issue invoice</button>:<span/>}</li>;})}</ol>
+   <ol className="billing-plan-steps">{plan.steps.map((step,index)=>{const issued=step.invoice&&step.invoice.status!=='Cancelled';return <li key={step.id} className={issued?'is-issued':''}><span>{index+1}</span><div><strong>{step.label}</strong><small>{issued?`Invoice ${step.invoice.number} · ${step.invoice.status}`:`Due ${date(step.dueDate)}`}</small>{(()=>{const chip=autopayChip(plan.autopay,issued&&invoices.find(item=>item.id===step.invoice.id));return chip&&<span className={`billing-plan-chip${chip.tone?' is-'+chip.tone:''}`}><CreditCard size={12} aria-hidden="true"/>{chip.label}</span>;})()}</div><span className="billing-plan-amount">{money(step.amountMinor,plan.currency)}</span>{owner&&plan.current&&index===nextIndex&&!issuing?<button className="billing-outline" onClick={()=>setIssuing(step.id)}>Issue invoice</button>:<span/>}</li>;})}</ol>
    {issuing&&<form className="billing-plan-issue" onSubmit={async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(event.currentTarget));if(await act({action:'issue',stepId:issuing,...data}))setIssuing('');}}>
     <strong>Issue “{plan.steps.find(step=>step.id===issuing)?.label}”</strong>
     <label><span>Client billing address</span><textarea name="customerAddress" rows="2" maxLength="500" required defaultValue={lastAddress}/></label>
-    {(!defaults?.sellerAddress||!defaults?.sellerContact||!defaults?.paymentInstructions)&&<><p className="billing-clarifier">Save your studio address, contact and payment instructions in Settings, Pricing & billing, and they will fill in here automatically.</p><label><span>Studio address</span><textarea name="sellerAddress" rows="2" maxLength="500" required defaultValue={defaults?.sellerAddress||''}/></label><label><span>Studio contact</span><input name="sellerContact" maxLength="300" required defaultValue={defaults?.sellerContact||''}/></label><label><span>Payment instructions</span><textarea name="paymentInstructions" rows="2" maxLength="1000" required defaultValue={defaults?.paymentInstructions||''}/></label></>}
+    {(!defaults?.sellerAddress||!defaults?.sellerContact||!defaults?.paymentInstructions)&&<><p className="billing-clarifier">Save your studio address, contact and payment instructions in Settings, Invoices & payment plans, and they will fill in here automatically.</p><label><span>Studio address</span><textarea name="sellerAddress" rows="2" maxLength="500" required defaultValue={defaults?.sellerAddress||''}/></label><label><span>Studio contact</span><input name="sellerContact" maxLength="300" required defaultValue={defaults?.sellerContact||''}/></label><label><span>Payment instructions</span><textarea name="paymentInstructions" rows="2" maxLength="1000" required defaultValue={defaults?.paymentInstructions||''}/></label></>}
     {error&&<p className="billing-error" role="alert">{error}</p>}
     <div className="billing-plan-actions"><button className="billing-primary" disabled={busy}>Issue invoice</button><button type="button" className="billing-text-button" onClick={()=>setIssuing('')}>Cancel</button></div>
    </form>}

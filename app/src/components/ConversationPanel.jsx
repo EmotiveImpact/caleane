@@ -2,7 +2,6 @@ import React,{useState} from 'react';
 import {FileText,FolderClosed} from 'lucide-react';
 import {WorkspaceAvatar,WorkspaceButton,WorkspaceStatus} from './workspace/WorkspaceUI';
 import {fileUrl,plainText} from './ProjectChat';
-import {QuietHelper,offerDraft} from './QuietHelper';
 const shortDate=at=>new Date(at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 
 // What a conversation still needs, what was shared and who can see it.
@@ -13,7 +12,6 @@ export function ConversationPanel({thread,project,studio,request,owner,onConvers
  async function toggle(ask){setBusy(ask.messageId);setError('');try{const d=await request(`/api/conversations/${thread.id}/asks?studio=${studio.id}`,'POST',{messageId:ask.messageId,completed:!ask.completed});onConversation?.(d.conversation);}catch(e){setError(e.message);}finally{setBusy('');}}
  function go(...args){onLeave?.();openProject(...args);}
  return <div className="ws-conversation-panel">
-  {owner&&<QuietHelper studio={studio} request={request} kind="reply" target={{conversationId:thread.id}} useLabel="Put in my reply" onUse={text=>{offerDraft(thread.id,text);onLeave?.();}}/>}
   {owner&&<section><h4>Open asks{asks.length>0&&<span>{open} open</span>}</h4>
    {error&&<p className="alert" role="alert">{error}</p>}
    {asks.length?<ul className="ws-asks">{asks.map(a=><li key={a.messageId} className={a.completed?'is-done':''}><label><input type="checkbox" checked={a.completed} disabled={busy===a.messageId} onChange={()=>toggle(a)}/><span>{a.title}<small>From {byId.get(a.messageId)?.by||'a message'} · {shortDate(a.at)}{a.kind==='project'?' · in project tasks':' · in client tasks'}</small></span></label></li>)}</ul>:<p className="ws-panel-empty">Hover a message and choose the checklist icon to keep track of something you need to do.</p>}
