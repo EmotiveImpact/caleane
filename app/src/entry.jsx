@@ -1,4 +1,5 @@
 import './hosted-demo.css';
+import {watchForNewVersion} from './lib/app-version.js';
 async function start() {
   if (import.meta.env.VITE_HOSTED_DEMO === '1') {
     document.documentElement.dataset.hostedDemo = 'true';
@@ -26,5 +27,6 @@ async function start() {
     document.body.append(notice);
   }
   await import('./app.jsx');
+  watchForNewVersion();
 }
 start().catch(error => { document.querySelector('#root').textContent = error.message; });
