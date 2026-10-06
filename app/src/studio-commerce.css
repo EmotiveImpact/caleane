@@ -70,10 +70,6 @@
 .billing-plan-steps li.is-issued > span:first-child { background: var(--studio-accent, #181925); color: #fff; }
 .billing-plan-steps strong { display: block; font-weight: 600; }
 .billing-plan-steps small { display: block; color: var(--studio-muted, #6b6b6b); font-size: 12px; margin-top: 2px; }
-.billing-plan-chip { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 2px 8px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 999px; background: var(--studio-paper, #fff); color: var(--studio-muted, #6b6b6b); font-size: 11px; line-height: 1.5; white-space: nowrap; }
-.billing-plan-chip svg { flex: none; }
-.billing-plan-chip.is-done { color: #2f5d46; border-color: #cfe0d5; background: #f3f8f4; }
-.billing-plan-chip.is-warn { color: #8b2e22; border-color: #ecd3cd; background: #fbf4f2; }
 .billing-plan-steps .billing-plan-amount { font-variant-numeric: tabular-nums; font-weight: 600; }
 .billing-plan-edit li { grid-template-columns: 28px minmax(0,1.4fr) 120px 150px; }
 .billing-plan-edit input { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
@@ -107,10 +103,13 @@
 .template-picker-menu small { display: block; color: var(--studio-muted, #6b6b6b); margin-top: 2px; }
 
 @media(max-width:760px) {
-  .commerce-plan-row { grid-template-columns: minmax(0,1fr) 88px; }
-  .commerce-plan-row > :nth-child(3) { grid-column: 1; }
-  .commerce-plan-row > :nth-child(4) { grid-column: 2; }
-  .commerce-plan-row > :nth-child(5) { grid-column: 1/-1; justify-self: start; }
+  /* Name and share on the first line with remove, when it is due on the second. */
+  .commerce-plan-row { grid-template-columns: minmax(0,1fr) 88px 40px; }
+  .commerce-plan-row > :nth-child(1) { grid-area: 1/1; }
+  .commerce-plan-row > :nth-child(2) { grid-area: 1/2; }
+  .commerce-plan-row > :nth-child(3) { grid-area: 2/1; }
+  .commerce-plan-row > :nth-child(4) { grid-area: 2/2; }
+  .commerce-plan-row > :nth-child(5) { grid-area: 1/3; }
   .commerce-item-form { grid-template-columns: minmax(0,1fr); padding: 16px; }
   .commerce-span-2 { grid-column: auto; }
   .commerce-list > li { grid-template-columns: minmax(0,1fr) auto; }
@@ -240,11 +239,17 @@
 .commerce-payment-fields { margin-top: 18px; }
 
 /* Discounts, late fees and tips */
+.billing-extras { border: 1px solid #e0e2e5; border-radius: 6px; background: #fff; padding: 16px 18px 4px; margin: 0 0 18px; min-width: 0; }
+.billing-extras legend { padding: 0 6px; margin-left: -6px; font-size: 11px; font-weight: 600; color: #535a62; }
 .billing-discount-row { display: grid; grid-template-columns: minmax(0,160px) minmax(0,1fr) minmax(0,1fr); gap: 0 14px; }
-.billing-extras-note.is-error { font-size: 12px; line-height: 1.55; color: #a03a32; margin: -6px 0 14px; }
+.billing-extras-note { font-size: 12px; line-height: 1.55; color: #5f656d; margin: -6px 0 14px; }
+.billing-extras-note.is-error { color: #a03a32; }
+.billing-extras .billing-refund-choice { margin: 0 0 14px; }
+.billing-extras .billing-refund-choice small { display: block; margin-top: 3px; font-size: 11.5px; color: #6f757d; }
 .billing-totals .billing-discount dt, .billing-totals .billing-discount dd { color: #2f6b4f; }
 .billing-totals s { color: #9a9fa6; }
-.billing-tip { background: var(--studio-paper, #fff); border: 1px solid var(--box-rule, #e2e2df); border-radius: var(--box-radius, 8px); padding: 18px 20px; margin: 24px 0 0; }
+.billing-late-terms { font-size: 12px; line-height: 1.55; color: #5f656d; background: #f6f6f4; border: 1px solid #e6e6e1; border-radius: 6px; padding: 11px 14px; margin: -14px 0 24px; }
+.billing-tip { background: #fff; border: 1px solid #e0e2e5; border-radius: 6px; padding: 18px 20px; margin: 0 0 24px; }
 .billing-tip h4 { margin: 0 0 4px; font-size: 14px; font-weight: 560; }
 .billing-tip p { margin: 0 0 14px; font-size: 12px; line-height: 1.55; color: #6f757d; }
 .billing-tip-options { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -265,52 +270,6 @@
  .billing-tip-options button { flex: 1 1 40%; }
  .billing-tip-custom { flex-wrap: wrap; }
 }
-
-/* Issue an invoice: boxed sections with a running summary beside them */
-.billing-issue-shell { container-type: inline-size; }
-.billing-issue-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.billing-issue-main { display: grid; gap: 8px; min-width: 0; }
-.billing-issue-section { container-type: inline-size; box-sizing: border-box; min-width: 0; padding: 18px 20px 4px; background: var(--studio-paper, #fff); border: 1px solid var(--box-rule, #e2e2df); border-radius: var(--box-radius, 8px); }
-.billing-issue-section > header { margin: 0 0 16px; }
-.billing-issue-section h4 { margin: 0; font-size: 14px; font-weight: 550; color: var(--studio-ink, #202326); }
-.billing-issue-section > header p { margin: 4px 0 0; font-size: 12px; line-height: 1.55; color: var(--studio-muted, #6c7079); }
-.billing-issue-section .billing-scope-line { margin: -4px 0 14px; padding: 0 0 14px; }
-.billing-issue-section .billing-scope-line:last-child { border-bottom: 0; margin-bottom: 4px; }
-.billing-issue-section .ws-switch-row { padding: 0 0 16px; }
-.billing-issue-section .ws-switch-row + .ws-switch-row { padding-top: 16px; border-top: 1px solid var(--box-rule, #e2e2df); }
-.billing-issue-form .ws-switch-row > label { margin: 0; }
-.billing-issue-summary { box-sizing: border-box; min-width: 0; align-self: start; padding: 18px 20px; background: var(--studio-paper, #fff); border: 1px solid var(--box-rule, #e2e2df); border-radius: var(--box-radius, 8px); }
-.billing-issue-summary h4 { margin: 0 0 12px; font-size: 14px; font-weight: 550; color: var(--studio-ink, #202326); }
-.billing-issue-summary dl { margin: 0; }
-.billing-issue-summary dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 5px 0; font-size: 12px; line-height: 1.45; }
-.billing-issue-summary dt { color: var(--studio-muted, #6c7079); min-width: 0; overflow-wrap: anywhere; }
-.billing-issue-summary dd { margin: 0; color: var(--studio-ink, #202326); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.billing-issue-summary .is-discount dt, .billing-issue-summary .is-discount dd { color: #2f6b4f; }
-.billing-issue-summary .is-amount { margin-top: 4px; padding-top: 9px; border-top: 1px solid var(--box-rule, #e2e2df); }
-.billing-issue-summary .is-amount dt, .billing-issue-summary .is-amount dd { color: var(--studio-ink, #202326); }
-.billing-issue-summary-extras { margin-top: 10px !important; padding-top: 7px; border-top: 1px solid var(--box-rule, #e2e2df); }
-.billing-issue-summary-extras > div { display: block !important; }
-.billing-issue-summary-extras dd { margin-top: 2px; white-space: normal; }
-.billing-issue-summary-total { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--studio-ink, #202326); }
-.billing-issue-summary-total span { font-size: 13px; font-weight: 550; }
-.billing-issue-summary-total strong { font-size: 20px; font-weight: 550; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.billing-issue-summary-note, .billing-issue-summary-empty { margin: 10px 0 0; font-size: 11px; line-height: 1.55; color: var(--studio-muted, #6c7079); }
-.billing-issue-summary-empty { margin: 0; font-size: 12px; }
-.billing-issue-form .billing-form-foot { margin-top: 16px; }
-@container (min-width: 620px) {
- .billing-issue-layout { grid-template-columns: minmax(0, 1fr) minmax(220px, 34%); gap: 8px 12px; }
- .billing-issue-summary { position: sticky; top: 88px; }
-}
-@container (max-width: 460px) {
- .billing-issue-section .billing-issue-choose { grid-template-columns: 1fr; }
-}
-@container (min-width: 340px) and (max-width: 460px) {
- .billing-issue-section .billing-discount-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
- .billing-issue-section .billing-discount-row > label:nth-child(3) { grid-column: 1 / -1; }
-}
-@media (max-width: 620px) {
- .billing-issue-section, .billing-issue-summary { padding-left: 14px; padding-right: 14px; }
-}
-
-/* Client invoice: late fee terms beside the due date */
-.billing-due-terms { display: block; margin-top: 6px; font-size: 11px; line-height: 1.5; color: #6f757d; }
+.billing-issue-form .billing-extras label.billing-refund-choice { display: flex; }
+.billing-issue-form .billing-extras .billing-refund-choice input { width: auto; min-height: 0; padding: 0; flex: none; }
+.billing-issue-form .billing-extras .billing-refund-choice strong { font-size: 13px; font-weight: 560; color: #25292e; }

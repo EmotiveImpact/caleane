@@ -37,3 +37,32 @@ export function notificationAge(createdAt,now=Date.now()){
  const days=Math.floor(hours/24);if(days<7)return days===1?'Yesterday':`${days} days ago`;
  return new Date(at).toLocaleDateString('en-GB',{day:'numeric',month:'short',...(new Date(at).getFullYear()!==new Date(now).getFullYear()?{year:'numeric'}:{})});
 }
+
+// The verb on each card's own button. It names what clicking the card already does.
+export function notificationAction(item){
+ if(item.kind==='message'||item.kind==='follow_up')return 'Reply';
+ if(item.kind==='enquiry')return 'Review';
+ if(item.kind==='task_assigned')return 'Open task';
+ if(item.kind==='project_update'&&/changes requested|shared|sent|feedback|comment|proposed/i.test(item.title||''))return 'Review';
+ return 'Open';
+}
+export function attentionAction(item){
+ if(item.kind==='message')return 'Reply';
+ if(item.kind==='task'||String(item.kind).startsWith('task-'))return 'Open task';
+ return 'Review';
+}
+
+// The local calendar day of a timestamp, a Date or a plain YYYY-MM-DD date.
+function localDay(value){
+ if(typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value))return value;
+ const at=value instanceof Date?value:new Date(value||NaN);if(!Number.isFinite(at.getTime()))return '';
+ return `${at.getFullYear()}-${String(at.getMonth()+1).padStart(2,'0')}-${String(at.getDate()).padStart(2,'0')}`;
+}
+// Splits a list into Today and Earlier, keeping its order. Undated items sit under Earlier.
+// When nothing in the list carries a date it stays as one group without a heading.
+export function groupByDay(items,dateOf,now=Date.now()){
+ if(!items.some(item=>localDay(dateOf(item))))return items.length?[{key:'all',label:'',items}]:[];
+ const today=localDay(new Date(now)),groups=[{key:'today',label:'Today',items:[]},{key:'earlier',label:'Earlier',items:[]}];
+ for(const item of items)groups[localDay(dateOf(item))===today?0:1].items.push(item);
+ return groups.filter(group=>group.items.length);
+}

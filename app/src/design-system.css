@@ -30,9 +30,9 @@ body .modal :is(.button,.crm-primary,.task-primary,.ws-button--primary){min-heig
 body :is(.badge,.ws-status,.doc-status,.folio-finances-status,.crm-stage-chip,.journey-status,.studio-status){border-radius:var(--ds-radius-status)!important}
 
 /* Tabs: one underline style for every list filter */
-.folio-workspace :is(.studio-tabs,.ws-filters,.studio-billing-filters,.folio-library-filters,.settings-tabs-nav)>button{font-size:var(--ds-tab-size)!important;font-weight:520;color:var(--studio-muted);padding:12px 0 15px!important;background:none}
-.folio-workspace :is(.studio-tabs>button.active,.studio-tabs>button[aria-pressed=true],.ws-filters>button[data-state=on],.studio-billing-filters>button[aria-pressed=true],.folio-library-filters>button[aria-pressed=true],.settings-tabs-nav>button[aria-selected=true]){color:var(--studio-ink)!important;font-weight:600}
-.folio-workspace :is(.studio-billing-filters,.folio-library-filters,.settings-tabs-nav){gap:24px}
+.folio-workspace :is(.studio-tabs,.ws-filters,.studio-billing-filters,.folio-library-filters)>button{font-size:var(--ds-tab-size)!important;font-weight:520;color:var(--studio-muted);padding:12px 0 15px!important;background:none}
+.folio-workspace :is(.studio-tabs>button.active,.studio-tabs>button[aria-pressed=true],.ws-filters>button[data-state=on],.studio-billing-filters>button[aria-pressed=true],.folio-library-filters>button[aria-pressed=true]){color:var(--studio-ink)!important;font-weight:600}
+.folio-workspace :is(.studio-billing-filters,.folio-library-filters){gap:24px}
 .folio-workspace :is(.studio-billing-filters,.folio-library-filters)>button{border-bottom-width:2px}
 .folio-workspace :is(.studio-billing-filters,.folio-library-filters)>button[aria-pressed=true]{border-bottom-color:var(--studio-ink)!important}
 .folio-workspace .ws-filters>button[data-state=on]:after{background:var(--studio-ink)}
@@ -49,6 +49,6 @@ body :is(.badge,.ws-status,.doc-status,.folio-finances-status,.crm-stage-chip,.j
 .folio-workspace .studio-project-next{background:#eceeed}
 
 @media(max-width:760px){
-  .folio-workspace :is(.studio-tabs,.ws-filters,.studio-billing-filters,.folio-library-filters,.settings-tabs-nav)>button{font-size:13px!important}
+  .folio-workspace :is(.studio-tabs,.ws-filters,.studio-billing-filters,.folio-library-filters)>button{font-size:13px!important}
   :root{--ds-title-size:22px}
 }

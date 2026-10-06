@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import * as Tabs from '@radix-ui/react-tabs';
+import {ChevronLeft,ChevronRight} from 'lucide-react';
 import {WorkspaceButton,WorkspaceField,WorkspaceHeading,WorkspaceSelect} from './workspace/WorkspaceUI';
 import {AccentPicker} from './AccentPicker';
 import {CalendarSyncSettings} from './CalendarSyncSettings';
@@ -10,25 +10,41 @@ import {BrandKitSettings} from './BrandKitSettings';
 import {WebhookSettings} from './WebhookSettings';
 import {XeroSettings} from './XeroSettings';
 import {BookingIntegrations} from './BookingIntegrations';
-import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
+import {BookingSettings,InvoiceDefaultsSettings,InvoiceDesignSection,LateFeeSettings,PriceListSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
 import {StarterGallery} from './StarterGallery';
 import {CustomFieldSettings} from './CustomFields';
+import {MessageEmailSetting} from './MessageEmailSetting';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
-const sections=[['studio','Studio'],['appearance','Appearance'],['brand','Brand kit'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['fields','Custom fields'],['connections','Connections'],['integrations','Integrations'],['data','Data'],['status','Status']];
+// Settings are grouped the way a studio thinks about them. On a phone the groups
+// are the first page, and each item opens its own section.
+const groups=[
+  ['Studio',[['studio','Studio','Name, portal title and kind of work'],['appearance','Appearance','Your workspace accent colour'],['brand','Brand kit','Logos, colours and fonts'],['website','Website','Planner embed and connected sites']]],
+  ['Clients',[['bookings','Bookings','Consultation booking page'],['templates','Templates','Saved replies for messages'],['fields','Custom fields','Extra details and tags'],['reminders','Reminders','Automatic nudges and follow-ups']]],
+  ['Money',[['invoices','Invoices & payment plans','Invoice details and default plan'],['late-fees','Late fees & tips','Optional extras on invoices'],['invoice-design','Invoice design','Layout, typeface and colour'],['price-list','Price list','Services you quote most often']]],
+  ['Connections',[['connections','Connections','Calendar and Stripe'],['integrations','Integrations','Xero, webhooks and Zapier']]],
+  ['Workspace',[['data','Data','Exports, archiving and retention'],['status','Status','Service readiness checks']]],
+];
+const sections=groups.flatMap(([,items])=>items);
+// Older links used one Pricing & billing section, which is now the Money group.
+const aliases={pricing:'invoices'};
 export function settingsSection(search){
   const params=new URLSearchParams(search);
   if(params.has('calendar_callback')||['pending','connected'].includes(params.get('stripe')))return 'connections';
-  const section=params.get('settingsTab');
+  if(params.has('xero_callback'))return 'integrations';
+  const section=aliases[params.get('settingsTab')]||params.get('settingsTab');
   return sections.some(([value])=>value===section)?section:'studio';
 }
+// A link that names a section opens it directly; plain Settings opens the list on a phone.
+const namesSection=search=>{const params=new URLSearchParams(search);return ['settingsTab','calendar_callback','stripe','xero_callback'].some(key=>params.has(key));};
 const identityOf=studio=>({name:studio.name,portalTitle:studio.branding?.portalTitle||studio.name,welcome:studio.branding?.welcome||'Your project, thoughtfully brought together.',logoUrl:studio.branding?.logoUrl||'',profession:studio.branding?.profession||DEFAULT_WORKFLOW});
 // The current endpoint expects a complete settings record. Each pane overlays
 // only its own changes on the latest saved record, never another pane's draft.
 const savedSettings=studio=>({...identityOf(studio),accent:studio.accent,origins:studio.origins,projectTypes:studio.branding?.projectTypes||projectTypesFor(studio.branding?.profession||DEFAULT_WORKFLOW),intakeQuestions:studio.branding?.intakeQuestions||[]});
 
 export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
-  const [section,setSection]=useState(()=>settingsSection(location.search));
+  const [section,setSection]=useState(()=>settingsSection(location.search)),[listOpen,setListOpen]=useState(()=>!namesSection(location.search));
+  const backLink=useRef(null);
   const [identity,setIdentity]=useState(()=>identityOf(studio));
   const [origins,setOrigins]=useState(()=>studio.origins.join('\n'));
   const [saved,setSaved]=useState(''),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState('');
@@ -41,10 +57,18 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
   useEffect(()=>{if(!dirty){setLeaving(false);return;}const savedURL=location.href;const guard=event=>{event.preventDefault();event.returnValue='';},internal=event=>{event.preventDefault();history.replaceState(null,'',savedURL);setLeaving(true);};window.addEventListener('beforeunload',guard);window.addEventListener('caleane:before-navigate',internal);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('caleane:before-navigate',internal);};},[dirty]);
   function discard(){setIdentity(JSON.parse(baseline.studio));setOrigins(baseline.website);setAccentDraft(baseline.appearance);setAccentKey(key=>key+1);setLeaving(false);}
   const code=`<script src="${location.origin}/embed.js" data-studio="${studio.slug}" data-label="Plan your project" defer></script>`;
-  useEffect(()=>{const restore=()=>setSection(settingsSection(location.search));window.addEventListener('popstate',restore);return()=>window.removeEventListener('popstate',restore);},[]);
+  useEffect(()=>{const restore=()=>{setSection(settingsSection(location.search));setListOpen(!namesSection(location.search));};window.addEventListener('popstate',restore);window.addEventListener('caleane:settings-section',restore);return()=>{window.removeEventListener('popstate',restore);window.removeEventListener('caleane:settings-section',restore);};},[]);
+  const phone=()=>window.matchMedia?.('(max-width: 760px)').matches;
   function choose(next){
-    setSection(next);
+    const fromList=listOpen&&phone();
+    setSection(next);setListOpen(false);
     const url=new URL(location.href);url.searchParams.set('settingsTab',next);url.searchParams.delete('stripe');history.replaceState(null,'',url.pathname+url.search+url.hash);
+    if(fromList){window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>backLink.current?.focus({preventScroll:true}));}
+  }
+  function showList(){
+    setListOpen(true);
+    const url=new URL(location.href);url.searchParams.delete('settingsTab');url.searchParams.delete('stripe');history.replaceState(null,'',url.pathname+url.search+url.hash);
+    window.scrollTo({top:0,behavior:'instant'});
   }
   function edited(pane){revisions.current[pane]=(revisions.current[pane]||0)+1;setSaved(previous=>previous===pane?'':previous);}
   function updateIdentity(key,value){edited('studio');setIdentity(previous=>({...previous,[key]:value}));}
@@ -55,14 +79,22 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
     if(result){setBaseline(previous=>({...previous,[pane]:snapshot}));if(pane==='appearance')setAccentDraft(current=>revision===(revisions.current[pane]||0)?snapshot:current);}
     if(result&&revision===(revisions.current[pane]||0))setSaved(pane);
   }
-  const panel=(value,children)=><Tabs.Content key={value} value={value} forceMount hidden={section!==value} className="settings-tab-panel">{children}</Tabs.Content>;
+  const labelOf=Object.fromEntries(sections.map(([value,label])=>[value,label]));
+  const panel=(value,children)=><section key={value} id={`settings-section-${value}`} aria-label={labelOf[value]} hidden={section!==value} className="settings-tab-panel">{children}</section>;
   const saveAction=(pane,label)=><footer className="settings-save-row"><WorkspaceButton type="submit" disabled={busy}>{busy?'Saving…':label}</WorkspaceButton>{saved===pane&&<span role="status">Saved.</span>}</footer>;
 
-  return <div className="folio-settings-page settings-tabbed">
+  return <div className={'folio-settings-page settings-tabbed '+(listOpen?'is-list-open':'is-section-open')}>
     <WorkspaceHeading className="page-heading" title="Workspace settings" description="Your studio identity, client experience and connected services." action={<WorkspaceButton variant="secondary" onClick={()=>navigate('members')}>Members and access</WorkspaceButton>}/>
     {leaving&&dirty&&<div className="settings-unsaved" role="alert"><p>You have unsaved changes in {unsaved.map(([,label])=>label).join(' and ')}. Save them, or discard them before leaving settings.</p><div><WorkspaceButton variant="secondary" size="small" onClick={()=>{choose(unsaved[0][0]);setLeaving(false);}}>Review changes</WorkspaceButton><WorkspaceButton variant="danger" size="small" onClick={discard}>Discard changes</WorkspaceButton></div></div>}
-    <Tabs.Root value={section} onValueChange={choose} activationMode="manual">
-      <Tabs.List className="settings-tabs-nav" aria-label="Workspace settings sections">{sections.map(([value,label])=><Tabs.Trigger key={value} value={value}>{label}</Tabs.Trigger>)}</Tabs.List>
+    <div className="settings-shell">
+    <nav className="settings-nav" aria-label="Workspace settings sections">
+      {groups.map(([group,items])=><div className="settings-nav-group" key={group}>
+        <h2 id={`settings-group-${group.toLowerCase()}`}>{group}</h2>
+        <ul aria-labelledby={`settings-group-${group.toLowerCase()}`}>{items.map(([value,label,hint])=><li key={value}><button type="button" aria-current={section===value?'page':undefined} aria-controls={`settings-section-${value}`} aria-labelledby={`settings-item-${value}`} aria-describedby={`settings-hint-${value}`} onClick={()=>choose(value)}><span className="settings-nav-text"><span id={`settings-item-${value}`}>{label}</span><small id={`settings-hint-${value}`}>{hint}</small></span><ChevronRight className="settings-nav-chevron" size={16} aria-hidden="true"/></button></li>)}</ul>
+      </div>)}
+    </nav>
+    <div className="settings-sections">
+      <button ref={backLink} type="button" className="settings-back" onClick={showList}><ChevronLeft size={16} aria-hidden="true"/>Settings</button>
 
       {panel('studio',<div className="settings-pane-layout">
         <form className="settings-pane-form" onSubmit={event=>{event.preventDefault();save('studio',{...identity,projectTypes:identity.profession===savedSettings(studio).profession?savedSettings(studio).projectTypes:projectTypesFor(identity.profession)});}}>
@@ -100,14 +132,18 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
 
       {panel('bookings',section==='bookings'&&<><BookingSettings studio={studio} request={request}/><BookingIntegrations studio={studio} request={request} navigate={choose}/></>)}
       {panel('brand',section==='brand'&&<BrandKitSettings studio={studio} request={request}/>)}
-      {panel('pricing',section==='pricing'&&<PricingSettings studio={studio} request={request}/>)}
-      {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}
+      {panel('invoices',section==='invoices'&&<InvoiceDefaultsSettings studio={studio} request={request}/>)}
+      {panel('late-fees',section==='late-fees'&&<LateFeeSettings studio={studio} request={request}/>)}
+      {panel('invoice-design',section==='invoice-design'&&<InvoiceDesignSection studio={studio} request={request}/>)}
+      {panel('price-list',section==='price-list'&&<PriceListSettings studio={studio} request={request}/>)}
+      {panel('reminders',section==='reminders'&&<><section className="settings-pane-layout settings-notification-email" aria-labelledby="settings-notification-email-title"><div className="settings-pane-form"><header className="settings-pane-heading"><h2 id="settings-notification-email-title">Your notifications</h2><p>How Caleane lets you know about new client messages. This choice is yours alone and does not change anyone else’s.</p></header><MessageEmailSetting className="settings-notification-email-box" studio={studio} request={request}/></div></section><ReminderSettings studio={studio} request={request}/></>)}
       {panel('templates',section==='templates'&&<><StarterGallery studio={studio} request={request} navigate={navigate} onAdded={()=>setTemplatesKey(key=>key+1)}/><TemplateSettings key={templatesKey} studio={studio} request={request}/></>)}
       {panel('fields',section==='fields'&&<CustomFieldSettings studio={studio} request={request}/>)}
       {panel('connections',<div className="settings-connections"><CalendarSyncSettings studio={studio} request={request}/><StripeConnectSettings studio={studio} request={request}/></div>)}
-      {panel('integrations',section==='integrations'&&<><XeroSettings studio={studio} request={request}/><WebhookSettings studio={studio} request={request}/></>)}
+      {panel('integrations',section==='integrations'&&<div className="integration-cards"><header className="settings-pane-heading"><h2>Integrations</h2><p>Send your invoices, enquiries and bookings on to the other tools your studio uses. Calendars and card payments are under Connections.</p></header><XeroSettings studio={studio} request={request}/><WebhookSettings studio={studio} request={request}/></div>)}
       {panel('data',<DataGovernanceSettings studio={studio} request={request} onChanged={reload}/>)}
       {panel('status',<><OperationsReadiness studio={studio} request={request}/>{['localhost','127.0.0.1'].includes(location.hostname)&&<a className="settings-component-link" href="/?view=components">Explore the component gallery</a>}</>)}
-    </Tabs.Root>
+    </div>
+    </div>
   </div>;
 }
