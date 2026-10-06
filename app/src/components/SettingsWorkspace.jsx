@@ -7,10 +7,15 @@ import {DataGovernanceSettings} from './DataGovernanceSettings';
 import {OperationsReadiness} from './OperationsReadiness';
 import {StripeConnectSettings} from './StripeConnectSettings';
 import {BrandKitSettings} from './BrandKitSettings';
+import {WebhookSettings} from './WebhookSettings';
+import {XeroSettings} from './XeroSettings';
+import {BookingIntegrations} from './BookingIntegrations';
 import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
+import {StarterGallery} from './StarterGallery';
+import {CustomFieldSettings} from './CustomFields';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
-const sections=[['studio','Studio'],['appearance','Appearance'],['brand','Brand kit'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['connections','Connections'],['data','Data'],['status','Status']];
+const sections=[['studio','Studio'],['appearance','Appearance'],['brand','Brand kit'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['fields','Custom fields'],['connections','Connections'],['integrations','Integrations'],['data','Data'],['status','Status']];
 export function settingsSection(search){
   const params=new URLSearchParams(search);
   if(params.has('calendar_callback')||['pending','connected'].includes(params.get('stripe')))return 'connections';
@@ -30,7 +35,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
   const revisions=useRef({});
   // Unsaved drafts are compared with what was last loaded or saved for each pane.
   const [baseline,setBaseline]=useState(()=>({studio:JSON.stringify(identityOf(studio)),website:studio.origins.join('\n'),appearance:studio.accent}));
-  const [accentDraft,setAccentDraft]=useState(studio.accent),[accentKey,setAccentKey]=useState(0),[leaving,setLeaving]=useState(false);
+  const [accentDraft,setAccentDraft]=useState(studio.accent),[accentKey,setAccentKey]=useState(0),[leaving,setLeaving]=useState(false),[templatesKey,setTemplatesKey]=useState(0);
   const unsaved=[['studio','Studio',JSON.stringify(identity)!==baseline.studio],['website','Website',origins!==baseline.website],['appearance','Appearance',accentDraft!==baseline.appearance]].filter(([,,dirty])=>dirty);
   const dirty=unsaved.length>0;
   useEffect(()=>{if(!dirty){setLeaving(false);return;}const savedURL=location.href;const guard=event=>{event.preventDefault();event.returnValue='';},internal=event=>{event.preventDefault();history.replaceState(null,'',savedURL);setLeaving(true);};window.addEventListener('beforeunload',guard);window.addEventListener('caleane:before-navigate',internal);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('caleane:before-navigate',internal);};},[dirty]);
@@ -93,12 +98,14 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
         <aside className="settings-support settings-embed"><h3>Add the planner to your site</h3><p>Use this snippet to open the planner from your existing website.</p><pre>{code}</pre><WorkspaceButton variant="secondary" onClick={async()=>{try{await navigator.clipboard.writeText(code);setCopied(true);setCopyError('');}catch{setCopyError('Select the snippet above and copy it manually.');}}}>{copied?'Copied':'Copy embed code'}</WorkspaceButton>{copyError&&<p role="alert">{copyError}</p>}<h3>Or share a direct link</h3><a href={`/intake/${studio.slug}`} target="_blank" rel="noreferrer">{location.origin}/intake/{studio.slug}</a><details><summary>Advanced connection options</summary><p>Already have a form? Send its enquiries to:</p><code>POST /api/public/{studio.slug}/enquiries</code><a href="/embed-demo" target="_blank" rel="noreferrer">See the plugin on an example website</a></details></aside>
       </div>)}
 
-      {panel('bookings',section==='bookings'&&<BookingSettings studio={studio} request={request}/>)}
+      {panel('bookings',section==='bookings'&&<><BookingSettings studio={studio} request={request}/><BookingIntegrations studio={studio} request={request} navigate={choose}/></>)}
       {panel('brand',section==='brand'&&<BrandKitSettings studio={studio} request={request}/>)}
       {panel('pricing',section==='pricing'&&<PricingSettings studio={studio} request={request}/>)}
       {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}
-      {panel('templates',section==='templates'&&<TemplateSettings studio={studio} request={request}/>)}
+      {panel('templates',section==='templates'&&<><StarterGallery studio={studio} request={request} navigate={navigate} onAdded={()=>setTemplatesKey(key=>key+1)}/><TemplateSettings key={templatesKey} studio={studio} request={request}/></>)}
+      {panel('fields',section==='fields'&&<CustomFieldSettings studio={studio} request={request}/>)}
       {panel('connections',<div className="settings-connections"><CalendarSyncSettings studio={studio} request={request}/><StripeConnectSettings studio={studio} request={request}/></div>)}
+      {panel('integrations',section==='integrations'&&<><XeroSettings studio={studio} request={request}/><WebhookSettings studio={studio} request={request}/></>)}
       {panel('data',<DataGovernanceSettings studio={studio} request={request} onChanged={reload}/>)}
       {panel('status',<><OperationsReadiness studio={studio} request={request}/>{['localhost','127.0.0.1'].includes(location.hostname)&&<a className="settings-component-link" href="/?view=components">Explore the component gallery</a>}</>)}
     </Tabs.Root>

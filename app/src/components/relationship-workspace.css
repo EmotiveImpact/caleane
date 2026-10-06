@@ -42,3 +42,26 @@
 .ws-panel-project{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}.ws-panel-links{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
 .ws-dialog .ws-conversation-panel{padding:4px 0}
 @media(max-width:760px){.ws-inbox .relationship-conversation-head h2 .ws-triage{display:table;margin:6px 0 0}.ws-inbox .project-talk-timeline{height:calc(100vh - 380px);min-height:300px}}
+/* Phones: an open conversation fills the screen below the top bar, like a messaging app.
+   The header shrinks to one line with a back arrow, the timeline takes the rest and the composer sits at the bottom. */
+@media(max-width:760px){
+ .ws-inbox.conversation-open .relationship-conversation{position:fixed;top:var(--folio-topbar-height,72px);left:0;right:0;bottom:0;z-index:15;display:flex;flex-direction:column;padding:10px 12px 0;background:var(--studio-paper,#fff);overflow:hidden}
+ .ws-inbox.conversation-open .relationship-conversation-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:4px 8px;margin:0 0 6px;padding:0 0 8px;flex:none}
+ .ws-inbox.conversation-open .relationship-conversation-head .relationship-back{display:inline-flex;margin:0;width:36px;padding:8px}
+ .ws-inbox.conversation-open .relationship-conversation-head h2{font-size:17px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .ws-inbox.conversation-open .relationship-conversation-head h2 .ws-triage{display:none}
+ .ws-inbox.conversation-open .ws-conversation-members{margin-top:2px;font-size:11px}.ws-inbox.conversation-open .ws-conversation-members .ws-avatar-stack{display:none}
+ .ws-inbox.conversation-open .ws-conversation-actions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px}
+ .ws-inbox.conversation-open .ws-status-switch button{padding:6px 12px;font-size:12px}
+ .ws-inbox.conversation-open .relationship-conversation>.project-chat{flex:1;min-height:0;display:flex;flex-direction:column;border-radius:0;margin:0 -12px;background:var(--studio-surface,#f7f7f6)}
+ .ws-inbox.conversation-open .project-chat .project-project-talk-head{display:none}
+ .ws-inbox.conversation-open .project-chat .project-talk-search{margin:10px 12px 8px;padding:5px 10px}
+ .ws-inbox.conversation-open .project-chat .project-talk-pins{margin:0 12px 6px}
+ .ws-inbox.conversation-open .project-chat .project-talk-body{flex:1;min-height:0;display:flex}
+ .ws-inbox.conversation-open .project-chat .project-talk-main{flex:1;min-height:0;display:flex;flex-direction:column}
+ .ws-inbox.conversation-open .project-chat .project-talk-timeline{flex:1;height:auto;min-height:0}
+ .ws-inbox.conversation-open .project-chat .project-talk-composer{margin:0;border-radius:0;padding:8px 12px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--studio-rule,#e2e2df)}
+ .ws-inbox.conversation-open .project-chat .project-talk-composer textarea{field-sizing:content;min-height:40px;max-height:140px;font-size:16px;resize:none}
+ .ws-inbox.conversation-open>.ws-heading{display:none}
+ .ws-inbox.conversation-open .project-chat .project-talk-composer footer{margin-top:4px}
+}

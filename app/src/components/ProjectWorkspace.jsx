@@ -5,6 +5,9 @@ import {approvedDirection,projectCover} from '../lib/studio-view';
 import React,{useState,useRef} from 'react';
 import {CalendarDays,Check,FileText,MessageSquare,Plus} from 'lucide-react';
 import {workflowFor} from '../lib/workflows';
+import {QuietHelper} from './QuietHelper';
+import {StudioDetails,useFieldDefinitions} from './CustomFields';
+import {collectTags} from '../lib/custom-fields';
 import '../folio-journey.css';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as RadioGroup from '@radix-ui/react-radio-group';
@@ -41,13 +44,20 @@ export function ProjectContext({p,studio,onNavigate,variant='overview'}){
  </aside>;
 }
 
-export function ProjectOverview({p,studio,owner,onNavigate,request}){
+export function ProjectOverview({p,studio,owner,onNavigate,request,mutate,busy,projects=[],manageFields}){
+ return <ProjectOverviewBody p={p} studio={studio} owner={owner} onNavigate={onNavigate} request={request} details={owner&&mutate?<ProjectStudioDetails p={p} studio={studio} request={request} mutate={mutate} busy={busy} projects={projects} manageFields={manageFields}/>:null}/>;
+}
+function ProjectStudioDetails({p,studio,request,mutate,busy,projects,manageFields}){
+ const definitions=useFieldDefinitions(studio,request);
+ return <StudioDetails kind="project" record={p} definitions={definitions} tagSuggestions={collectTags(projects)} busy={busy} onManage={manageFields} onSave={async body=>!!(await mutate('fields',body))}/>;
+}
+function ProjectOverviewBody({p,studio,owner,onNavigate,request,details}){
  const workflow=workflowFor(studio,p),next=nextStep(p,owner,workflow),approved=approvedDirection(p),tasks=p.tasks||[];
  return <div className="journey-layout"><div className="journey-main"><ProjectImage p={p} studio={studio} className="studio-project-hero"/><dl className="studio-project-facts"><div><dt>Client</dt><dd>{p.brief.name}</dd></div><div><dt>{workflow.date}</dt><dd>{p.brief.date?date(p.brief.date):'To be decided'}</dd></div><div><dt>{workflow.place}</dt><dd>{p.brief.venue||'To be decided'}</dd></div></dl><section className="studio-project-intent"><h2>The project intent</h2><p>{p.brief.vision||'Add the starting idea to the shared brief.'}</p><button className="text-button" onClick={()=>onNavigate('Brief')}>Open shared brief</button></section>
  <ProjectPhases p={p} studio={studio} owner={owner} request={request} onNavigate={onNavigate}/>
  {approved&&<section className="studio-approved-summary"><Check size={19}/><div><strong>Approved direction · Version {approved.version}</strong><p>{approved.title} · {approved.decidedBy} · {date(approved.decidedAt)}</p></div><button className="text-button" onClick={()=>{const q=new URLSearchParams(location.search);q.set('design',approved.id);history.replaceState(null,'','/?'+q);onNavigate('Designs');}}>View approval</button></section>}
  <RecentDecisions projects={[p]} studio={studio} openProject={(_,tab,invoice,design)=>{if(design){const q=new URLSearchParams(location.search);q.set('design',design);history.replaceState(null,'','/?'+q);}onNavigate(tab);}}/>
- <section className="journey-preview"><div className="studio-section-heading"><h2>The shared plan</h2><button className="text-button" onClick={()=>onNavigate('Plan')}>Open plan</button></div>{tasks.slice(0,4).map((task,i)=><div className="journey-preview-row" key={task.id}><span className="journey-number">{task.completed?<Check size={16}/>:String(i+1).padStart(2,'0')}</span><div><strong>{task.title}</strong><small>{task.due?date(task.due):task.assignee==='client'?'With the client':'With the studio'}</small></div><span className="journey-status">{task.completed?'Complete':'To do'}</span></div>)}{!tasks.length&&<p className="studio-empty-note">The next steps will appear here as the plan takes shape.</p>}</section></div><div><section className="studio-project-next"><small>{next.eyebrow}</small><h2>{next.title}</h2><p>{next.detail}</p><button className="button" onClick={()=>onNavigate(next.tab)}>{next.cta}</button></section><ProjectContext p={p} studio={studio} onNavigate={onNavigate}/></div></div>;
+ <section className="journey-preview"><div className="studio-section-heading"><h2>The shared plan</h2><button className="text-button" onClick={()=>onNavigate('Plan')}>Open plan</button></div>{tasks.slice(0,4).map((task,i)=><div className="journey-preview-row" key={task.id}><span className="journey-number">{task.completed?<Check size={16}/>:String(i+1).padStart(2,'0')}</span><div><strong>{task.title}</strong><small>{task.due?date(task.due):task.assignee==='client'?'With the client':'With the studio'}</small></div><span className="journey-status">{task.completed?'Complete':'To do'}</span></div>)}{!tasks.length&&<p className="studio-empty-note">The next steps will appear here as the plan takes shape.</p>}</section></div><div>{owner&&request&&<QuietHelper studio={studio} request={request} kind="recap" target={{projectId:p.id}}/>}{details}<section className="studio-project-next"><small>{next.eyebrow}</small><h2>{next.title}</h2><p>{next.detail}</p><button className="button" onClick={()=>onNavigate(next.tab)}>{next.cta}</button></section><ProjectContext p={p} studio={studio} onNavigate={onNavigate}/></div></div>;
 }
 
 function ChoiceForm({p,decision,mutate,busy,promoted=false,owner,onRevise}){

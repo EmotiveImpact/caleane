@@ -3,6 +3,7 @@ import {ArrowDown,ArrowUp,Copy,Plus,Trash2} from 'lucide-react';
 import {WorkspaceButton,WorkspaceField,WorkspaceSelect,WorkspaceStatus,WorkspaceSwitch} from './workspace/WorkspaceUI';
 import {InvoicePreview,printInvoice} from './InvoiceDocument';
 import {invoiceFonts,invoiceLayouts,invoicePageHtml,sampleInvoice} from '../lib/invoice-design';
+import {lateFeeTerms} from '../lib/invoice-charges';
 import '../studio-commerce.css';
 
 const money=(minor,currency='GBP')=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}catch{return `${((Number(minor)||0)/100).toFixed(2)} ${currency}`;}};
@@ -65,6 +66,24 @@ function PriceList({studio,request}){
  </section>;
 }
 
+// Both are off until the studio turns them on. A late fee is only ever added to
+// invoices that showed the terms when they were issued, and nothing is sent.
+function LateFeeAndTips({form,set}){
+ const fee=form.lateFee,update=patch=>set({lateFee:{...fee,...patch}});
+ return <>
+  <header className="settings-pane-heading commerce-subheading"><h2>Late fees and tips</h2><p>Optional extras on your invoices. Each one is shown to the client on the invoice itself.</p></header>
+  <WorkspaceSwitch label="Add a late fee to overdue invoices" description="Applies once, after the grace period, to invoices issued while this is on. Caleane adds it to the invoice and notes it on the project. It does not message, email or charge the client." checked={fee.enabled} onCheckedChange={enabled=>update({enabled})}/>
+  {fee.enabled&&<div className="settings-fields commerce-late-fee">
+   <WorkspaceField label="Fee"><WorkspaceSelect label="Fee" value={fee.type} onValueChange={type=>update({type})} options={[{value:'fixed',label:'Fixed amount'},{value:'percent',label:'Percentage of the unpaid balance'}]}/></WorkspaceField>
+   {fee.type==='fixed'?<WorkspaceField label="Amount" type="number" min="0.01" max="1000" step="0.01" value={(fee.amountMinor/100).toFixed(2)} onChange={e=>update({amountMinor:Math.round(Number(e.target.value)*100)})}/>
+   :<WorkspaceField label="Percentage" type="number" min="0.1" max="25" step="0.1" value={fee.percent} onChange={e=>update({percent:Number(e.target.value)})}/>}
+   <WorkspaceField label="Days after the due date" type="number" min="1" max="90" value={fee.afterDays} onChange={e=>update({afterDays:Number(e.target.value)})}/>
+   <p className="commerce-muted commerce-late-fee-preview">Clients will read: “{lateFeeTerms(fee,'GBP')}”</p>
+  </div>}
+  <WorkspaceSwitch label="Let clients add a tip to final invoices" description="Adds an optional tip choice to balance and full invoices. Deposits never ask for a tip. Tips carry no tax." checked={form.tips.enabled} onCheckedChange={enabled=>set({tips:{enabled}})}/>
+ </>;
+}
+
 export function PricingSettings({studio,request}){
  const {data,error,busy,send}=useStudioData(`/api/billing-defaults?studio=${studio.id}`,request);
  const [form,setForm]=useState(null),[saved,setSaved]=useState(false);
@@ -84,6 +103,7 @@ export function PricingSettings({studio,request}){
     </div>
     <header className="settings-pane-heading commerce-subheading"><h2>Default payment plan</h2><p>How you usually split a project into payments. Each project starts from this plan, and you can adjust it there.</p></header>
     <PlanTemplateEditor plan={form.plan} onChange={plan=>set({plan})}/>
+    <LateFeeAndTips form={form} set={set}/>
     {error&&<p className="commerce-error" role="alert">{error}</p>}
     <footer className="settings-save-row"><WorkspaceButton type="submit" disabled={busy}>{busy?'Saving…':'Save billing settings'}</WorkspaceButton>{saved&&<span role="status">Saved.</span>}</footer>
    </form>
@@ -145,6 +165,11 @@ export function ReminderSettings({studio,request}){
     {number('approvalAfterDays','Design waiting for review',0,60,'Days after sharing. Use 0 to switch off')}
    </div>
    <WorkspaceSwitch label="Remind me when a planned payment is due to be invoiced" description="Adds a private follow-up for you. Nothing is sent to the client." checked={form.planStepTasks} onCheckedChange={planStepTasks=>set({planStepTasks})}/>
+   <div className="commerce-follow-ups"><h3>Follow-ups for you</h3><p>Private nudges in your notifications when a conversation goes quiet. Clients never see these, and they run even when client reminders are off.</p></div>
+   <div className="settings-fields commerce-reminder-fields">
+    {number('quietClientDays','Client has not replied',0,30,'Days after your last message. Use 0 to switch off')}
+    {number('unansweredDays','Client is waiting for you',0,30,'Days after their message. Use 0 to switch off')}
+   </div>
    {error&&<p className="commerce-error" role="alert">{error}</p>}
    <footer className="settings-save-row"><WorkspaceButton type="submit" disabled={busy}>{busy?'Saving…':'Save reminders'}</WorkspaceButton>{saved&&<span role="status">Saved.</span>}{data.settings.enabled&&<WorkspaceButton variant="secondary" disabled={busy} onClick={async()=>{const result=await send({action:'run'});if(result)setRan(result.sent.length);}}>Send due reminders now</WorkspaceButton>}{ran!==null&&<span role="status">{ran?`${ran} reminder${ran===1?'':'s'} sent.`:'Nothing was due.'}</span>}</footer>
   </form>
@@ -210,6 +235,13 @@ export function BookingSettings({studio,request}){
     <WorkspaceField label="How you meet"><WorkspaceSelect label="How you meet" value={form.location.type} onValueChange={type=>set({location:{...form.location,type}})} options={[{value:'video',label:'Video call'},{value:'phone',label:'Phone call'},{value:'in_person',label:'In person'}]}/></WorkspaceField>
     <WorkspaceField className="settings-field-wide" label={form.location.type==='video'?'Video link (shown after booking)':form.location.type==='phone'?'Who calls whom (shown after booking)':'Address (shown after booking)'} value={form.location.detail} maxLength={300} onChange={e=>set({location:{...form.location,detail:e.target.value}})}/>
    </div>
+   <h3 className="commerce-small-heading">Payment when booking</h3>
+   <WorkspaceSwitch label="Ask for payment when clients book" description={data.paymentsAvailable?'Clients pay by card on Stripe before the time is confirmed. Unpaid times are released after about half an hour.':'Connect Stripe in Settings, Connections to take a fee or deposit at booking.'} checked={form.payment.required} disabled={!data.paymentsAvailable&&!form.payment.required} onCheckedChange={required=>set({payment:{...form.payment,required}})}/>
+   {(form.payment.required||data.paymentsAvailable)&&<div className="settings-fields commerce-payment-fields">
+    <WorkspaceField label="What the payment is called" value={form.payment.label} maxLength={60} required onChange={e=>set({payment:{...form.payment,label:e.target.value}})} placeholder="Booking fee or deposit"/>
+    <WorkspaceField label={`Amount (${form.payment.currency})`} type="number" min="1" max="10000" step="0.01" value={(form.payment.amountMinor/100).toFixed(2)} onChange={e=>set({payment:{...form.payment,amountMinor:Math.round(Number(e.target.value)*100)}})}/>
+    <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={form.payment.currency} onValueChange={currency=>set({payment:{...form.payment,currency}})} options={['GBP','EUR','USD']}/></WorkspaceField>
+   </div>}
    <h3 className="commerce-small-heading">Weekly hours</h3>
    <div className="commerce-week">{weekdays.map(([day,label])=>{const windows=form.weekly[day]||[];return <div key={day} className="commerce-week-row"><span>{label}</span>{windows.length?<div className="commerce-week-windows">{windows.map((window,index)=><div key={index}><input aria-label={`${label} start`} type="time" value={window.start} onChange={e=>setDay(day,windows.map((w,i)=>i===index?{...w,start:e.target.value}:w))}/><span>to</span><input aria-label={`${label} end`} type="time" value={window.end} onChange={e=>setDay(day,windows.map((w,i)=>i===index?{...w,end:e.target.value}:w))}/><WorkspaceButton variant="ghost" iconOnly aria-label={`Remove ${label} hours`} onClick={()=>setDay(day,windows.filter((_,i)=>i!==index))}><Trash2 size={15}/></WorkspaceButton></div>)}{windows.length<3&&<WorkspaceButton variant="ghost" size="small" onClick={()=>setDay(day,[...windows,{start:'14:00',end:'17:00'}])}>Add hours</WorkspaceButton>}</div>:<div className="commerce-week-windows"><small>Unavailable</small><WorkspaceButton variant="ghost" size="small" onClick={()=>setDay(day,[{start:'10:00',end:'17:00'}])}>Add hours</WorkspaceButton></div>}</div>;})}</div>
    {error&&<p className="commerce-error" role="alert">{error}</p>}
@@ -219,9 +251,9 @@ export function BookingSettings({studio,request}){
    <h3>Your booking page</h3>
    {data.settings.enabled?<><a className="commerce-link" href={data.bookingUrl} target="_blank" rel="noreferrer">{data.bookingUrl}</a><WorkspaceButton variant="secondary" size="small" onClick={async()=>{try{await navigator.clipboard.writeText(data.bookingUrl);setCopied(true);}catch{setCopied(false);}}}><Copy size={14}/>{copied?'Copied':'Copy link'}</WorkspaceButton><p>Add it to your website, email signature or the “Enquiry received” template.</p></>:<p>Switch on online bookings and save to get your link.</p>}
    <h3>Upcoming</h3>
-   {upcoming.length?<ul className="commerce-bookings">{upcoming.map(item=><li key={item.id}><div><strong>{item.name}</strong><small>{timeLabel(item.start,item.timezone)} · {item.email}{item.phone?` · ${item.phone}`:''}</small>{item.notes&&<p>{item.notes}</p>}</div>{closing===item.id?<div className="commerce-row-actions"><WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={async()=>{await send({action:'complete',id:item.id});setClosing(null);}}>Mark as held</WorkspaceButton><WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={async()=>{await send({action:'no_show',id:item.id});setClosing(null);}}>No-show</WorkspaceButton><WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={async()=>{await send({action:'cancel',id:item.id});setClosing(null);}}>Cancel booking</WorkspaceButton></div>:<WorkspaceButton variant="ghost" size="small" onClick={()=>setClosing(item.id)}>Update</WorkspaceButton>}</li>)}</ul>:<p>No upcoming consultations.</p>}
-   {upcoming.length>0&&<p>Cancelling frees the time but does not contact the client. Let them know with a message.</p>}
-   {past.length>0&&<><h3>Earlier</h3><ul className="commerce-bookings">{past.map(item=><li key={item.id}><div><strong>{item.name}</strong><small>{timeLabel(item.start,item.timezone)}</small></div><WorkspaceStatus value={item.status==='Booked'?'Held':item.status}/></li>)}</ul></>}
+   {upcoming.length?<ul className="commerce-bookings">{upcoming.map(item=><li key={item.id}><div><strong>{item.name}</strong><small>{timeLabel(item.start,item.timezone)} · {item.email}{item.phone?` · ${item.phone}`:''}</small>{item.payment?.status==='paid'&&<small>{item.payment.label} paid · {money(item.payment.amountMinor,item.payment.currency)}</small>}{item.notes&&<p>{item.notes}</p>}</div>{closing===item.id?<div className="commerce-row-actions"><WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={async()=>{await send({action:'complete',id:item.id});setClosing(null);}}>Mark as held</WorkspaceButton><WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={async()=>{await send({action:'no_show',id:item.id});setClosing(null);}}>No-show</WorkspaceButton><WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={async()=>{await send({action:'cancel',id:item.id});setClosing(null);}}>Cancel booking</WorkspaceButton></div>:<WorkspaceButton variant="ghost" size="small" onClick={()=>setClosing(item.id)}>Update</WorkspaceButton>}</li>)}</ul>:<p>No upcoming consultations.</p>}
+   {upcoming.length>0&&<p>Cancelling frees the time but does not contact the client. Let them know with a message, and refund any booking payment from your Stripe dashboard.</p>}
+   {past.length>0&&<><h3>Earlier</h3><ul className="commerce-bookings">{past.map(item=><li key={item.id}><div><strong>{item.name}</strong><small>{timeLabel(item.start,item.timezone)}</small></div><WorkspaceStatus value={item.status==='Booked'?'Held':item.status}/>{item.payment?.review&&<small className="commerce-review">{item.payment.review}</small>}</li>)}</ul></>}
   </aside>
  </div>;
 }

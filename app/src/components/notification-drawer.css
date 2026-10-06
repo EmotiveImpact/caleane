@@ -25,3 +25,4 @@
 @media(hover:none){.notification-drawer-unread{opacity:1}}
 .notification-drawer-tabs>[role=tablist]{margin-bottom:16px}
 .notification-drawer-note{margin:14px 0 0;font-size:11px;color:var(--studio-muted,#80858d)}
+.notification-drawer-email{margin-top:22px;padding-top:16px;border-top:1px solid var(--studio-rule,#e2e2df)}.notification-drawer-email .ws-switch-row small{font-size:11px;line-height:1.5}

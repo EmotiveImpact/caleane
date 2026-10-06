@@ -1,0 +1,14 @@
+/* Calendar and video for bookings, boxed like the rest of the contained look. */
+.booking-integrations{display:grid;gap:14px;margin-top:28px;max-width:760px}
+.booking-integrations-card{box-sizing:border-box;display:grid;gap:16px;padding:20px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule,var(--studio-rule,#e2e2df));border-radius:var(--box-radius,8px);min-width:0}
+.booking-integrations-card header h3{margin:0 0 4px;font-size:16px}
+.booking-integrations-card header p{margin:0;font-size:13px;line-height:1.6;color:var(--studio-muted)}
+.booking-integrations-card .settings-save-row{margin:0}
+.booking-integrations-note{margin:0;padding:10px 12px;border-radius:6px;background:var(--studio-surface,#f7f7f6);font-size:13px}
+.booking-integrations-note .text-button{font-size:13px;text-decoration:underline}
+.booking-integrations-small{margin:0;font-size:12px;line-height:1.6;color:var(--studio-muted)}
+.booking-integrations-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.booking-integrations-list li{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--box-rule,var(--studio-rule,#e2e2df));border-radius:6px}
+.booking-integrations-list li>div{display:grid;gap:2px;min-width:0;font-size:13px}
+.booking-integrations-list small{color:var(--studio-muted);font-size:12px;overflow-wrap:anywhere}
+@media(max-width:600px){.booking-integrations-card{padding:16px}.booking-integrations-list li{flex-wrap:wrap}}

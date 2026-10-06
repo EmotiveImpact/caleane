@@ -38,6 +38,7 @@ export function eraseClient(db,{studioId,clientId,confirmName}){
    if(cols.includes('contact_id')&&contactIds.length)drop(table,`contact_id IN (${list(contactIds)})`+scope,scoped(contactIds));
    if(cols.includes('task_key')&&taskKeys.length)drop(table,`task_key IN (${list(taskKeys)})`+scope,scoped(taskKeys));
    if(table==='calendar_mappings')for(const projectId of projectIds)drop(table,"studio_id=? AND (item_key LIKE ? OR data LIKE ?)",[studioId,`%${projectId}%`,`%${projectId}%`]);
+   if(table==='webhook_events')for(const term of [client.id,client.email,...projectIds])drop(table,'studio_id=? AND payload LIKE ?',[studioId,`%"${term}"%`]);
    if(table==='consultations')drop(table,'studio_id=? AND data LIKE ?',[studioId,`%"${client.email}"%`]);
   }
   if(conversationIds.length)drop('conversations',`id IN (${list(conversationIds)})`,conversationIds);

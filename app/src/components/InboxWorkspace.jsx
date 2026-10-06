@@ -1,6 +1,6 @@
 import {messagePreview,messageSearchText} from '../lib/message-preview';
 import React,{useEffect,useState} from 'react';
-import {Plus,MessageSquare,PanelRight} from 'lucide-react';
+import {Plus,MessageSquare,PanelRight,ArrowLeft} from 'lucide-react';
 import {ProjectChat} from './ProjectChat';
 import {ConversationPanel} from './ConversationPanel';
 import {ProjectImage} from './StudioViews';
@@ -13,9 +13,10 @@ const FILTERS={'Needs reply':t=>t.needsReply,Unread:t=>t.unreadMessages>0,Mentio
 // One label per conversation, in order of what most needs attention.
 export function triageLabel(t){if(t.status==='Resolved')return ['done','Resolved'];if(t.needsReply)return ['reply','Needs your reply'];if(t.mentionsMe>0)return ['mention','Mentioned you'];if(t.waitingSince||t.status==='Waiting'){const n=t.waitingSince?days(t.waitingSince):0;return ['wait','Waiting on client'+(n?` · ${n} ${n===1?'day':'days'}`:'')];}return null;}
 
-export function InboxWorkspace({studio,user,clients,conversations,projects,thread,loading,error,busy,request,openProject,onChoose,onNew,onAdd,onStatus,onConversation,onMarkedUnread,fileHref}){
+export function InboxWorkspace({openId=null,studio,user,clients,conversations,projects,thread,loading,error,busy,request,openProject,onChoose,onNew,onAdd,onStatus,onConversation,onMarkedUnread,fileHref}){
  const [query,setQuery]=useState(''),[filter,setFilter]=useState('All'),[mobileOpen,setMobileOpen]=useState(false),[context,setContext]=useState(false),[wide,setWide]=useState(()=>matchMedia(WIDE).matches),[narrow,setNarrow]=useState(()=>matchMedia(NARROW).matches);
  useEffect(()=>{const wideMedia=matchMedia(WIDE),narrowMedia=matchMedia(NARROW),update=()=>{setWide(wideMedia.matches);setNarrow(narrowMedia.matches);};wideMedia.addEventListener('change',update);narrowMedia.addEventListener('change',update);return()=>{wideMedia.removeEventListener('change',update);narrowMedia.removeEventListener('change',update);};},[]);
+ useEffect(()=>{if(openId)setMobileOpen(true);},[openId]);
  const project=projects.find(p=>p.id===thread?.projectId),label=thread&&triageLabel(thread);
  const count=name=>conversations.filter(FILTERS[name]).length,resolved=count('Resolved');
  const visible=conversations.filter(t=>FILTERS[filter](t)&&[t.subject,clients.find(c=>c.id===t.clientId)?.name,...(t.messages||[]).map(messageSearchText)].join(' ').toLowerCase().includes(query.toLowerCase())).sort((a,b)=>(b.messages?.at(-1)?.at||b.updatedAt).localeCompare(a.messages?.at(-1)?.at||a.updatedAt));
@@ -39,10 +40,10 @@ export function InboxWorkspace({studio,user,clients,conversations,projects,threa
     {resolved>0&&<p className="ws-inbox-resolved">{filter==='Resolved'?<button type="button" onClick={()=>setFilter('All')}>Back to open conversations</button>:<>{resolved} resolved {resolved===1?'conversation':'conversations'} hidden · <button type="button" onClick={()=>setFilter('Resolved')}>Show</button></>}</p>}
    </aside>
    <div className="relationship-conversation">
-    <WorkspaceButton className="relationship-back" variant="ghost" size="small" onClick={()=>setMobileOpen(false)}>All conversations</WorkspaceButton>
     {thread?<>
      <header className="relationship-conversation-head">
-      <div><h2>{project?.title||thread.subject}{label&&<em className={'ws-triage ws-triage--'+label[0]}>{label[1]}</em>}</h2><div className="ws-conversation-members"><div className="ws-avatar-stack">{(thread.participants||[]).slice(0,3).map(person=><WorkspaceAvatar key={person.id} name={person.name} size="small"/>)}</div><span>{thread.participants?.map(p=>p.name.split(' ')[0]).join(', ')}{project?' · Project conversation':''}</span></div></div>
+      {narrow&&<WorkspaceButton className="relationship-back" variant="ghost" iconOnly aria-label="All conversations" onClick={()=>setMobileOpen(false)}><ArrowLeft size={18}/></WorkspaceButton>}
+      <div className="ws-conversation-title"><h2>{project?.title||thread.subject}{label&&<em className={'ws-triage ws-triage--'+label[0]}>{label[1]}</em>}</h2><div className="ws-conversation-members"><div className="ws-avatar-stack">{(thread.participants||[]).slice(0,3).map(person=><WorkspaceAvatar key={person.id} name={person.name} size="small"/>)}</div><span>{thread.participants?.map(p=>p.name.split(' ')[0]).join(', ')}{project?' · Project conversation':''}</span></div></div>
       <div className="ws-conversation-actions"><div className="ws-status-switch" role="radiogroup" aria-label="Conversation status">{['Open','Waiting','Resolved'].map(s=><button type="button" role="radio" key={s} aria-checked={thread.status===s} disabled={busy} onClick={()=>thread.status!==s&&onStatus(s)}>{s}</button>)}</div>{!wide&&<WorkspaceButton variant="ghost" iconOnly tooltip="Open asks, files and people" onClick={()=>setContext(true)} aria-label="View conversation details"><PanelRight size={18}/></WorkspaceButton>}</div>
      </header>
      {/* On phones the conversation stays closed until chosen, so nothing is marked read unseen. */}

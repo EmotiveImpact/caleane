@@ -80,7 +80,8 @@ const RULES=[
  ['confirmOnDeposit','When the deposit is paid','confirm the held date and mark the enquiry confirmed',''],
  ['followUps','When a proposal has no reply','post a follow-up on the days you choose','Stops the moment they reply, accept or the proposal closes.'],
  ['prepBeforeConsultation','When a client books a consultation','add a task to prepare the day before','Off until you switch it on.'],
- ['closeSilent','When a proposal has had no reply for a long time','mark the enquiry not proceeding with the reason “No response”','Off until you switch it on. Choose how many days below.']
+ ['closeSilent','When a proposal has had no reply for a long time','mark the enquiry not proceeding with the reason “No response”','Off until you switch it on. Choose how many days below.'],
+ ['nudgeOpened','When a client opens a proposal or contract but does not answer','add a task to check in with them personally','Off until you switch it on. Nothing is sent to the client.']
 ];
 export function AutomationsView({settings,onSave,busy}){
  const [draft,setDraft]=useState(settings),[saved,setSaved]=useState('');
@@ -96,7 +97,7 @@ export function AutomationsView({settings,onSave,busy}){
    <label className="pl-field">Events you can take on one day<input type="number" min="1" max="20" step="1" value={draft.dailyCapacity} onChange={e=>set({dailyCapacity:Number(e.target.value)})}/></label>
    <div className="pl-pair"><label className="pl-field">Minimum spend<input type="number" min="0" step="1" value={draft.minimumSpend} onChange={e=>set({minimumSpend:Number(e.target.value)})}/></label><label className="pl-field">Currency<select value={draft.minimumCurrency} onChange={e=>set({minimumCurrency:e.target.value})}>{['GBP','EUR','USD'].map(c=><option key={c}>{c}</option>)}</select></label></div>
    <label className="pl-field">Areas you cover<input maxLength="500" value={draft.serviceAreas} onChange={e=>set({serviceAreas:e.target.value})} placeholder="London, Surrey, Kent"/></label><small>Separate places with commas. An enquiry is flagged when its venue mentions none of them. Leave empty to skip this check.</small>
-   {draft.closeSilent&&<label className="pl-field">Close an enquiry with no reply after (days)<input type="number" min="7" max="120" step="1" value={draft.closeSilentDays} onChange={e=>set({closeSilentDays:Number(e.target.value)})}/></label>}<label className="pl-field">Flag a proposal with no reply after (days)<input type="number" min="1" max="60" step="1" value={draft.silentDays} onChange={e=>set({silentDays:Number(e.target.value)})}/></label></section>
+   {draft.closeSilent&&<label className="pl-field">Close an enquiry with no reply after (days)<input type="number" min="7" max="120" step="1" value={draft.closeSilentDays} onChange={e=>set({closeSilentDays:Number(e.target.value)})}/></label>}{draft.nudgeOpened&&<label className="pl-field">Add the check-in task this many days after they open it<input type="number" min="1" max="30" step="1" value={draft.nudgeOpenedDays} onChange={e=>set({nudgeOpenedDays:Number(e.target.value)})}/></label>}<label className="pl-field">Flag a proposal with no reply after (days)<input type="number" min="1" max="60" step="1" value={draft.silentDays} onChange={e=>set({silentDays:Number(e.target.value)})}/></label></section>
   <div className="pl-acts"><button className="pl-btn" disabled={busy}>Save automations</button>{saved&&<span role="status">{saved}</span>}</div>
  </form>;
 }

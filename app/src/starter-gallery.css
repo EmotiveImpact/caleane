@@ -1,0 +1,39 @@
+/* Starter gallery: one bordered box per kind of starter, on the soft settings backing. */
+.starter-gallery { max-width: 1100px; margin-bottom: 56px; padding-bottom: 48px; border-bottom: 1px solid var(--studio-rule, #e2e2df); }
+.starter-kinds { margin: 0 0 12px; padding: 0; border: 0; }
+.starter-summary { margin: 0; font-size: 13px; color: var(--studio-muted, #6b6b6b); }
+.starter-notice { min-height: 20px; margin: 8px 0; font-size: 13px; color: var(--studio-ink, #202326); }
+.starter-notice:empty { min-height: 0; margin: 4px 0; }
+.starter-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.starter-card { box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 20px; background: var(--studio-paper, #fff); border: 1px solid var(--box-rule, var(--studio-rule, #e2e2df)); border-radius: var(--box-radius, 8px); }
+.starter-card > header { display: flex; gap: 12px; align-items: flex-start; }
+.starter-card > header > svg { flex: none; margin-top: 2px; color: var(--studio-muted, #6b6b6b); }
+.starter-card h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.starter-card header small { display: block; margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--studio-muted, #6b6b6b); }
+.starter-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.starter-card ul:not(.starter-questions) > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; border: 1px solid var(--box-rule, var(--studio-rule, #e2e2df)); border-radius: 6px; }
+.starter-card details > summary { cursor: pointer; list-style: none; }
+.starter-card details > summary::-webkit-details-marker { display: none; }
+.starter-card summary strong { display: block; font-size: 14px; font-weight: 600; }
+.starter-card summary small { display: block; margin-top: 2px; font-size: 12px; color: var(--studio-muted, #6b6b6b); }
+.starter-card details p { margin: 10px 0 2px; font-size: 13px; line-height: 1.6; color: var(--studio-muted, #6b6b6b); white-space: pre-line; }
+.starter-card > footer { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: auto; }
+.starter-added { display: inline-flex; gap: 4px; align-items: center; min-height: 32px; font-size: 13px; color: var(--studio-muted, #6b6b6b); white-space: nowrap; }
+.starter-hint { margin: 0; font-size: 12px; line-height: 1.6; color: var(--studio-muted, #6b6b6b); }
+.starter-questions > li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 13px; border-bottom: 1px solid var(--box-rule, var(--studio-rule, #e2e2df)); }
+.starter-questions > li:last-child { border-bottom: 0; }
+.starter-questions small { font-size: 12px; color: var(--studio-muted, #6b6b6b); }
+.starter-contract-preview { padding: 10px 12px; border: 1px solid var(--box-rule, var(--studio-rule, #e2e2df)); border-radius: 6px; }
+.starter-contract-preview > summary { font-size: 13px; font-weight: 600; }
+.starter-contract-preview > div { max-height: 320px; overflow: auto; margin-top: 10px; font-size: 13px; line-height: 1.6; }
+.starter-contract-preview h3 { margin: 14px 0 4px; font-size: 13px; }
+.starter-contract-preview p { margin: 0; color: var(--studio-ink, #202326); white-space: normal; }
+
+@media (max-width: 860px) {
+  .starter-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  .starter-card { padding: 16px; }
+  .starter-kinds .commerce-pill-options span { padding: 7px 12px; }
+}
+.starter-contract-preview h3:first-child { margin-top: 0; }
