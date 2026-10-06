@@ -7,6 +7,9 @@
   border-bottom: 1px solid var(--studio-rule);
   overflow-x: auto;
   scrollbar-width: thin;
+  padding-right: 40px;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
   position: sticky;
   top: var(--folio-topbar-height);
   z-index: 12;
