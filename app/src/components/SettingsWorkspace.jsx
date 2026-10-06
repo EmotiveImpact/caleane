@@ -8,6 +8,7 @@ import {OperationsReadiness} from './OperationsReadiness';
 import {StripeConnectSettings} from './StripeConnectSettings';
 import {BrandKitSettings} from './BrandKitSettings';
 import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
+import {StarterGallery} from './StarterGallery';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
 
 const sections=[['studio','Studio'],['appearance','Appearance'],['brand','Brand kit'],['website','Website'],['bookings','Bookings'],['pricing','Pricing & billing'],['reminders','Reminders'],['templates','Templates'],['connections','Connections'],['data','Data'],['status','Status']];
@@ -30,7 +31,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
   const revisions=useRef({});
   // Unsaved drafts are compared with what was last loaded or saved for each pane.
   const [baseline,setBaseline]=useState(()=>({studio:JSON.stringify(identityOf(studio)),website:studio.origins.join('\n'),appearance:studio.accent}));
-  const [accentDraft,setAccentDraft]=useState(studio.accent),[accentKey,setAccentKey]=useState(0),[leaving,setLeaving]=useState(false);
+  const [accentDraft,setAccentDraft]=useState(studio.accent),[accentKey,setAccentKey]=useState(0),[leaving,setLeaving]=useState(false),[templatesKey,setTemplatesKey]=useState(0);
   const unsaved=[['studio','Studio',JSON.stringify(identity)!==baseline.studio],['website','Website',origins!==baseline.website],['appearance','Appearance',accentDraft!==baseline.appearance]].filter(([,,dirty])=>dirty);
   const dirty=unsaved.length>0;
   useEffect(()=>{if(!dirty){setLeaving(false);return;}const savedURL=location.href;const guard=event=>{event.preventDefault();event.returnValue='';},internal=event=>{event.preventDefault();history.replaceState(null,'',savedURL);setLeaving(true);};window.addEventListener('beforeunload',guard);window.addEventListener('caleane:before-navigate',internal);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('caleane:before-navigate',internal);};},[dirty]);
@@ -97,7 +98,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
       {panel('brand',section==='brand'&&<BrandKitSettings studio={studio} request={request}/>)}
       {panel('pricing',section==='pricing'&&<PricingSettings studio={studio} request={request}/>)}
       {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}
-      {panel('templates',section==='templates'&&<TemplateSettings studio={studio} request={request}/>)}
+      {panel('templates',section==='templates'&&<><StarterGallery studio={studio} request={request} navigate={navigate} onAdded={()=>setTemplatesKey(key=>key+1)}/><TemplateSettings key={templatesKey} studio={studio} request={request}/></>)}
       {panel('connections',<div className="settings-connections"><CalendarSyncSettings studio={studio} request={request}/><StripeConnectSettings studio={studio} request={request}/></div>)}
       {panel('data',<DataGovernanceSettings studio={studio} request={request} onChanged={reload}/>)}
       {panel('status',<><OperationsReadiness studio={studio} request={request}/>{['localhost','127.0.0.1'].includes(location.hostname)&&<a className="settings-component-link" href="/?view=components">Explore the component gallery</a>}</>)}

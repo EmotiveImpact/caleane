@@ -1,7 +1,9 @@
 import React,{useEffect,useState} from 'react';
-import {FileText,Plus,PenLine,Printer,Check,Clock} from 'lucide-react';
+import {FileText,Plus,PenLine,Printer,Check,Clock,ScrollText} from 'lucide-react';
 import {AgreementComposer,AgreementPages,printAgreement} from './AgreementDocument';
 import {OpenedNote,useRecordOpen} from './OpenedNote';
+import {starterContract} from '../lib/starter-gallery';
+import {workflowFor} from '../lib/workflows';
 export function ProjectContracts({p,studio,owner,request,userName}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[selected,setSelected]=useState(''),[compose,setCompose]=useState(null);
  const base=`/api/projects/${p.id}/engagements`,list=data?.agreements||[],a=list.find(x=>x.id===selected)||list[0];
@@ -9,9 +11,10 @@ export function ProjectContracts({p,studio,owner,request,userName}){
  useEffect(()=>{let active=true;request(`${base}?studio=${studio.id}`).then(d=>{if(active)setData(d);}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};},[base,studio.id,request]);
  async function change(action,body){setBusy(true);setError('');try{const result=await request(`${base}/${action}?studio=${studio.id}`,'POST',body);setData(result);return result;}catch(e){setError(e.message);return null;}finally{setBusy(false);}}
  useRecordOpen(p,owner,'contract',a&&a.status!=='Draft'?a.id:null);
+ const useStarter=()=>setCompose(starterContract(workflowFor(studio,p).id,{studioName:studio.name}));
  const status=a?.status==='Issued'&&a.expiresOn<new Date().toISOString().slice(0,10)?'Expired':a?.status;
  return <section className="contract-workspace contract-workspace-v2" aria-label="Contract workspace">
-  <header className="contract-top"><div><h2>{compose?'Prepare agreement':a?.title||'Contracts'}</h2></div>{owner&&!compose&&<button className="doc-primary" onClick={()=>setCompose({})}><Plus size={15}/>New contract</button>}</header>
+  <header className="contract-top"><div><h2>{compose?'Prepare agreement':a?.title||'Contracts'}</h2></div>{owner&&!compose&&<div className="doc-actions"><button className="doc-quiet" onClick={useStarter}><ScrollText size={15}/>Use starter</button><button className="doc-primary" onClick={()=>setCompose({})}><Plus size={15}/>New contract</button></div>}</header>
   {error&&<div className="doc-error" role="alert">{error}<button onClick={load} disabled={busy}>Refresh records</button></div>}
   {!data&&!error?<p className="doc-empty">Loading contracts…</p>:<div className={`contract-layout ${compose?'is-editing':''}`}>
    <div className="contract-main">
@@ -20,7 +23,7 @@ export function ProjectContracts({p,studio,owner,request,userName}){
      <div className="contract-meta"><span>Version {a.version}</span><span>Brief {a.briefRevision}</span><span><Clock size={13}/>Reply by {a.expiresOn}</span></div>
      <OpenedNote p={p} owner={owner} kind="contract" itemId={a.id} shared={a.status!=='Draft'}/><AgreementPages agreement={a} hideControls/>
 
-    </>:<div className="doc-empty"><FileText size={30} strokeWidth={1.2}/><h3>A clear agreement before the work begins.</h3><p>{owner?'Write your terms on a paginated document, save a private draft, then issue a version for your client to review.':'Your studio will share the contract here when it is ready.'}</p>{owner&&<button className="doc-primary" onClick={()=>setCompose({})}>Create your first contract</button>}</div>}
+    </>:<div className="doc-empty"><FileText size={30} strokeWidth={1.2}/><h3>A clear agreement before the work begins.</h3><p>{owner?'Write your terms on a paginated document, save a private draft, then issue a version for your client to review.':'Your studio will share the contract here when it is ready.'}</p>{owner&&<div className="doc-actions"><button className="doc-primary" onClick={()=>setCompose({})}>Create your first contract</button><button className="doc-quiet" onClick={useStarter}>Start from the {workflowFor(studio,p).name.toLowerCase()} starter</button></div>}</div>}
    </div>
    <aside className="contract-side" aria-label="Agreement details">
     {a&&<><section className="contract-side-section"><span className="contract-label">Status</span><div className="contract-state"><span className="doc-status" data-status={status}>{status}</span><p>{a.status==='Draft'?'Private draft · not shared with the client.':status==='Expired'?'The response window has closed.':a.status==='Issued'?'Shared with the client for review.':a.status==='Accepted'?'The client accepted this version.':a.status==='Declined'?'The client declined this version.':'This version has been withdrawn.'}</p></div></section>
