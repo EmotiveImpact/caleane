@@ -120,3 +120,28 @@ test('everyone can turn message emails on or off from the bell, and is told when
  await waitFor(()=>assert.equal(toggle.getAttribute('aria-checked'),'false'));
  assert.ok(calls.some(([method,url,body])=>method==='POST'&&url==='/api/notifications/preferences?studio=s1'&&body.messageEmail===false));
 });
+
+test('cards are grouped by day, each with a button naming what it does, and owners get a link to email settings',async()=>{
+ const opened=[],yesterday=new Date(Date.now()-36*3600000).toISOString();
+ const request=async url=>{if(url.startsWith('/api/notifications/preferences'))throw new Error('the switch lives in Settings for owners');return {notifications:[
+  {id:'n2',kind:'project_update',title:'Changes requested · design version 1',detail:'Amelia’s wedding',projectId:'p1',createdAt:yesterday,read:false}],unread:1,unreadByKind:{project_update:1},nextCursor:null};};
+ const attention={items:[
+  {id:'a1',kind:'message',label:'Amelia is waiting for your reply',context:'Amelia’s wedding',at:new Date().toISOString()},
+  {id:'a2',kind:'task',label:'Confirm venue walkthrough',context:'Noah Williams',detail:'Overdue next step',at:'2020-01-01'}],loadError:false,onOpen:item=>opened.push(['attention',item.id]),onOverview:()=>opened.push(['overview'])};
+ render(h(NotificationDrawer,{studio:{id:'s1'},request,onOpen:item=>opened.push(['update',item.id]),attention,onEmailSettings:()=>opened.push(['email'])}));
+ const u=user();await u.click(await screen.findByRole('button',{name:/^Notifications/}));const dialog=await screen.findByRole('dialog',{name:'Notifications'});
+ assert.deepEqual(within(dialog).getAllByRole('heading',{level:3}).map(h=>h.textContent),['Today','Earlier']);
+ assert.ok(within(dialog).getByRole('button',{name:'Reply: Amelia is waiting for your reply'}));
+ assert.equal(within(dialog).queryByRole('button',{name:'Open overview'}),null,'each card has its own action instead');
+ assert.equal(within(dialog).queryByRole('switch'),null,'the email switch lives in Settings');
+ await u.click(within(dialog).getByRole('button',{name:'Open task: Confirm venue walkthrough'}));
+ assert.deepEqual(opened,[['attention','a2']]);
+ await u.click(await screen.findByRole('button',{name:/^Notifications/}));const again=await screen.findByRole('dialog',{name:'Notifications'});
+ await u.click(within(again).getByText('Amelia is waiting for your reply'));
+ assert.deepEqual(opened.at(-1),['attention','a1'],'clicking the card routes like its button');
+ await u.click(await screen.findByRole('button',{name:/^Notifications/}));const third=await screen.findByRole('dialog',{name:'Notifications'});
+ await u.click(within(third).getByRole('tab',{name:'Updates (1)'}));await u.keyboard('{Enter}');
+ assert.ok(await within(third).findByRole('button',{name:'Review: Changes requested · design version 1'}));
+ await u.click(within(third).getByRole('button',{name:'Email settings'}));
+ assert.deepEqual(opened.at(-1),['email']);
+});
