@@ -95,3 +95,29 @@ test('notifications persist per person, respect project access and keep read sta
   await new Promise(resolve=>server.close(resolve));db.close();await rm(dir,{recursive:true,force:true});
  }
 });
+
+test('money updates reach a client only while they are the project Approver',async()=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-notifications-money-'));
+ const {server,db}=await createWorkspace({dbFile:path.join(dir,'workspace.sqlite'),origin,demo:true});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const base=`http://127.0.0.1:${server.address().port}`;let cookie='';
+ const call=async(route,method='GET',body)=>{const r=await fetch(base+route,{method,headers:{Origin:origin,...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});const c=r.headers.get('set-cookie');if(c)cookie=c.split(';')[0];return r.json();};
+ try{
+  await call('/api/login','POST',{email:'amelia@example.test',password:'StudioDemo2026!'});
+  const user=db.prepare('SELECT id FROM users WHERE email=?').get('amelia@example.test');
+  const stake=db.prepare(`SELECT ps.studio_id,ps.project_id,ps.role FROM crm_project_stakeholders ps JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE ct.user_id=? AND ps.portal_access=1`).get(user.id);
+  const insert=db.prepare(`INSERT INTO notification_events(id,studio_id,user_id,kind,source_key,title,project_id,created_at) VALUES(?,?,?,'project_update',?,?,?,?)`);
+  insert.run('n-money',stake.studio_id,user.id,'event:money','Issued invoice INV-2026-0002',stake.project_id,'2026-10-05T10:00:00.000Z');
+  insert.run('n-design',stake.studio_id,user.id,'event:design','Shared design Table plan',stake.project_id,'2026-10-05T10:01:00.000Z');
+  const setRole=role=>db.prepare(`UPDATE crm_project_stakeholders SET role=? WHERE studio_id=? AND project_id=? AND contact_id IN (SELECT id FROM crm_contacts WHERE user_id=?)`).run(role,stake.studio_id,stake.project_id,user.id);
+  setRole('Approver');
+  let feed=await call('/api/notifications?studio='+stake.studio_id);
+  assert.deepEqual(feed.notifications.map(n=>n.id),['n-design','n-money']);
+  setRole('Collaborator');
+  feed=await call('/api/notifications?studio='+stake.studio_id);
+  assert.deepEqual(feed.notifications.map(n=>n.id),['n-design'],'money updates are hidden like the project view hides them');
+  assert.equal(feed.unread,1);
+ }finally{
+  await new Promise(resolve=>server.close(resolve));db.close();await rm(dir,{recursive:true,force:true});
+ }
+});

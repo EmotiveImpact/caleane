@@ -1,5 +1,6 @@
 import {id,now,transaction} from './store.mjs';
 import {projectAccess,conversationAccess} from './relationships.mjs';
+import {MONEY_ACTIVITY} from './src/lib/notifications.js';
 
 // In-app notification history. Each row belongs to one recipient and records
 // what happened when it happened; access is checked again whenever it is read,
@@ -123,7 +124,8 @@ function visible(db,row,{owner,userId}){
   :row.project_id?!!db.prepare('SELECT 1 FROM projects WHERE id=? AND studio_id=?').get(row.project_id,row.studio_id):true;
  if(row.kind==='enquiry')return false;
  if(row.kind==='message'){const c=db.prepare('SELECT * FROM conversations WHERE id=? AND studio_id=?').get(row.conversation_id,row.studio_id);return !!c&&!!conversationAccess(db,c,userId);}
- if(row.kind==='project_update')return !!projectAccess(db,row.studio_id,row.project_id,userId);
+ // Clients other than the project's Approver never see money updates, as in the project view.
+ if(row.kind==='project_update'){const role=projectAccess(db,row.studio_id,row.project_id,userId);return !!role&&(role==='Approver'||!MONEY_ACTIVITY.test(row.title));}
  if(row.kind==='task_assigned')return !!row.project_id&&!!db.prepare(`SELECT 1 FROM studio_project_collaborators pc JOIN studio_staff ss ON ss.user_id=pc.user_id AND ss.studio_id=pc.studio_id
   WHERE pc.studio_id=? AND pc.project_id=? AND pc.user_id=?`).get(row.studio_id,row.project_id,userId);
  return false;

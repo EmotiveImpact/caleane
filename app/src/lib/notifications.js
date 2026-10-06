@@ -1,5 +1,16 @@
 // Where a notification leads. Kept separate from the drawer so routing stays testable.
 // A missing tab lets the caller choose its default, as the contributor view does.
+// Money activity that only the owner and a project's Approver may see (matches the project view).
+export const MONEY_ACTIVITY=/invoice|payment|refund|credit note|estimate|proposal|deposit|instalment|balance/i;
+
+// The project tab an activity entry is about, so a notification opens the work itself.
+export function activityTab(text){
+ const t=String(text||'').toLowerCase();
+ return /invoice|payment|refund|credit note|deposit|instalment|balance/.test(t)?'Billing':t.includes('estimate')?'Estimate':t.includes('proposal')?'Proposal'
+  :/contract|agreement/.test(t)?'Contract':t.includes('design')?'Designs':/reference|inspiration/.test(t)?'Inspiration':t.includes('task')?'Plan'
+  :/document|file/.test(t)?'Documents':t.includes('decision')?'Decisions':t.includes('brief')?'Brief':'Activity';
+}
+
 export function notificationDestination(item,{owner=false,staff=false}={}){
  if(item.kind==='enquiry')return owner?{view:'pipeline',opportunityId:item.opportunityId,clientId:item.clientId}:null;
  if(item.kind==='task_assigned'){
@@ -11,7 +22,7 @@ export function notificationDestination(item,{owner=false,staff=false}={}){
   return {view:'inbox',clientId:owner?item.clientId:null,conversationId:owner?item.conversationId:null};
  }
  if(item.kind==='follow_up')return owner?{view:'inbox',clientId:item.clientId,conversationId:item.conversationId}:null;
- if(item.kind==='project_update'&&item.projectId)return {view:'projects',projectId:item.projectId,tab:'Activity'};
+ if(item.kind==='project_update'&&item.projectId)return {view:'projects',projectId:item.projectId,tab:activityTab(item.title)};
  return null;
 }
 
