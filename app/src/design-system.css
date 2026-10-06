@@ -52,3 +52,16 @@ body :is(.badge,.ws-status,.doc-status,.folio-finances-status,.crm-stage-chip,.j
   .folio-workspace :is(.studio-tabs,.ws-filters,.studio-billing-filters,.folio-library-filters)>button{font-size:13px!important}
   :root{--ds-title-size:22px}
 }
+
+/* Selected items: a soft background only, no coloured bar down the left edge */
+body :is(.folio-rail nav button.active,.folio-settings.active,.ws-inbox .relationship-thread.active)::before{content:none!important}
+body :is(.contract-versions>button[aria-current=true],.settings-nav button[aria-current=page],.billing-invoice-list button.selected,.crm-task-list article.is-search-result){box-shadow:none!important}
+body .contract-versions>button[aria-current=true]{background:#eceeed!important;border-radius:var(--ds-radius-control)}
+body .draft-list>button.active{border-left:0!important;padding-left:10px}
+body .billing-invoice-list button{padding-inline:12px}
+body .billing-invoice-list button.selected{background:#f3f4f3;padding-left:12px}
+
+/* Search in the top bar is an icon; the shortcut is in its tooltip */
+.workspace-search-trigger{padding:8px!important;border-radius:var(--ds-radius-control)}
+.workspace-search-trigger:hover{background:#eceeed}
+.workspace-search-trigger :is(span,kbd){display:none!important}
