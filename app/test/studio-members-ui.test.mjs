@@ -47,3 +47,32 @@ test('an invitation link can be copied again, and a lost link can be replaced af
  await waitFor(()=>assert.deepEqual(posts,['new@example.test','old@example.test']));
  assert.equal(screen.getByLabelText('Private invitation link').value,'http://localhost/staff-invite#token-2');
 });
+
+test('a bookkeeper can be invited, and a member can be switched to bookkeeper after confirming',async()=>{
+ const input=user(),posts=[],patches=[];
+ let members=[{id:'m1',name:'Tom Field',email:'tom@example.test',access:'viewer',joinedAt:'2026-09-01T00:00:00.000Z',projectIds:['p1']}],pending=[];
+ const request=async(path,method,body)=>{
+  if(method==='POST'){posts.push(body);pending=[{id:'hash-1',email:body.email,access:body.access,expires:Date.now()+86400000}];return {url:'http://localhost/join-studio#token-1',access:body.access};}
+  if(method==='PATCH'){patches.push([path,body]);members=members.map(m=>({...m,access:body.access,projectIds:[]}));return {ok:true};}
+  return {owner,members,pending};
+ };
+ render(h(ui.StudioMembers,{studio,request,projects:[{id:'p1',title:'Spring wedding',status:'Planning',brief:{name:'Amelia'}}]}));
+ await screen.findByText('Tom Field');
+ const choice=screen.getByRole('group',{name:'Access'});
+ assert.equal(within(choice).getByRole('radio',{name:/Team member/}).checked,true);
+ await input.click(within(choice).getByRole('radio',{name:/Bookkeeper/}));
+ await input.type(screen.getByLabelText('Email address'),'books@example.test');
+ await input.click(screen.getByRole('button',{name:'Create invitation'}));
+ await waitFor(()=>assert.deepEqual(posts,[{email:'books@example.test',access:'bookkeeper'}]));
+ assert.match(screen.getByText('books@example.test').closest('.member-row').textContent,/Bookkeeper · Expires/);
+ await input.click(screen.getByRole('button',{name:'Access for Tom Field'}));
+ const memberChoice=screen.getByRole('group',{name:'Access for Tom Field'});
+ await input.click(within(memberChoice).getByRole('radio',{name:/Bookkeeper/}));
+ const dialog=await screen.findByRole('alertdialog',{name:'Make Tom Field a bookkeeper?'});
+ assert.match(dialog.textContent,/contribution access to 1 project ends/);
+ await input.click(within(dialog).getByRole('button',{name:'Make bookkeeper'}));
+ await waitFor(()=>assert.deepEqual(patches,[['/api/staff/m1?studio=studio-test',{access:'bookkeeper'}]]));
+ const row=(await screen.findByText(/Finances only, read-only/)).closest('.member-row');
+ assert.ok(within(row).getByText('Bookkeeper'));
+ assert.equal(screen.queryByRole('checkbox',{name:/Spring wedding/}),null);
+});
