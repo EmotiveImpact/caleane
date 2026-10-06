@@ -224,3 +224,12 @@
 .commerce-follow-ups h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
 .commerce-follow-ups p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--studio-muted, #6f7378); }
 .commerce-follow-ups + .commerce-reminder-fields { margin-top: 16px; }
+.commerce-review { display: block; flex-basis: 100%; color: #8b2e22; font-size: 12px; line-height: 1.5; }
+.billing-autopay { display: grid; grid-template-columns: 20px minmax(0,1fr); gap: 14px; margin-top: 18px; padding: 16px 18px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 6px; background: var(--studio-surface, #f4f1ea); }
+.billing-autopay > svg { color: var(--studio-muted, #6b6b6b); margin-top: 1px; }
+.billing-autopay.is-on > svg { color: var(--studio-accent, #181925); }
+.billing-autopay strong { display: block; font-size: 14px; font-weight: 600; }
+.billing-autopay p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; color: var(--studio-muted, #6b6b6b); }
+.billing-autopay .billing-autopay-failed { color: #8b2e22; }
+.billing-autopay .billing-plan-actions { margin-top: 12px; }
+.commerce-payment-fields { margin-top: 18px; }

@@ -43,3 +43,4 @@
   .booking-main h2 { font-size: 26px; }
   .booking-slots { grid-template-columns: repeat(3,minmax(0,1fr)); }
 }
+.booking-notice { margin: 0 0 16px; padding: 12px 14px; border-radius: 6px; background: #f1efe8; color: #3c3d38; font-size: 14px; line-height: 1.55; }

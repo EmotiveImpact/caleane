@@ -22,7 +22,9 @@ import {openStore,STAFF_ACCESS,id,now,hash,passwordHash,passwordOK,event,makePro
 import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask,deleteTask} from './crm.mjs';
 import {clientErasurePreview,eraseClient} from './client-erasure.mjs';
 import {bindInvitedContact,conversationAccess,ensurePrimaryContact,listClientContacts,listStakeholders,projectAccess,projectClientId} from './relationships.mjs';
-import {installStripePayments,activeStripeCheckout,createStripeCheckout,expireStripeCheckout,processStripeWebhook,listStripeCheckoutAttempts} from './stripe-payments.mjs';
+import {installStripePayments,activeStripeCheckout,createStripeCheckout,expireStripeCheckout,verifyStripeEvent,applyInvoiceCheckoutEvent,listStripeCheckoutAttempts} from './stripe-payments.mjs';
+import {installBookingPayments,isBookingEvent,applyBookingEvent,startBookingCheckout,releaseBooking} from './booking-payments.mjs';
+import {installPlanAutopay,isAutopayEvent,applyAutopayEvent,autopayView,cardPaymentSettings,saveCardPaymentSettings,startAutopaySetup,stopAutopay,runAutopay} from './plan-autopay.mjs';
 import {installStripeOnboarding,startStripeOnboarding,refreshStripeOnboarding,returnFromStripeOnboarding,stripeOnboardingStatus} from './stripe-onboarding.mjs';
 import {installNotifications,createNotificationOutbox,createResendDelivery,messageEmailEnabled,setMessageEmail} from './notifications.mjs';
 import {installOnboarding,handleOnboarding} from './onboarding.mjs';
@@ -39,7 +41,7 @@ import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-k
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline} from './pipeline-automation.mjs';
-import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings} from './consultations.mjs';
+import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
 import {installXero,handleXero,syncAllXero} from './xero.mjs';
 import {installFinances,handleFinances} from './finances.mjs';
@@ -78,9 +80,23 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installFinances(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installFinances(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBookingPayments(db);installPlanAutopay(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map(),bookingLinks=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
+ // Payment at booking and plan autopay take money without an invoice being opened, so a live
+ // Stripe key also needs CALEANE_STRIPE_ALLOW_LIVE=1. Until then they run in Stripe test mode only.
+ const liveStripeKey=/^(?:sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY||'');
+ const cardPaymentsReady=stripeReady&&(!liveStripeKey||process.env.CALEANE_STRIPE_ALLOW_LIVE==='1');
+ const studioConnected=studioId=>Boolean(db.prepare('SELECT 1 FROM stripe_studio_accounts WHERE studio_id=?').get(studioId));
+ const takesBookingPayment=studio=>cardPaymentsReady&&studioConnected(studio.id)&&bookingSettings(db,studio.id).payment.required;
+ const autopayOffered=studioId=>cardPaymentsReady&&studioConnected(studioId)&&cardPaymentSettings(db,studioId).autopay;
+ const projectNote=(studioId,projectId,text)=>{const row=db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(projectId,studioId);if(row){const p=JSON.parse(row.data);event(p,{name:'Stripe'},text);saveProject(db,p);}};
+ const money=(minor,currency)=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(minor/100);}catch{return `${(minor/100).toFixed(2)} ${currency}`;}};
+ const autopayHooks={
+  onPaid:(charge,invoice)=>projectNote(charge.studio_id,charge.project_id,`Autopay collected ${money(charge.amount_minor,charge.currency)} for invoice ${invoice.number}`),
+  onFailed:charge=>{const invoice=db.prepare('SELECT number FROM invoices WHERE id=?').get(charge.invoice_id);projectNote(charge.studio_id,charge.project_id,`Autopay could not take ${money(charge.amount_minor,charge.currency)} for invoice ${invoice?.number||''}. The invoice is still open`);},
+  onSaved:(row,label)=>projectNote(row.studio_id,row.project_id,`Autopay switched on with ${label}`)};
+ const collectAutopay=async()=>{if(!cardPaymentsReady)return [];try{return await runAutopay(db,stripe,autopayHooks);}catch(error){console.error('Autopay run failed:',error?.stack||error);return [];}};
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
  // Account mail has its own key when CALEANE_ACCOUNT_MAIL_KEY is set; the shared notification key still opens older queued mail.
  const accountSecurity=createAccountSecurity(db,{origin,encryptionKey:accountMailKey||notificationKey,previousKeys:[notificationKey]});
@@ -118,8 +134,11 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(!stripe||!stripeWebhookSecret)fail(503,'Stripe webhook is not configured.');
     const chunks=[];let bytes=0;
     for await(const chunk of req){bytes+=chunk.length;if(bytes>1048576)fail(413,'Stripe webhook is too large.');chunks.push(chunk);}
+    const stripeEvent=verifyStripeEvent(stripe,{rawBody:Buffer.concat(chunks),signature:req.headers['stripe-signature'],webhookSecret:stripeWebhookSecret});
+    if(isBookingEvent(stripeEvent))return reply(200,{ok:true,...applyBookingEvent(db,stripeEvent)});
+    if(isAutopayEvent(stripeEvent))return reply(200,{ok:true,...await applyAutopayEvent(db,stripe,stripeEvent,autopayHooks)});
     const result=transaction(db,()=>{
-     const outcome=processStripeWebhook(db,stripe,{rawBody:Buffer.concat(chunks),signature:req.headers['stripe-signature'],webhookSecret:stripeWebhookSecret});
+     const outcome=applyInvoiceCheckoutEvent(db,stripeEvent);
      if(outcome.result==='paid'&&!outcome.duplicate){
       const invoice=db.prepare('SELECT * FROM invoices WHERE id=?').get(outcome.invoiceId);
       const project=invoice&&db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(invoice.project_id,invoice.studio_id);
@@ -166,16 +185,32 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(route==='/xero/callback'&&req.method==='GET'){const back=new URLSearchParams({view:'settings',settingsTab:'integrations',xero_callback:'1'});for(const key of ['code','state','error'])if(url.searchParams.get(key))back.set(key,url.searchParams.get(key).slice(0,4000));res.writeHead(302,{Location:'/?'+back,'Cache-Control':'no-store'});return res.end();}
    const brandAssetMatch=route.match(/^\/api\/brand-assets\/([a-f0-9-]{36})$/);
    if(brandAssetMatch&&req.method==='GET')return serveBrandAsset(db,res,brandAssetMatch[1]);
-   const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)$/);
+   const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)(?:\/(status|release))?$/);
    if(bookingMatch){
     const bookingStudio=db.prepare('SELECT * FROM studios WHERE slug=?').get(bookingMatch[1]);if(!bookingStudio)fail(404,'Studio not found.');
     // Busy times from the owner's connected calendar, when they have chosen one; never in the hosted sample.
     const busyFor=maxAgeMs=>{if(!calendarIntervalMs)return [];const settings=bookingSettings(db,bookingStudio.id);return settings.enabled?safeCalendarBusy(db,bookingStudio.id,{from:Date.now(),to:Date.now()+(settings.horizonDays+2)*86400000,maxAgeMs}):[];};
-    if(req.method==='GET')return reply(200,publicBooking(db,bookingStudio,{busy:await busyFor()}));
+    // One run at a time per booking, so a client refreshing the confirmation page never makes two meetings.
+    const linkBooking=consultationId=>{if(!calendarIntervalMs||!consultationId)return null;if(!bookingLinks.has(consultationId))bookingLinks.set(consultationId,completeBookingIntegrations(db,consultationId).catch(error=>{console.error('Booking integrations failed:',error?.message||error);return null;}).finally(()=>bookingLinks.delete(consultationId)));return bookingLinks.get(consultationId);};
+    if(bookingMatch[2]==='status'&&req.method==='GET'){
+     // A paid booking only becomes Booked once Stripe confirms it, so make its video link and calendar event here.
+     const status=publicBookingStatus(db,bookingStudio,url.searchParams.get('booking'));
+     if(status.status==='Booked'){const meetingUrl=await linkBooking(status.bookingId);if(meetingUrl)status.location={...status.location,detail:meetingUrl};}
+     return reply(200,status);
+    }
+    if(bookingMatch[2]==='release'&&req.method==='POST'){rate(req,'booking',20);if(stripe)await releaseBooking(db,stripe,{studio:bookingStudio,bookingId:body.bookingId});return reply(200,publicBookingStatus(db,bookingStudio,body.bookingId));}
+    if(bookingMatch[2])fail(405,'Method not allowed.');
+    if(req.method==='GET')return reply(200,publicBooking(db,bookingStudio,{busy:await busyFor(),takePayment:takesBookingPayment(bookingStudio)}));
     if(req.method==='POST'){
-     rate(req,'booking',20);const result=bookConsultation(db,{studio:bookingStudio,body,key:req.headers['idempotency-key'],busy:await busyFor(30000)});
+     rate(req,'booking',20);const result=bookConsultation(db,{studio:bookingStudio,body,key:req.headers['idempotency-key'],busy:await busyFor(30000),takePayment:takesBookingPayment(bookingStudio)});
      // Make the video link and calendar event now, so the client sees the link on the confirmation screen.
-     if(result.status===201&&calendarIntervalMs){const consultationId=db.prepare('SELECT consultation_id FROM consultation_receipts WHERE studio_id=? AND key=?').get(bookingStudio.id,req.headers['idempotency-key'])?.consultation_id;const meetingUrl=consultationId&&await completeBookingIntegrations(db,consultationId).catch(error=>{console.error('Booking integrations failed:',error?.message||error);return null;});if(meetingUrl)result.data.location={...result.data.location,detail:meetingUrl};}
+     if(result.status===201&&calendarIntervalMs){const consultationId=db.prepare('SELECT consultation_id FROM consultation_receipts WHERE studio_id=? AND key=?').get(bookingStudio.id,req.headers['idempotency-key'])?.consultation_id;const meetingUrl=await linkBooking(consultationId);if(meetingUrl)result.data.location={...result.data.location,detail:meetingUrl};}
+     
+     // A held booking (new, or a retried request) goes on to Stripe Checkout.
+     if(result.data.status==='Awaiting payment'){
+      if(!stripe)fail(503,'Card payment is not available right now.');
+      result.data.checkoutUrl=(await startBookingCheckout(db,stripe,{studio:bookingStudio,bookingId:result.data.bookingId,appOrigin:origin})).url;
+     }
      return reply(result.status,result.data);
     }
     fail(405,'Method not allowed.');
@@ -262,11 +297,17 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(handleBrandKit({db,req,route,body,studio,owner,reply}))return;
     if(await handleReminders({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handlePipeline({db,req,route,body,studio,owner,reply,outbox}))return;
-    if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin}))return;
+    if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin,paymentsAvailable:cardPaymentsReady&&studioConnected(studio.id)}))return;
     if(await handleBookingIntegrations({db,req,route,body,studio,owner,reply}))return;
     if(await handleXero({db,req,route,body,studio,user,owner,reply,origin,delivery:calendarIntervalMs>0}))return;
     if(await handleWebhooks({db,req,route,body,studio,owner,user,reply,delivery:webhookIntervalMs>0}))return;
     if(await handleFinances({db,req,res,url,route,body,studio,owner,user,reply,listInvoices:()=>invoiceRows(db,studio.id).map(row=>invoiceDTO(db,row))}))return;
+    if(route==='/api/card-payments'){
+     requireOwner();const available=cardPaymentsReady&&studioConnected(studio.id);
+     if(req.method==='GET')return reply(200,{settings:cardPaymentSettings(db,studio.id),available});
+     if(req.method==='POST')return reply(200,{settings:saveCardPaymentSettings(db,studio.id,body,{available}),available});
+     fail(405,'Method not allowed.');
+    }
     if(route==='/api/stripe/connect/status'&&req.method==='GET'){
      requireOwner();if(!stripe) return reply(200,{onboarding:{studioId:studio.id,status:'unavailable',chargesEnabled:false,detailsSubmitted:false,payoutsEnabled:false,country:''}});
      return reply(200,{onboarding:await stripeOnboardingStatus(db,stripe,{studioId:studio.id,ownerUserId:user.id})});
@@ -610,9 +651,11 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      };
      if(invoiceId==='plan'){
       if(subaction)fail(404,'Not found.');
-      const view=()=>planView(db,studio.id,project,invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row)));
+      const view=()=>{const plan=planView(db,studio.id,project,invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row)));return plan&&{...plan,autopay:autopayView(db,studio.id,project.id,{offered:autopayOffered(studio.id)})};};
       if(req.method==='GET')return reply(200,{plan:view(),defaults:owner?billingDefaults(db,studio.id):undefined});
       if(req.method!=='POST')fail(405,'Method not allowed.');
+      if(body.action==='autopay-setup'){if(!cardPaymentsReady)fail(503,'Card payments are not available.');return reply(200,await startAutopaySetup(db,stripe,{studioId:studio.id,project,accessRole,user,appOrigin:origin}));}
+      if(body.action==='autopay-off'){stopAutopay(db,{studioId:studio.id,projectId:project.id});event(project,user,'Switched off autopay');saveProject(db,project);return reply(200,{plan:view()});}
       requireOwner();
       if(body.action==='create')transaction(db,()=>createPlan(db,{studioId:studio.id,project,body}));
       else if(body.action==='update')transaction(db,()=>updatePlan(db,{studioId:studio.id,project,body}));
@@ -835,7 +878,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  async function sendQueuedEmail(){if(emailRunning||!deliver)return;emailRunning=true;try{for(let count=0;count<20;count++){const result=await accountSecurity.dispatchOne(deliver)||(outbox&&await outbox.dispatchOne(deliver));if(!result)break;}}catch(error){console.error('Email delivery run failed:',error.message);}finally{emailRunning=false;}}
  const emailTimer=deliver&&emailIntervalMs>0?setInterval(sendQueuedEmail,emailIntervalMs):null;emailTimer?.unref();
  const scheduledTimer=scheduledIntervalMs>0?setInterval(()=>{try{sendDueScheduled(db,{afterSend:queueMessage});}catch(error){console.error('Scheduled messages could not be sent:',error.message);}},scheduledIntervalMs):null;scheduledTimer?.unref();
- const reminderTimer=reminderIntervalMs>0?setInterval(()=>{runAllReminders(db,{outbox});syncAllPipelines(db,{outbox});},reminderIntervalMs):null;reminderTimer?.unref();
+ const reminderTimer=reminderIntervalMs>0?setInterval(()=>{runAllReminders(db,{outbox});syncAllPipelines(db,{outbox});collectAutopay();},reminderIntervalMs):null;reminderTimer?.unref();
  // Uploads never attached to a message or task are removed at start-up and then hourly.
  const cleanUploads=()=>{try{cleanupUnattachedUploads(db);}catch(error){console.error('Upload cleanup failed:',error?.stack||error);}};cleanUploads();
  const uploadTimer=uploadCleanupIntervalMs>0?setInterval(cleanUploads,uploadCleanupIntervalMs):null;uploadTimer?.unref();
@@ -846,7 +889,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  let calendarRun=null;const tickCalendars=()=>{if(calendarRun)return;calendarRun=syncAllCalendars(db).then(()=>syncBookingIntegrations(db)).then(()=>syncAllXero(db)).catch(error=>console.error('Calendar sync failed:',error?.stack||error)).finally(()=>{calendarRun=null;});};
  const calendarTimer=calendarIntervalMs>0?setInterval(tickCalendars,calendarIntervalMs):null;calendarTimer?.unref();
   server.on('close',()=>{vite?.close();if(emailTimer)clearInterval(emailTimer);if(scheduledTimer)clearInterval(scheduledTimer);if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);if(webhookTimer)clearInterval(webhookTimer);if(calendarTimer)clearInterval(calendarTimer);});
-  return {server,db,sendQueuedEmail};
+  return {server,db,sendQueuedEmail,collectAutopay};
 }
 // The demo seeds accounts with a published password, so a production process needs an explicit opt-in to run it.
 export function assertSafeStartup(env=process.env){if(env.WORKSPACE_DEMO==='1'&&env.NODE_ENV==='production'&&env.ALLOW_PUBLIC_DEMO!=='1')throw new Error('WORKSPACE_DEMO=1 seeds accounts with a known password. Set ALLOW_PUBLIC_DEMO=1 to run the demo with NODE_ENV=production.');}

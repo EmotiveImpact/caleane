@@ -1,7 +1,8 @@
 import React,{useEffect,useState} from 'react';
-import {CalendarClock} from 'lucide-react';
+import {CalendarClock,CreditCard} from 'lucide-react';
 
 const money=(minor,currency='GBP')=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}catch{return `${((Number(minor)||0)/100).toFixed(2)} ${currency}`;}};
+const autopayReturn=()=>new URLSearchParams(window.location.search).get('autopay');
 const date=value=>value?new Date(value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'—';
 
 // Scheduled payments for a confirmed estimate. Owners start, adjust and issue
@@ -13,7 +14,7 @@ export function PaymentPlan({p,studio,owner,request,run,busy,invoices,onIssued})
  const estimate=p.estimates?.at(-1),confirmed=estimate?.status==='Budget confirmed'&&estimate.briefRevision===p.briefRevision;
  const invoicedForEstimate=invoices.some(item=>item.estimateId===estimate?.id&&item.status!=='Cancelled');
  const lastAddress=invoices.find(item=>item.snapshot?.customerAddress)?.snapshot.customerAddress||'';
- async function act(body){setError('');const result=await run(()=>request(url,'POST',body));if(result){setPlan(result.plan);if(result.invoice)onIssued(result.invoice);}return result;}
+ async function act(body){setError('');const result=await run(()=>request(url,'POST',body));if(result?.plan!==undefined){setPlan(result.plan);if(result.invoice)onIssued(result.invoice);}return result;}
  if(plan===undefined)return null;
  if(!plan){
   if(!owner||!confirmed||invoicedForEstimate)return null;
@@ -45,5 +46,31 @@ export function PaymentPlan({p,studio,owner,request,run,busy,invoices,onIssued})
    {owner&&plan.current&&!issuing&&nextIndex>=0&&<div className="billing-plan-actions"><button className="billing-text-button" onClick={()=>setEditing(plan.steps.map(step=>({id:step.id,label:step.label,amount:(step.amountMinor/100).toFixed(2),dueDate:step.dueDate,locked:!!(step.invoice&&step.invoice.status!=='Cancelled')})))}>Adjust payments</button>{!plan.steps.some(step=>step.invoice)&&<button className="billing-text-button" onClick={()=>act({action:'delete'})}>Remove plan</button>}</div>}
    {owner&&!plan.current&&!plan.steps.some(step=>step.invoice)&&<div className="billing-plan-actions"><button className="billing-text-button" onClick={()=>act({action:'delete'})}>Remove this plan</button></div>}
   </>}
+  {!editing&&<Autopay plan={plan} owner={owner} busy={busy} act={act}/>}
  </section>;
+}
+
+// Autopay: the client saves a card once and each issued payment is charged on its due date.
+function Autopay({plan,owner,busy,act}){
+ const autopay=plan.autopay,[starting,setStarting]=useState(false),[error,setError]=useState(''),[returned]=useState(autopayReturn);
+ if(!autopay||!plan.current||(!autopay.offered&&autopay.status!=='active'))return null;
+ const failed=autopay.charges.filter(charge=>charge.status==='failed'),on=autopay.status==='active';
+ async function setup(){setError('');setStarting(true);const result=await act({action:'autopay-setup'});if(!result?.url){setStarting(false);return;}
+  try{const destination=new URL(result.url);if(destination.protocol!=='https:'||destination.hostname!=='checkout.stripe.com')throw new Error();window.location.assign(destination.toString());}catch{setError('Stripe did not return a secure card page.');setStarting(false);}}
+ return <div className={`billing-autopay${on?' is-on':''}`}>
+  <CreditCard size={20} aria-hidden="true"/>
+  <div>
+   <strong>{on?`Autopay is on · ${autopay.cardLabel}`:'Autopay'}</strong>
+   <p>{on?(owner?`Set up by ${autopay.enabledBy||'your client'}. Each payment is charged to this card on its due date once you have issued its invoice.`:'Each payment is charged to this card on its due date, once the studio has issued its invoice.')
+    :owner?'Offered on this plan. Your client can save a card here to pay each instalment automatically.':'Save a card and each payment is taken automatically on its due date. You can switch it off at any time.'}</p>
+   {failed.map(charge=><p key={charge.id} className="billing-autopay-failed">Autopay could not take {money(charge.amountMinor,charge.currency)}: {charge.failure}{!owner&&' Save a different card or pay the invoice below.'}</p>)}
+   {returned==='saved'&&!on&&<p role="status">Card saved. Autopay switches on as soon as Stripe confirms it.</p>}
+   {returned==='cancelled'&&!on&&<p role="status">No card was saved, so autopay is still off.</p>}
+   {error&&<p className="billing-error" role="alert">{error}</p>}
+   <div className="billing-plan-actions">
+    {!owner&&<button className={on?'billing-text-button':'billing-primary'} disabled={busy||starting} onClick={setup}>{starting?'Opening Stripe…':on?'Use a different card':'Set up autopay'}</button>}
+    {on&&<button className="billing-text-button" disabled={busy} onClick={()=>act({action:'autopay-off'})}>Switch off autopay</button>}
+   </div>
+  </div>
+ </div>;
 }
