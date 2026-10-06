@@ -8,6 +8,7 @@ import {OperationsReadiness} from './OperationsReadiness';
 import {StripeConnectSettings} from './StripeConnectSettings';
 import {BrandKitSettings} from './BrandKitSettings';
 import {WebhookSettings} from './WebhookSettings';
+import {XeroSettings} from './XeroSettings';
 import {BookingIntegrations} from './BookingIntegrations';
 import {BookingSettings,PricingSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
@@ -101,7 +102,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
       {panel('reminders',section==='reminders'&&<ReminderSettings studio={studio} request={request}/>)}
       {panel('templates',section==='templates'&&<TemplateSettings studio={studio} request={request}/>)}
       {panel('connections',<div className="settings-connections"><CalendarSyncSettings studio={studio} request={request}/><StripeConnectSettings studio={studio} request={request}/></div>)}
-      {panel('integrations',section==='integrations'&&<WebhookSettings studio={studio} request={request}/>)}
+      {panel('integrations',section==='integrations'&&<><XeroSettings studio={studio} request={request}/><WebhookSettings studio={studio} request={request}/></>)}
       {panel('data',<DataGovernanceSettings studio={studio} request={request} onChanged={reload}/>)}
       {panel('status',<><OperationsReadiness studio={studio} request={request}/>{['localhost','127.0.0.1'].includes(location.hostname)&&<a className="settings-component-link" href="/?view=components">Explore the component gallery</a>}</>)}
     </Tabs.Root>

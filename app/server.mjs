@@ -37,6 +37,7 @@ import {installReminders,handleReminders,runAllReminders} from './reminders.mjs'
 import {handlePipeline,syncAllPipelines,syncPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
+import {installXero,handleXero,syncAllXero} from './xero.mjs';
 import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -71,7 +72,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);const limits=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
@@ -153,6 +154,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     rate(req,'intake',30);if(body.website)fail(400,'Please leave the website field empty.');const publicBrand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(publicStudio.id)?.data||'{}');const questions=validateIntakeQuestions(publicBrand.intakeQuestions||[]);const b=brief({...body,workflowType:publicBrand.profession||DEFAULT_WORKFLOW,intakeAnswers:captureIntakeAnswers(body.intakeAnswers,questions)});const key=str(req.headers['idempotency-key']||'',120);if(!key)fail(400,'An enquiry reference is required.');const digest=hash(JSON.stringify(b));const previous=db.prepare('SELECT * FROM receipts WHERE studio_id=? AND key=?').get(publicStudio.id,key);if(previous){if(previous.digest!==digest)fail(409,'This enquiry reference has already been used.');return reply(200,{ok:true,reference:previous.project_id.slice(0,8).toUpperCase()});}
     const p=makeProject(publicStudio.id,b,{name:b.name});db.exec('BEGIN');try{insertProject(db,p);db.prepare('INSERT INTO receipts VALUES(?,?,?,?)').run(publicStudio.id,key,digest,p.id);recordEnquiry(db,{studioId:publicStudio.id,projectId:p.id});db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return reply(201,{ok:true,reference:p.id.slice(0,8).toUpperCase()});
    }
+   // Xero sends people back here; the settings screen finishes the connection with the signed-in session.
+   if(route==='/xero/callback'&&req.method==='GET'){const back=new URLSearchParams({view:'settings',settingsTab:'integrations',xero_callback:'1'});for(const key of ['code','state','error'])if(url.searchParams.get(key))back.set(key,url.searchParams.get(key).slice(0,4000));res.writeHead(302,{Location:'/?'+back,'Cache-Control':'no-store'});return res.end();}
    const brandAssetMatch=route.match(/^\/api\/brand-assets\/([a-f0-9-]{36})$/);
    if(brandAssetMatch&&req.method==='GET')return serveBrandAsset(db,res,brandAssetMatch[1]);
    const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)$/);
@@ -243,6 +246,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(await handlePipeline({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin}))return;
     if(await handleBookingIntegrations({db,req,route,body,studio,owner,reply}))return;
+    if(await handleXero({db,req,route,body,studio,user,owner,reply,origin,delivery:calendarIntervalMs>0}))return;
     if(await handleWebhooks({db,req,route,body,studio,owner,user,reply,delivery:webhookIntervalMs>0}))return;
     if(route==='/api/stripe/connect/status'&&req.method==='GET'){
      requireOwner();if(!stripe) return reply(200,{onboarding:{studioId:studio.id,status:'unavailable',chargesEnabled:false,detailsSubmitted:false,payoutsEnabled:false,country:''}});
@@ -805,8 +809,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  // Outgoing webhooks: find new events and send what is due every 15 seconds.
  let webhookRun=null;const tickWebhooks=()=>{if(webhookRun)return;webhookRun=runWebhooks(db).catch(error=>console.error('Webhook delivery failed:',error?.stack||error)).finally(()=>{webhookRun=null;});};
  const webhookTimer=webhookIntervalMs>0?setInterval(tickWebhooks,webhookIntervalMs):null;webhookTimer?.unref();
- // Connected calendars: selected project dates and booking links and events, every five minutes.
- let calendarRun=null;const tickCalendars=()=>{if(calendarRun)return;calendarRun=syncAllCalendars(db).then(()=>syncBookingIntegrations(db)).catch(error=>console.error('Calendar sync failed:',error?.stack||error)).finally(()=>{calendarRun=null;});};
+ // Connected services every five minutes: calendar dates, booking links and events, and Xero.
+ let calendarRun=null;const tickCalendars=()=>{if(calendarRun)return;calendarRun=syncAllCalendars(db).then(()=>syncBookingIntegrations(db)).then(()=>syncAllXero(db)).catch(error=>console.error('Calendar sync failed:',error?.stack||error)).finally(()=>{calendarRun=null;});};
  const calendarTimer=calendarIntervalMs>0?setInterval(tickCalendars,calendarIntervalMs):null;calendarTimer?.unref();
  server.on('close',()=>{vite?.close();if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);if(webhookTimer)clearInterval(webhookTimer);if(calendarTimer)clearInterval(calendarTimer);});
  return {server,db};

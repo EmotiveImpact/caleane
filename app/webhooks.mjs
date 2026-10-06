@@ -100,7 +100,7 @@ function invoiceSummary(db,row){
  const grossPaidMinor=db.prepare('SELECT COALESCE(SUM(amount_minor),0) AS n FROM invoice_payments WHERE studio_id=? AND invoice_id=?').get(row.studio_id,row.id).n,adjustments=invoiceAdjustments(db,row.studio_id,row.id);
  const state=invoiceState({amountMinor:row.amount_minor,grossPaidMinor,creditedMinor:adjustments.creditedMinor,refundedMinor:adjustments.refundedMinor,cancelled:!!row.cancelled_at});
  return {id:row.id,number:row.number,kind:row.kind,label:row.label||'',status:state.status,issuedAt:row.issued_at,dueDate:row.due_date,total:money(row.amount_minor,row.currency),net:money(row.net_minor,row.currency),tax:money(row.tax_minor,row.currency),taxRate:row.tax_rate,paid:money(state.paidMinor,row.currency),balance:money(state.balanceMinor,row.currency),
-  project:{id:row.project_id,title:project.title||''},client:{name:snapshot.client?.name||project.brief?.name||'',email:snapshot.client?.email||project.clientEmail||''}};
+  project:{id:row.project_id,title:project.title||''},client:{name:snapshot.billToName||project.brief?.name||'',email:snapshot.billToEmail||project.clientEmail||''}};
 }
 function consultationSummary(row){const data=json(row.data);return {id:row.id,reference:row.id.slice(0,8).toUpperCase(),status:row.status,start:row.start_at,end:row.end_at,title:data.title||'',timezone:data.timezone||'',location:data.location||{},name:data.name||'',email:data.email||'',phone:data.phone||'',notes:data.notes||'',clientId:data.clientId||''};}
 const has=(db,table)=>!!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table);
