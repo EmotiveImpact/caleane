@@ -1,0 +1,31 @@
+/* Webhooks: each endpoint sits in its own box, in line with the contained look. */
+.webhook-settings .settings-pane-form{display:grid;gap:14px;align-content:start}
+.webhook-endpoint{box-sizing:border-box;display:grid;gap:14px;padding:18px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule,var(--studio-rule,#e2e2df));border-radius:var(--box-radius,8px);min-width:0}
+.webhook-endpoint>header{display:flex;gap:14px;align-items:flex-start;justify-content:space-between}
+.webhook-endpoint>header>div{min-width:0}
+.webhook-endpoint h3{margin:0 0 4px;font-size:15px}
+.webhook-endpoint code{font-size:12px;color:var(--studio-muted);word-break:break-all}
+.webhook-subscribed{margin:0;font-size:13px;line-height:1.6}
+.webhook-subscribed>span{color:var(--studio-muted)}
+.webhook-subscribed .text-button{margin-left:6px;font-size:12px}
+.webhook-secret{display:flex;gap:8px;align-items:center;padding:10px 12px;background:var(--studio-surface,#f7f7f6);border-radius:6px;font-size:12px}
+.webhook-secret>span{color:var(--studio-muted)}
+.webhook-secret code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit}
+.webhook-events{display:grid;gap:10px;margin:0;padding:0;border:0}
+.webhook-events legend{margin-bottom:8px;font-size:12px;font-weight:600}
+.webhook-events .ws-choice-label{align-items:flex-start}
+.webhook-events .ws-choice-label>span{display:grid;gap:2px;font-size:13px}
+.webhook-events small{color:var(--studio-muted);font-size:12px}
+.webhook-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.webhook-deliveries{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.webhook-deliveries li{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--box-rule,var(--studio-rule,#e2e2df));border-radius:6px}
+.webhook-deliveries li>div{flex:1;min-width:0;display:grid;gap:2px;font-size:13px}
+.webhook-deliveries small{color:var(--studio-muted);font-size:12px;overflow-wrap:anywhere}
+.webhook-warning{margin:0;padding:10px 12px;border-radius:6px;background:color-mix(in srgb,#c58a2b 12%,transparent);font-size:13px;line-height:1.5}
+.webhook-empty{padding:22px;border:1px dashed var(--box-rule,var(--studio-rule,#e2e2df));border-radius:var(--box-radius,8px)}
+.webhook-empty h3{margin:0 0 4px;font-size:15px}
+.webhook-empty p{margin:0;font-size:13px;color:var(--studio-muted)}
+.webhook-steps{margin:0 0 12px;padding-left:18px;font-size:13px;line-height:1.6}
+.webhook-settings .settings-support code{font-size:12px;overflow-wrap:anywhere}
+.webhook-settings>.settings-pane-form>.ws-button{justify-self:start}
+@media(max-width:600px){.webhook-endpoint{padding:14px}.webhook-deliveries li{flex-wrap:wrap}}
