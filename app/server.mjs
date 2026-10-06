@@ -40,7 +40,7 @@ import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {setTip,waiveLateFee} from './invoice-extras.mjs';
-import {discountFor} from './src/lib/invoice-charges.js';
+import {discountFor,invoiceFigures} from './src/lib/invoice-charges.js';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {handleCustomFields} from './custom-fields.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline} from './pipeline-automation.mjs';
@@ -644,8 +644,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
        const shareMinor=amountMinor,shareNetMinor=kind==='Balance'?estimate.subtotal-existing.reduce((sum,item)=>sum+item.net_minor,0):kind==='Full'?estimate.subtotal:Math.round(estimate.subtotal*amountMinor/estimate.total);
        if(shareNetMinor<0||shareMinor-shareNetMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
        const discount=discountFor(body.discount,{shareMinor,shareNetMinor});
-       amountMinor=shareMinor-(discount?.grossMinor||0);
-       const netMinor=shareNetMinor-(discount?.netMinor||0),taxMinor=amountMinor-netMinor;
+       const figures=invoiceFigures({shareMinor,shareNetMinor,discount});amountMinor=figures.amountMinor;
+       const {netMinor,taxMinor}=figures;
        if(netMinor<0||taxMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
        // Late fee terms and tips are fixed on the invoice when it is issued, so the client sees them from the start.
        const lateFeeRule=saved.lateFee?.enabled&&body.lateFee!==false?JSON.stringify({type:saved.lateFee.type,amountMinor:saved.lateFee.amountMinor,percent:saved.lateFee.percent,afterDays:saved.lateFee.afterDays}):'';
