@@ -196,5 +196,6 @@
 @media(prefers-reduced-motion:reduce){
   .hs-chapter>img{transform:none;transition:none}
   .hs-js :is(.hs-chapter-copy>*,.hs-panel>*,.hs-rise){opacity:1;animation:none !important}
-  .hs-client.is-seen .hs-rise,.hs-feed li.is-new,.hs-live,    .hs-kind img{transition:none}
+  .hs-client.is-seen .hs-rise,.hs-feed li.is-new,.hs-live{animation:none}
+  .hs-kind img{transition:none}
 }
