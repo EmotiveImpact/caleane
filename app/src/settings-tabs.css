@@ -1,32 +1,20 @@
 .workspace.folio-workspace .settings-tabbed { max-width: none; }
-.settings-tabs-nav {
-  display: flex;
-  gap: 28px;
-  min-height: 48px;
-  margin-bottom: var(--workspace-section-gap);
-  border-bottom: 1px solid var(--studio-rule);
-  overflow-x: auto;
-  scrollbar-width: thin;
-  position: sticky;
-  top: var(--folio-topbar-height);
-  z-index: 12;
-  background: var(--studio-paper);
-}
-.settings-tabs-nav > button {
-  flex-shrink: 0;
-  padding: 12px 0;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--studio-muted);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.settings-tabs-nav > button[data-state=active] { color: var(--studio-ink); border-bottom-color: var(--studio-accent); font-weight: 600; }
+/* Sections are grouped down the left, a light echo of the main sidebar. */
+.settings-shell { display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 40px; align-items: start; }
+.settings-nav { position: sticky; top: calc(var(--folio-topbar-height) + 24px); display: grid; gap: 18px; max-height: calc(100vh - var(--folio-topbar-height) - 48px); overflow-y: auto; scrollbar-width: thin; }
+.settings-tabbed .settings-nav-group h2 { margin: 0 0 6px; padding: 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--studio-muted); }
+.settings-nav ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.settings-nav button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 5px 10px; border: 0; border-radius: var(--ds-radius-control,6px); background: transparent; color: var(--studio-ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; transition: background-color .15s, color .15s; }
+.settings-nav button:hover { background: var(--studio-surface); }
+.settings-nav button:focus-visible { outline: 2px solid var(--studio-ink); outline-offset: 1px; }
+.settings-nav button[aria-current=page] { background: #eceeed; font-weight: 600; box-shadow: inset 2px 0 0 var(--studio-accent); }
+.settings-nav-text { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.settings-nav-text > small, .settings-nav-chevron { display: none; }
+.settings-sections { min-width: 0; }
+.settings-back { display: none; }
 .settings-tab-panel { min-width: 0; }
 .settings-tab-panel[hidden] { display: none !important; }
-.settings-pane-layout { display: grid; grid-template-columns: minmax(0,1.7fr) minmax(240px,1fr); gap: 48px; align-items: start; }
+.settings-pane-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(240px,280px); gap: 40px; align-items: start; }
 .settings-pane-form { min-width: 0; max-width: 840px; }
 .settings-pane-heading { margin-bottom: 24px; }
 .settings-tabbed .settings-pane-heading h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; letter-spacing: -.025em; }
@@ -67,7 +55,10 @@
 .workspace.folio-workspace .settings-tab-panel :is(.calendar-sync-settings,.settings-section,.stripe-connect-settings) { margin: 0; padding-top: 0; border-top: 0; }
 .settings-tab-panel .data-governance-settings { max-width: 800px; }
 .settings-tabbed .settings-component-link { display: inline-flex; margin-top: 24px; }
-@media(max-width:1000px) {
+@media(max-width:1280px) {
+  .settings-shell { grid-template-columns: 184px minmax(0,1fr); gap: 32px; }
+}
+@media(max-width:1100px) {
   .settings-pane-layout { grid-template-columns: minmax(0,1.5fr) minmax(220px,1fr); gap: 28px; }
   .settings-support { padding-left: 20px; }
   .settings-connections { grid-template-columns: minmax(0,1fr); gap: 32px; }
@@ -76,8 +67,20 @@
 @media(max-width:760px) {
   .settings-pane-layout { grid-template-columns: minmax(0,1fr); gap: 32px; }
   .settings-support { padding: 24px 0 0; border-left: 0; border-top: 1px solid var(--studio-rule); }
-  .settings-tabs-nav { gap: 24px; }
   .settings-save-row .ws-button { min-height: 44px; }
+  /* On a phone, Settings is a list first. Each item opens its own page. */
+  .settings-shell { grid-template-columns: minmax(0,1fr); gap: 0; }
+  .settings-tabbed.is-list-open .settings-sections, .settings-tabbed.is-section-open .settings-nav, .settings-tabbed.is-section-open > .page-heading { display: none; }
+  .settings-nav { position: static; max-height: none; overflow: visible; gap: 28px; }
+  .settings-tabbed .settings-nav-group h2 { padding: 0 2px; margin-bottom: 10px; }
+  .settings-nav ul { gap: 8px; }
+  .settings-nav button { min-height: 60px; padding: 12px 14px; border: 1px solid var(--box-rule,var(--studio-rule)); border-radius: var(--box-radius,8px); background: var(--studio-paper,#fff); font-size: 15px; font-weight: 500; }
+  .settings-nav button:hover { background: var(--studio-paper,#fff); border-color: var(--box-hover); }
+  .settings-nav button[aria-current=page] { background: var(--studio-paper,#fff); font-weight: 500; box-shadow: none; }
+  .settings-nav-text > small { display: block; font-size: 12px; font-weight: 400; color: var(--studio-muted); }
+  .settings-nav-chevron { display: block; flex-shrink: 0; color: var(--studio-muted); }
+  .settings-back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; margin: 0 0 12px -6px; padding: 0 8px 0 2px; border: 0; background: none; color: var(--studio-ink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .settings-back:focus-visible { outline: 2px solid var(--studio-ink); outline-offset: 2px; border-radius: 4px; }
 }
 @media(max-width:520px) {
   .settings-fields { grid-template-columns: minmax(0,1fr); gap: 20px; }
@@ -88,3 +91,36 @@
 .settings-unsaved p { margin: 0; font-size: 13px; line-height: 1.5; }
 
 .settings-unsaved > div { display: flex; gap: 10px; }
+
+/* Integrations: one boxed card per service, with longer guidance folded away. */
+.integration-cards { display: grid; gap: 8px; max-width: 840px; }
+.integration-cards > .settings-pane-heading { margin-bottom: 16px; }
+.integration-card { box-sizing: border-box; display: grid; gap: 16px; min-width: 0; padding: 20px; background: var(--studio-paper,#fff); border: 1px solid var(--box-rule,var(--studio-rule)); border-radius: var(--box-radius,8px); }
+.integration-card-head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+.integration-card-head > div { display: grid; gap: 6px; min-width: 0; }
+.workspace.folio-workspace .integration-card-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.integration-card-head p { margin: 0; max-width: 600px; font-size: 13px; line-height: 1.6; color: var(--studio-muted); }
+.integration-card-head small { font-size: 12px; color: var(--studio-muted); }
+.integration-card-head > .ws-status { flex-shrink: 0; }
+.integration-card-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.integration-more { border-top: 1px solid var(--box-rule,var(--studio-rule)); padding-top: 12px; }
+.integration-more > summary { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px; font-weight: 500; color: var(--studio-ink); cursor: pointer; list-style: none; }
+.integration-more > summary::-webkit-details-marker { display: none; }
+.integration-more > summary::before { content: ""; width: 6px; height: 6px; margin: 0 4px 0 2px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform .15s; }
+.integration-more[open] > summary::before { transform: rotate(45deg); }
+.integration-more > summary:focus-visible { outline: 2px solid var(--studio-ink); outline-offset: 2px; border-radius: 4px; }
+.integration-more > :not(summary) { margin-top: 12px; }
+.integration-more p { margin: 0 0 10px; font-size: 13px; line-height: 1.65; color: var(--studio-muted); }
+.integration-more h4 { margin: 16px 0 6px; font-size: 13px; font-weight: 600; }
+.integration-more code { font-size: 12px; overflow-wrap: anywhere; }
+.integration-more .settings-save-row { margin: 20px 0 12px; }
+@media(max-width:600px) {
+  .integration-card { padding: 16px; }
+  .integration-card-head { flex-direction: column; gap: 10px; }
+  .integration-card-head > .ws-status { align-self: flex-start; }
+}
+
+/* Money sections each open on their own page, so they need no divider above them. */
+.settings-tab-panel > :is(.commerce-section,.commerce-invoice-design) { border-top: 0; padding-top: 0; }
+.settings-tab-panel > .commerce-section .commerce-list { display: grid; gap: 8px; }
+.settings-tab-panel > .commerce-section .commerce-list > li { padding: 14px 16px; background: var(--studio-paper,#fff); border: 1px solid var(--box-rule,var(--studio-rule)); border-radius: var(--box-radius,8px); }

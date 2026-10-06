@@ -10,7 +10,7 @@ const money=(minor,currency)=>new Intl.NumberFormat('en-GB',{style:'currency',cu
 // Xero connection: issued invoices and recorded payments are copied into the studio's Xero organisation.
 export function XeroSettings({studio,request}){
  const endpoint='/api/xero?studio='+studio.id;
- const [data,setData]=useState(null),[form,setForm]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[confirm,confirmation]=useConfirm(),callback=useRef(false);
+ const [data,setData]=useState(null),[form,setForm]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[justConnected,setJustConnected]=useState(false),[confirm,confirmation]=useConfirm(),callback=useRef(false);
  const loaded=result=>{setData(result);setForm(result.settings);};
  async function send(body,message){setBusy(true);setError('');setNotice('');try{const result=await request(endpoint,'POST',body);if(result.url){location.assign(result.url);return result;}loaded(result);if(message)setNotice(message);return result;}catch(e){setError(e.message);return null;}finally{setBusy(false);}}
  useEffect(()=>{
@@ -18,30 +18,30 @@ export function XeroSettings({studio,request}){
   if(url.searchParams.get('xero_callback')&&!callback.current){
    callback.current=true;const code=url.searchParams.get('code'),state=url.searchParams.get('state'),denied=url.searchParams.get('error');
    for(const key of ['xero_callback','code','state','error'])url.searchParams.delete(key);history.replaceState(null,'',url.pathname+url.search);
-   if(denied){setError('Xero was not connected.');}else if(code&&state){send({action:'complete',code,state},'Xero is connected. Check the account codes below, then sync.');return ()=>{active=false;};}
+   if(denied){setError('Xero was not connected.');}else if(code&&state){setJustConnected(true);send({action:'complete',code,state},'Xero is connected. Check the account codes below, then sync.');return ()=>{active=false;};}
   }
   request(endpoint).then(result=>{if(active)loaded(result);}).catch(e=>{if(active)setError(e.message);});
   return ()=>{active=false;};
  },[endpoint,request]);
- if(!data||!form)return <section className="xero-settings"><p className="commerce-muted" role={error?'alert':'status'}>{error||'Loading Xero…'}</p></section>;
+ if(!data||!form)return <section className="integration-card xero-settings" aria-labelledby="xero-title"><header className="integration-card-head"><div><h3 id="xero-title">Xero</h3></div></header><p className="commerce-muted" role={error?'alert':'status'}>{error||'Loading Xero…'}</p></section>;
  const set=patch=>setForm({...form,...patch});
  async function disconnect(){if(await confirm({title:'Disconnect Xero?',description:'Caleane will stop sending invoices and payments. Everything already in Xero stays there. Reconnecting the same organisation carries on without sending anything twice.',confirmLabel:'Disconnect'}))send({action:'disconnect'},'Xero is disconnected.');}
- return <section className="xero-settings">
-  <header className="settings-pane-heading"><h2>Xero</h2><p>Send each invoice you issue, and each payment you record, to Xero, so your books match without typing anything twice.</p></header>
-  <div className="xero-card">
-   <div className="xero-card-head"><div><h3>{data.connected?data.organisation:'Xero accounting'}</h3>{data.connected&&<small>Connected {when(data.connectedAt)}{data.lastSyncAt?` · last sync ${when(data.lastSyncAt)}`:''}</small>}</div><WorkspaceStatus value={data.connected?'Connected':data.configured?'Not connected':'Setup required'} tone={data.connected?'success':'neutral'}/></div>
-   {!data.configured?<p className="xero-note">Xero needs to be switched on for this workspace before you can connect. Once it is, you sign in to Xero here and choose your organisation.</p>
-   :!data.connected?<WorkspaceButton disabled={busy} onClick={()=>send({action:'connect'})}>Connect Xero</WorkspaceButton>
-   :<>
-    {data.lastError&&<p className="xero-note xero-warning" role="status">{data.lastError}</p>}
-    <dl className="xero-totals"><div><dt>Invoices sent</dt><dd>{data.sent.invoices}</dd></div><div><dt>Payments sent</dt><dd>{data.sent.payments}</dd></div><div><dt>Need attention</dt><dd>{data.problems}</dd></div></dl>
-    <div className="xero-actions"><WorkspaceButton disabled={busy} onClick={()=>send({action:'sync'},'Xero is up to date.')}><RefreshCw size={14}/> {busy?'Syncing…':'Sync now'}</WorkspaceButton>{data.problems>0&&<WorkspaceButton variant="secondary" disabled={busy} onClick={()=>send({action:'retry'},'Tried again.')}>Try failed ones again</WorkspaceButton>}<WorkspaceButton variant="ghost" disabled={busy} onClick={disconnect}>Disconnect</WorkspaceButton></div>
-   </>}
-   {error&&<p className="commerce-error" role="alert">{error}</p>}
-   {notice&&<p className="xero-notice" role="status">{notice}</p>}
-  </div>
-  {data.configured&&<form className="xero-card" onSubmit={e=>{e.preventDefault();send({action:'save',settings:form},'Saved.');}}>
-   <h3>How invoices arrive in Xero</h3>
+ return <section className="integration-card xero-settings" aria-labelledby="xero-title">
+  <header className="integration-card-head">
+   <div><h3 id="xero-title">Xero</h3><p>Send each invoice you issue, and each payment you record, to Xero, so your books match without typing anything twice.</p>{data.connected&&<small>{data.organisation} · connected {when(data.connectedAt)}{data.lastSyncAt?` · last sync ${when(data.lastSyncAt)}`:''}</small>}</div>
+   <WorkspaceStatus value={data.connected?'Connected':data.configured?'Not connected':'Setup required'} tone={data.connected?'success':'neutral'}/>
+  </header>
+  {!data.configured?<p className="xero-note">Xero needs to be switched on for this workspace before you can connect. Once it is, you sign in to Xero here and choose your organisation.</p>
+  :!data.connected?<div className="integration-card-actions"><WorkspaceButton disabled={busy} onClick={()=>send({action:'connect'})}>Connect Xero</WorkspaceButton></div>
+  :<>
+   {data.lastError&&<p className="xero-note xero-warning" role="status">{data.lastError}</p>}
+   <dl className="xero-totals"><div><dt>Invoices sent</dt><dd>{data.sent.invoices}</dd></div><div><dt>Payments sent</dt><dd>{data.sent.payments}</dd></div><div><dt>Need attention</dt><dd>{data.problems}</dd></div></dl>
+   <div className="integration-card-actions"><WorkspaceButton disabled={busy} onClick={()=>send({action:'sync'},'Xero is up to date.')}><RefreshCw size={14}/> {busy?'Syncing…':'Sync now'}</WorkspaceButton>{data.problems>0&&<WorkspaceButton variant="secondary" disabled={busy} onClick={()=>send({action:'retry'},'Tried again.')}>Try failed ones again</WorkspaceButton>}<WorkspaceButton variant="ghost" disabled={busy} onClick={disconnect}>Disconnect</WorkspaceButton></div>
+  </>}
+  {error&&<p className="commerce-error" role="alert">{error}</p>}
+  {notice&&<p className="xero-notice" role="status">{notice}</p>}
+  {data.connected&&data.recent.length>0&&<details className="integration-more"><summary>Recent invoices</summary><ul className="xero-list">{data.recent.map(item=><li key={item.id}><div><strong>{item.number||'Invoice'}</strong><small>{item.amountMinor?money(item.amountMinor,item.currency):''}{item.syncedAt?` · ${when(item.syncedAt)}`:''}{item.error?` · ${item.error}`:''}</small></div><WorkspaceStatus value={item.status} tone={item.status==='Sent'?'success':item.status==='Error'?'danger':'neutral'}/></li>)}</ul></details>}
+  {data.configured&&<details className="integration-more" open={justConnected||undefined}><summary>How invoices arrive in Xero</summary><form onSubmit={e=>{e.preventDefault();send({action:'save',settings:form},'Saved.');}}>
    <div className="settings-fields">
     <WorkspaceField label="Sales account code" value={form.salesAccountCode} maxLength={20} required onChange={e=>set({salesAccountCode:e.target.value})} hint="Usually 200, Sales."/>
     <WorkspaceField label="Send invoices as"><WorkspaceSelect label="Send invoices as" value={form.invoiceStatus} onValueChange={invoiceStatus=>set({invoiceStatus})} options={[{value:'AUTHORISED',label:'Approved'},{value:'DRAFT',label:'Drafts to review in Xero'}]}/></WorkspaceField>
@@ -51,9 +51,7 @@ export function XeroSettings({studio,request}){
     <WorkspaceField label="Send invoices issued from" type="date" value={form.sendFrom} onChange={e=>set({sendFrom:e.target.value})} hint="Empty means from the day you connected."/>
    </div>
    <footer className="settings-save-row"><WorkspaceButton type="submit" variant="secondary" disabled={busy}>Save Xero settings</WorkspaceButton></footer>
-  </form>}
-  {data.recent.length>0&&<div className="xero-card"><h3>Recent invoices</h3><ul className="xero-list">{data.recent.map(item=><li key={item.id}><div><strong>{item.number||'Invoice'}</strong><small>{item.amountMinor?money(item.amountMinor,item.currency):''}{item.syncedAt?` · ${when(item.syncedAt)}`:''}{item.error?` · ${item.error}`:''}</small></div><WorkspaceStatus value={item.status} tone={item.status==='Sent'?'success':item.status==='Error'?'danger':'neutral'}/></li>)}</ul></div>}
-  <p className="xero-small">Caleane checks for new invoices and payments every few minutes. Contacts are matched by name in Xero. Cancelling an invoice here voids it in Xero unless it has payments there. Credit notes and refunds are not sent yet.</p>
+  </form><p className="xero-small">Caleane checks for new invoices and payments every few minutes. Contacts are matched by name in Xero. Cancelling an invoice here voids it in Xero unless it has payments there. Credit notes and refunds are not sent yet.</p></details>}
   {confirmation}
  </section>;
 }

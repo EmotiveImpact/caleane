@@ -61,7 +61,7 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  const [lateFeeOn,setLateFeeOn]=useState(true),[tipsOn,setTipsOn]=useState(true);
  const [formError,setFormError]=useState(''),[saved,setSaved]=useState(null);
  useEffect(()=>{setKind(hasPrior?'Balance':'Deposit');setAmount('');setFormError('');},[estimateId,hasPrior]);
- // Saved studio details from Settings, Pricing & billing fill in the invoice.
+ // Saved studio details from Settings, Invoices & payment plans fill in the invoice.
  useEffect(()=>{let active=true;fetch(`/api/billing-defaults?studio=${p.studioId}`,{credentials:'same-origin'}).then(r=>r.ok?r.json():{defaults:{}}).then(d=>{if(active)setSaved(d.defaults||{});}).catch(()=>{if(active)setSaved({});});return()=>{active=false;};},[p.studioId]);
  const lastAddress=invoices.find(item=>item.snapshot?.customerAddress)?.snapshot.customerAddress||'';
  if(!confirmed.length)return <div className="billing-empty billing-empty-form"><FileText size={26}/><h3>Agree the latest budget direction first.</h3><p>Share an estimate based on the current brief and ask the client to confirm its budget direction. That estimate remains separate from the invoice and payment record.</p><button className="billing-text-button" onClick={onCancel}>Close</button></div>;

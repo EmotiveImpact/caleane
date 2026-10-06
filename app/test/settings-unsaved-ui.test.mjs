@@ -7,6 +7,7 @@ const dom=setupDom('http://localhost/?view=settings');
 const {module:ui,remove}=await bundle("export {SettingsWorkspace} from './src/components/SettingsWorkspace.jsx';",'settings-unsaved');
 const {render,screen,cleanup,act}=await import('@testing-library/react');
 const {default:userEvent}=await import('@testing-library/user-event');
+const section=name=>screen.getByRole('button',{name,exact:true});
 const h=React.createElement,user=()=>userEvent.setup({document:dom.window.document,pointerEventsCheck:0});
 afterEach(()=>{cleanup();history.replaceState(null,'','/?view=settings');});
 after(async()=>{await remove();dom.window.close();});
@@ -39,7 +40,7 @@ test('unsaved settings block leaving until they are saved or discarded',async()=
  await screen.findByText('Saved.');
  assert.equal(leave(),true,'saving clears the guard even when the server trims the value');
  assert.equal(screen.queryByRole('alert'),null);
- await input.click(screen.getByRole('tab',{name:'Website',exact:true}));
+ await input.click(section('Website'));
  await input.type(screen.getByRole('textbox',{name:'Connected website origins'}),'\nhttps://draft.test');
  assert.equal(leave(),false);
  await input.click(screen.getByRole('button',{name:'Discard changes'}));
