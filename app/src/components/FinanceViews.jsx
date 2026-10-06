@@ -109,7 +109,7 @@ export function StudioReports({projects,studio,request,openProject}){
   </div>
 
   <div className="finance-card"><div className="finance-card-head"><h3>Enquiries to bookings</h3><p>Enquiries received in this period, by where they came from.</p></div>
-   {report.enquiries.length?<div className="finance-table-wrap"><table className="finance-table"><thead><tr><th scope="col">Source</th><th scope="col">Enquiries</th><th scope="col">Booked</th><th scope="col">Lost</th><th scope="col" className="finance-hide-sm">Still open</th><th scope="col">Booking rate</th></tr></thead><tbody>{report.enquiries.map(row=><tr key={row.source}><th scope="row">{row.source}</th><td>{row.enquiries}</td><td>{row.booked}</td><td>{row.lost}</td><td className="finance-hide-sm">{row.open}</td><td>{row.bookingRate}%</td></tr>)}</tbody></table></div>:<p className="finance-quiet">No enquiries arrived in this period.</p>}</div>
+   {report.enquiries.length?<div className="finance-table-wrap"><table className="finance-table"><thead><tr><th scope="col">Source</th><th scope="col">Enquiries</th><th scope="col">Booked</th><th scope="col" className="finance-hide-sm">Lost</th><th scope="col" className="finance-hide-sm">Still open</th><th scope="col">Booking rate</th></tr></thead><tbody>{report.enquiries.map(row=><tr key={row.source}><th scope="row">{row.source}</th><td>{row.enquiries}</td><td>{row.booked}</td><td className="finance-hide-sm">{row.lost}</td><td className="finance-hide-sm">{row.open}</td><td>{row.bookingRate}%</td></tr>)}</tbody></table></div>:<p className="finance-quiet">No enquiries arrived in this period.</p>}</div>
  </section>;
 }
 

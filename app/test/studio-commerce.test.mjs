@@ -138,7 +138,8 @@ test('automatic reminders message the client once and create owner follow-ups fo
 
 test('clients book a free consultation slot that lands on the studio record',async t=>{
  const {ws,call,suffix,studio}=await workspace(t);
- assert.equal((await call(`/api/booking/${studio.slug}`)).status,404,'booking is off until the studio enables it');
+ const closed=await call(`/api/booking/${studio.slug}`);assert.equal(closed.status,404,'booking is off until the studio enables it');
+ assert.equal(closed.data.studio.slug,studio.slug,'the closed page can still name the studio and link to its enquiry form');
  let response=await call('/api/consultations'+suffix,'GET',undefined,'owner');
  const settings={...response.data.settings,enabled:true,minNoticeHours:0,horizonDays:14,weekly:{0:[{start:'09:00',end:'12:00'}],1:[{start:'09:00',end:'12:00'}],2:[{start:'09:00',end:'12:00'}],3:[{start:'09:00',end:'12:00'}],4:[{start:'09:00',end:'12:00'}],5:[{start:'09:00',end:'12:00'}],6:[{start:'09:00',end:'12:00'}]}};
  assert.equal((await call('/api/consultations'+suffix,'POST',{action:'save-settings',settings},'client')).status,403);

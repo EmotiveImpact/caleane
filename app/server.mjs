@@ -203,7 +203,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     if(bookingMatch[2]==='release'&&req.method==='POST'){rate(req,'booking',20);if(stripe)await releaseBooking(db,stripe,{studio:bookingStudio,bookingId:body.bookingId});return reply(200,publicBookingStatus(db,bookingStudio,body.bookingId));}
     if(bookingMatch[2])fail(405,'Method not allowed.');
-    if(req.method==='GET')return reply(200,publicBooking(db,bookingStudio,{busy:await busyFor(),takePayment:takesBookingPayment(bookingStudio)}));
+    if(req.method==='GET'){try{return reply(200,publicBooking(db,bookingStudio,{busy:await busyFor(),takePayment:takesBookingPayment(bookingStudio)}));}catch(error){if(error.status!==404)throw error;return reply(404,{error:error.message,studio:{name:bookingStudio.name,slug:bookingStudio.slug,accent:bookingStudio.accent}});}}
     if(req.method==='POST'){
      rate(req,'booking',20);const result=bookConsultation(db,{studio:bookingStudio,body,key:req.headers['idempotency-key'],busy:await busyFor(30000),takePayment:takesBookingPayment(bookingStudio)});
      // Make the video link and calendar event now, so the client sees the link on the confirmation screen.
