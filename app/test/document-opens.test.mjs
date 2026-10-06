@@ -6,7 +6,7 @@ import path from 'node:path';
 import {openStore,id,makeProject,insertProject,saveProject,materializeProjectConversation} from '../store.mjs';
 import {installDocumentOpens,recordDocumentOpen,documentOpens} from '../document-opens.mjs';
 import {installNotificationFeed,listNotifications} from '../notification-feed.mjs';
-import {syncPipeline,pipelineOverview,savePipelineSettings,installPipeline} from '../pipeline-automation.mjs';
+import {syncPipeline,pipelineOverview,savePipelineSettings,installPipeline,handlePipeline} from '../pipeline-automation.mjs';
 import {installEngagements} from '../engagements.mjs';
 import {installForms} from '../forms.mjs';
 
@@ -113,5 +113,35 @@ test('no check-in task when the client has written since opening',async()=>{
   db.prepare('INSERT INTO conversation_messages(id,conversation_id,user_id,author_name,role,text,created_at) VALUES(?,?,?,?,?,?,?)').run(id(),materializeProjectConversation(db,read()).id,client.id,client.name,'client','Could we add a garland?','2099-05-04T09:00:00.000Z');
   syncPipeline(db,studioId,{asOf:'2099-05-08'});
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM crm_tasks WHERE studio_id=? AND title LIKE 'Check in with%'").get(studioId).n,0);
+ }finally{db.close();await rm(dir,{recursive:true,force:true});}
+});
+
+test('each pipeline enquiry says whether the client opened its latest proposal or estimate, for the owner only',async()=>{
+ const {dir,db,studioId,client,project,proposalId,estimateId}=await setup();
+ try{
+  const oppId=db.prepare('SELECT id FROM crm_opportunities WHERE project_id=?').get(project.id).id;
+  const opened=()=>pipelineOverview(db,studioId,{asOf:'2099-05-03'}).signals[oppId].opened;
+  assert.equal(opened(),null,'nothing opened yet');
+  recordDocumentOpen(db,{studioId,projectId:project.id,user:client,kind:'estimate',itemId:estimateId,at:'2099-05-02T08:00:00.000Z'});
+  assert.equal(opened(),null,'the estimate is not the latest document once a proposal is shared');
+  recordDocumentOpen(db,{studioId,projectId:project.id,user:client,kind:'proposal',itemId:proposalId,at:'2099-05-02T23:52:00.000Z'});
+  recordDocumentOpen(db,{studioId,projectId:project.id,user:client,kind:'proposal',itemId:proposalId,at:'2099-05-03T09:00:00.000Z'});
+  assert.deepEqual(opened(),{kind:'proposal',people:['Amara Okafor'],firstOpenedAt:'2099-05-02T23:52:00.000Z',lastOpenedAt:'2099-05-03T09:00:00.000Z',opens:2});
+  const req={method:'GET'};
+  await assert.rejects(handlePipeline({db,req,route:'/api/pipeline',body:{},studio:{id:studioId},owner:false,reply:()=>assert.fail('a non-owner must not read the pipeline'),outbox:[]}),/Only the studio owner/);
+ }finally{db.close();await rm(dir,{recursive:true,force:true});}
+});
+
+test('an estimate shared after the proposal is the latest document',async()=>{
+ const {dir,db,studioId,client,project,read}=await setup();
+ try{
+  const p=read(),estimateId=id();
+  p.estimates.push({...structuredClone(p.estimates[0]),id:estimateId,version:2,at:'2099-05-04T09:00:00.000Z'});
+  p.estimates[0].status='Superseded';
+  saveProject(db,p);
+  recordDocumentOpen(db,{studioId,projectId:project.id,user:client,kind:'estimate',itemId:estimateId,at:'2099-05-04T10:00:00.000Z'});
+  const oppId=db.prepare('SELECT id FROM crm_opportunities WHERE project_id=?').get(project.id).id;
+  const seen=pipelineOverview(db,studioId,{asOf:'2099-05-04'}).signals[oppId].opened;
+  assert.equal(seen.kind,'estimate');assert.deepEqual(seen.people,['Amara Okafor']);
  }finally{db.close();await rm(dir,{recursive:true,force:true});}
 });

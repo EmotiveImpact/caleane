@@ -29,3 +29,11 @@ export function OpenedNote({p,owner,kind,itemId,shared=true}){
  const again=seen.opens>1||seen.lastOpenedAt.slice(0,16)!==seen.firstOpenedAt.slice(0,16);
  return <p className="opened-note is-opened"><Eye size={14} aria-hidden="true"/><span>Opened by {names(seen.people)} {when(seen.firstOpenedAt)}{again?<> · last looked {when(seen.lastOpenedAt)}{seen.opens>1?`, ${seen.opens} visits`:''}</>:null}</span></p>;
 }
+
+// Owner only, on Pipeline cards and rows: the same quiet line for the latest
+// proposal or estimate on an enquiry, once the client has opened it.
+export function OpenedLine({opened}){
+ if(!opened?.people?.length)return null;
+ const what=opened.kind==='estimate'?'estimate':'proposal';
+ return <span className="opened-note is-opened is-compact" title={`The client opened the latest ${what}`}><Eye size={13} aria-hidden="true"/><span>Opened by {names(opened.people.map(name=>name.split(' ')[0]))} {when(opened.firstOpenedAt)}</span></span>;
+}

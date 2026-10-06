@@ -3,7 +3,7 @@ import {readSetting,writeSetting,currencies,installStudioCommerce,billingDefault
 import {installConsultations} from './consultations.mjs';
 import {getProjectOperations,changeProjectOperations} from './studio-operations.mjs';
 import {createPlan,getPlan,installPaymentPlans} from './payment-plans.mjs';
-import {firstOpenedAt} from './document-opens.mjs';
+import {firstOpenedAt,documentOpens} from './document-opens.mjs';
 
 // The pipeline reads what already happened on the linked project (quotes,
 // proposals, date holds, deposits, client replies) and keeps each enquiry in
@@ -325,13 +325,17 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
   const paused=proposal?fired(db,studioId,'pause:'+proposal.id):false;
   const followed=proposal?db.prepare("SELECT COUNT(*) AS n FROM crm_pipeline_triggers WHERE studio_id=? AND key LIKE ?").get(studioId,`follow:${proposal.id}:%`).n:0;
   const nextFollow=settings.followUps&&proposal?.status==='Awaiting response'&&followed<settings.followUpDays.length&&(!replied||replied<proposal.createdAt)?addDays(proposal.createdAt,settings.followUpDays[followed]):null;
+  // Whether the client has opened the latest document shared on this enquiry.
+  const latest=[proposal&&{kind:'proposal',id:proposal.id,at:proposal.createdAt},estimate&&{kind:'estimate',id:estimate.id,at:estimate.at}].filter(Boolean).sort((a,b)=>String(b.at||'').localeCompare(String(a.at||'')))[0];
+  const seen=latest&&documentOpens(db,studioId,p.id)[`${latest.kind}:${latest.id}`];
+  const opened=seen?{kind:latest.kind,people:seen.people,firstOpenedAt:seen.firstOpenedAt,lastOpenedAt:seen.lastOpenedAt,opens:seen.opens}:null;
   signals[o.id]={opportunityId:o.id,projectId:p?.id||null,eventDate:isDay(date)?date:'',venue:p?.brief?.venue||'',budget:p?.brief?.budget||'',
    estimate:estimate?{id:estimate.id,version:estimate.version,status:estimate.status,total:estimate.total,currency:estimate.currency,items:estimate.items.length}:null,
    proposal:proposal?{id:proposal.id,version:proposal.version,title:proposal.title,status:proposal.status,expiresOn:proposal.expiresOn,sharedAt:proposal.createdAt,openedAt:firstOpenedAt(db,studioId,'proposal',proposal.id)}:null,
    hold:hold?{id:hold.id,status:hold.status,startDate:hold.startDate,holdUntil:hold.holdUntil}:null,
    deposit:booking?.deposit&&!['No deposit invoice','Private'].includes(booking.deposit.status)?booking.deposit:null,
    productionStatus:booking?.productionStatus||null,portalClient:p?hasPortalClient(db,studioId,p.id):false,
-   lastClientMessageAt:replied,followUpsSent:followed,nextFollowUp:paused?null:nextFollow,followUpsPaused:paused,alternatives,fit,flags:flags.sort((a,b)=>a.rank-b.rank)};
+   lastClientMessageAt:replied,opened,followUpsSent:followed,nextFollowUp:paused?null:nextFollow,followUpsPaused:paused,alternatives,fit,flags:flags.sort((a,b)=>a.rank-b.rank)};
  }
  return {settings,asOf,dates,signals,planTemplate:billingDefaults(db,studioId).plan,insights:insights(db,studioId,opps,projects,asOf),handled:handledFor(db,studioId,asOf),replySpeed:replySpeed(db,studioId,opps,asOf)};
 }

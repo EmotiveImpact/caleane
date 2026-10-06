@@ -70,6 +70,10 @@
 .billing-plan-steps li.is-issued > span:first-child { background: var(--studio-accent, #181925); color: #fff; }
 .billing-plan-steps strong { display: block; font-weight: 600; }
 .billing-plan-steps small { display: block; color: var(--studio-muted, #6b6b6b); font-size: 12px; margin-top: 2px; }
+.billing-plan-chip { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 2px 8px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 999px; background: var(--studio-paper, #fff); color: var(--studio-muted, #6b6b6b); font-size: 11px; line-height: 1.5; white-space: nowrap; }
+.billing-plan-chip svg { flex: none; }
+.billing-plan-chip.is-done { color: #2f5d46; border-color: #cfe0d5; background: #f3f8f4; }
+.billing-plan-chip.is-warn { color: #8b2e22; border-color: #ecd3cd; background: #fbf4f2; }
 .billing-plan-steps .billing-plan-amount { font-variant-numeric: tabular-nums; font-weight: 600; }
 .billing-plan-edit li { grid-template-columns: 28px minmax(0,1.4fr) 120px 150px; }
 .billing-plan-edit input { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }

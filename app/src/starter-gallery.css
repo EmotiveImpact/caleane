@@ -37,3 +37,5 @@
   .starter-kinds .commerce-pill-options span { padding: 7px 12px; }
 }
 .starter-contract-preview h3:first-child { margin-top: 0; }
+/* Already added: a disabled button that stays legible rather than faded. */
+.ws-button.starter-added:disabled { opacity: 1; color: var(--studio-muted, #6b6b6b); background: transparent; gap: 4px; }
