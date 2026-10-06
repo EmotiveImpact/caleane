@@ -2,6 +2,7 @@ import React,{useState} from 'react';
 import {FormField as Field} from './FormDesignControls';
 import {WorkspaceButton} from './workspace/WorkspaceUI';
 import {operatorsFor,OPERATORS,describeCondition,branchDestinations} from '../lib/form-flow.js';
+import {usesBriefLook} from '../lib/brief-steps.js';
 const ruleFor=field=>({field:field.id,operator:operatorsFor(field)[0],value:field.options?.[0]||''});
 export function ConditionEditor({value,onChange,fields,label='Show this screen'}){
  const rules=value?.rules||[];
@@ -16,9 +17,9 @@ export function FormLogicEditor({definition,selected,fields,prior,patch,onTest})
  <div className="logic-section-heading"><h3>After this screen</h3><span>{selected.jumps.length?selected.jumps.length+(selected.jumps.length===1?' rule':' rules'):'In screen order'}</span></div>
  {selected.jumps.length>1&&<p className="form-help">Rules run from top to bottom. The first matching rule decides where to go.</p>}
  {selected.jumps.map((jump,i)=><details className="form-logic-rule" key={i} open={openRule===i} onToggle={event=>{if(event.currentTarget.open)setOpenRule(i);else setOpenRule(current=>current===i?null:current);}}><summary><strong>Rule {i+1}: {describeCondition(jump.when,fields)}</strong><span>Go to {definition.screens.find(s=>s.id===jump.to)?.title||'a missing screen'}</span></summary><div><ConditionEditor label="If" value={jump.when} fields={branchFields} onChange={when=>when?updateJump(i,{when}):patch({jumps:selected.jumps.filter((_,n)=>n!==i)})}/><Field label={'Then go to (rule '+(i+1)+')'}><select value={jump.to} onChange={e=>updateJump(i,{to:e.target.value})}>{!later.some(s=>s.id===jump.to)&&<option value={jump.to}>Choose an available screen</option>}{later.map(s=><option key={s.id} value={s.id}>{s.title||'Untitled screen'}</option>)}</select></Field><WorkspaceButton variant="ghost" onClick={()=>patch({jumps:selected.jumps.filter((_,n)=>n!==i)})}>Delete rule {i+1}</WorkspaceButton></div></details>)}
- <div className="logic-fallback"><strong>{selected.jumps.length?'Otherwise':'Continue to'}</strong><span>{next?next.title||'Untitled screen':'Review & send'}</span>{next?.showWhen&&<small>If its show condition matches; otherwise continue to the next visible screen.</small>}</div>
+ <div className="logic-fallback"><strong>{selected.jumps.length?'Otherwise':'Continue to'}</strong><span>{next?next.title||'Untitled screen':usesBriefLook(definition)?'The end, where the client sends their brief':'Review & send'}</span>{next?.showWhen&&<small>If its show condition matches; otherwise continue to the next visible screen.</small>}</div>
  <WorkspaceButton variant="secondary" disabled={!later.length||!branchFields.length||selected.jumps.length>=4} onClick={()=>{setOpenRule(selected.jumps.length);patch({jumps:[...selected.jumps,{to:later[0].id,when:{match:'all',rules:[ruleFor(branchFields.at(-1))]}}]});}}>Add a rule</WorkspaceButton>
- <p className="form-help">{!next?'This is the last screen. Clients review their answers next.':!branchFields.length?'Add a question before creating a rule.':'Choose a later screen. Essential project and contact questions cannot be skipped.'}</p>
+ <p className="form-help">{!next?usesBriefLook(definition)?'This is the last screen. Clients send their brief from here.':'This is the last screen. Clients review their answers next.':!branchFields.length?'Add a question before creating a rule.':'Choose a later screen. Essential project and contact questions cannot be skipped.'}</p>
  <WorkspaceButton variant="ghost" onClick={onTest}>Test from the beginning</WorkspaceButton>
  </div>;
 }

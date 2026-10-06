@@ -1,8 +1,13 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {formPath,formFields,screensFor} from '../lib/form-flow.js';
 import {QuestionInput,ChoiceInput,answerText} from './QuestionInput';
+import {BriefForm} from './BriefForm';
+import {usesBriefLook} from '../lib/brief-steps.js';
+export {usesBriefLook};
 const Field=({label,children,hideLabel=false,...props})=><label className="field"><span className={hideLabel?'sr-only':undefined}>{label}</span>{children?React.cloneElement(children,{'aria-label':label}):<input aria-label={label} {...props}/>}</label>;
-export function PublicForm({studio,form,preview=false,startScreenId}){
+// New forms and the website enquiry use the brief look. Studios can keep the classic look, and single-page forms stay classic.
+export function PublicForm(props){return usesBriefLook(props.form.definition)?<BriefForm {...props}/>:<ClassicForm {...props}/>;}
+export function ClassicForm({studio,form,preview=false,startScreenId}){
  const d=form.definition,storageKey=`caleane-form:${studio.slug}:${form.slug}:${form.version||'draft'}`;
  const [values,setValues]=useState({}),[answers,setAnswers]=useState({}),[screenId,setScreenId]=useState(()=>startScreenId||screensFor(d)[0].id),[editingReview,setEditingReview]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[receipt,setReceipt]=useState(''),[remember,setRemember]=useState(false),[requestKey,setRequestKey]=useState(()=>crypto.randomUUID());
  const formRef=useRef(null),headingRef=useRef(null),firstFocus=useRef(true),inspectionChange=useRef(false),pendingField=useRef(null);
