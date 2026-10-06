@@ -87,7 +87,7 @@ export async function syncXero(db,studioId,{env=process.env,transport=fetch}={})
    const current=link(db,studioId,kind,localId);if(current&&current.status==='Error'&&current.attempts>=MAX_ATTEMPTS)return;
    try{await work(current);}catch(error){if(error.status===401||error.status===429)throw error;sent.failed++;saveLink(db,studioId,kind,localId,{status:'Error',error:String(error.message).slice(0,500),attempts:(current?.attempts||0)+1});}
   };
-  for(const row of db.prepare('SELECT * FROM invoices WHERE studio_id=? AND issued_at>=? ORDER BY issued_at').all(studioId,from)){
+  for(const row of db.prepare('SELECT * FROM invoices WHERE studio_id=? AND issued_at>=? ORDER BY issued_at,number').all(studioId,from)){
    await step('invoice',row.id,async current=>{
     if(!current?.remote_id){
      if(row.cancelled_at)return;
