@@ -1,6 +1,7 @@
 import {messagePreview,messageSearchText} from '../lib/message-preview';
 import React,{useEffect,useState} from 'react';
-import {Plus,MessageSquare,PanelRight,ArrowLeft} from 'lucide-react';
+import {Plus,MessageSquare,PanelRight,ArrowLeft,ChevronDown,Check} from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {ProjectChat} from './ProjectChat';
 import {ConversationPanel} from './ConversationPanel';
 import {ProjectImage} from './StudioViews';
@@ -11,7 +12,15 @@ export const WIDE='(min-width: 1280px)',NARROW='(max-width: 760px)';
 const days=at=>Math.max(0,Math.floor((Date.now()-new Date(at))/864e5));
 const FILTERS={'Needs reply':t=>t.needsReply,Unread:t=>t.unreadMessages>0,Mentions:t=>t.mentionsMe>0,Waiting:t=>t.status!=='Resolved'&&(t.status==='Waiting'||!!t.waitingSince),All:t=>t.status!=='Resolved',Resolved:t=>t.status==='Resolved'};
 // One label per conversation, in order of what most needs attention.
-export function triageLabel(t){if(t.status==='Resolved')return ['done','Resolved'];if(t.needsReply)return ['reply','Needs your reply'];if(t.mentionsMe>0)return ['mention','Mentioned you'];if(t.waitingSince||t.status==='Waiting'){const n=t.waitingSince?days(t.waitingSince):0;return ['wait','Waiting on client'+(n?` · ${n} ${n===1?'day':'days'}`:'')];}return null;}
+const waited=(text,at)=>{const n=at?days(at):0;return text+(n?` · ${n} ${n===1?'day':'days'}`:'');};
+export function triageLabel(t){if(t.status==='Resolved')return ['done','Resolved'];if(t.needsReply)return ['reply',waited('Needs your reply',t.messages?.at(-1)?.at)];if(t.mentionsMe>0)return ['mention','Mentioned you'];if(t.waitingSince||t.status==='Waiting')return ['wait',waited('Waiting on client',t.waitingSince)];return null;}
+// The everyday filters sit in one row; the rarer ones live in a small menu beside them.
+const MAIN_FILTERS=['Needs reply','Waiting','All'],MORE_FILTERS=['Unread','Mentions'];
+function MoreFilters({value,onChange,count}){
+ const active=MORE_FILTERS.includes(value);
+ return <DropdownMenu.Root><DropdownMenu.Trigger asChild><button type="button" className={'ws-inbox-more'+(active?' is-active':'')} aria-label={active?'More filters, showing '+value.toLowerCase():'More filters'}><span>{active?value:'More'}</span>{active?<b>{count(value)}</b>:MORE_FILTERS.some(name=>count(name)>0)&&<i aria-hidden="true"/>}<ChevronDown size={13} aria-hidden="true"/></button></DropdownMenu.Trigger>
+  <DropdownMenu.Portal><DropdownMenu.Content className="ws-menu ws-inbox-more-menu" align="end" sideOffset={6} collisionPadding={12}><DropdownMenu.RadioGroup value={value} onValueChange={onChange}>{MORE_FILTERS.map(name=><DropdownMenu.RadioItem key={name} value={name} className="ws-menu-item"><span className="ws-inbox-more-check"><DropdownMenu.ItemIndicator><Check size={14}/></DropdownMenu.ItemIndicator></span><span>{name}</span><small>{count(name)}</small></DropdownMenu.RadioItem>)}</DropdownMenu.RadioGroup></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>;
+}
 
 export function InboxWorkspace({openId=null,studio,user,clients,conversations,projects,thread,loading,error,busy,request,openProject,onChoose,onNew,onAdd,onStatus,onConversation,onMarkedUnread,fileHref}){
  const [query,setQuery]=useState(''),[filter,setFilter]=useState('All'),[mobileOpen,setMobileOpen]=useState(false),[context,setContext]=useState(false),[wide,setWide]=useState(()=>matchMedia(WIDE).matches),[narrow,setNarrow]=useState(()=>matchMedia(NARROW).matches);
@@ -27,7 +36,7 @@ export function InboxWorkspace({openId=null,studio,user,clients,conversations,pr
   <div className="relationship-inbox-grid">
    <aside className="relationship-thread-list">
     <WorkspaceSearch label="Search conversations" placeholder="Search messages, people and files…" value={query} onChange={e=>setQuery(e.target.value)}/>
-    <WorkspaceFilters className="ws-inbox-filters" items={['Needs reply','Unread','Mentions','Waiting','All'].map(value=>({value,label:value,count:count(value)}))} label="Conversation filter" value={filter} onChange={setFilter}/>
+    <div className="ws-inbox-filter-row"><WorkspaceFilters className="ws-inbox-filters" items={MAIN_FILTERS.map(value=>({value,label:value,count:count(value)}))} label="Conversation filter" value={MAIN_FILTERS.includes(filter)?filter:''} onChange={setFilter}/><MoreFilters value={filter} onChange={setFilter} count={count}/></div>
     <nav aria-label="Conversations">{visible.map(t=>{
      const p=projects.find(p=>p.id===t.projectId),c=clients.find(c=>c.id===t.clientId),last=t.messages?.at(-1),tag=triageLabel(t);
      return <button className={'relationship-thread '+(t.id===thread?.id?'active ':'')+(t.unreadMessages>0?'is-unread':'')} aria-current={t.id===thread?.id?'true':undefined} key={t.id} onClick={()=>{onChoose(t);setMobileOpen(true);}}>
@@ -47,7 +56,7 @@ export function InboxWorkspace({openId=null,studio,user,clients,conversations,pr
       <div className="ws-conversation-actions"><div className="ws-status-switch" role="radiogroup" aria-label="Conversation status">{['Open','Waiting','Resolved'].map(s=><button type="button" role="radio" key={s} aria-checked={thread.status===s} disabled={busy} onClick={()=>thread.status!==s&&onStatus(s)}>{s}</button>)}</div>{!wide&&<WorkspaceButton variant="ghost" iconOnly tooltip="Open asks, files and people" onClick={()=>setContext(true)} aria-label="View conversation details"><PanelRight size={18}/></WorkspaceButton>}</div>
      </header>
      {/* On phones the conversation stays closed until chosen, so nothing is marked read unseen. */}
-     {(!narrow||mobileOpen)&&<ProjectChat key={thread.id} p={project} conversationId={thread.id} firstUnreadId={thread.firstUnreadId} studio={studio} user={user} owner={true} request={request} fileHref={fileHref} onConversation={onConversation} onMarkedUnread={c=>{onMarkedUnread?.(c);setMobileOpen(false);}}/>}
+     {(!narrow||mobileOpen)&&<ProjectChat key={thread.id} helper p={project} conversationId={thread.id} firstUnreadId={thread.firstUnreadId} studio={studio} user={user} owner={true} request={request} fileHref={fileHref} onConversation={onConversation} onMarkedUnread={c=>{onMarkedUnread?.(c);setMobileOpen(false);}}/>}
     </>:<WorkspaceEmpty icon={MessageSquare} title="Your conversations, together" description="Select a conversation to see its messages and project context."/>}
    </div>
    {wide&&thread&&<aside className="relationship-context ws-inbox-panel" aria-label="Conversation details">{panel}</aside>}

@@ -10,16 +10,20 @@ function helperEnabled(studio,request){
  if(!status.has(studio.id))status.set(studio.id,request('/api/assistant?studio='+studio.id).then(d=>!!d.enabled,()=>{status.delete(studio.id);return false;}));
  return status.get(studio.id);
 }
+// Whether the helper is on for this studio. Pass active=false to skip asking, for example for clients.
+export function useHelperEnabled(studio,request,active=true){
+ const [enabled,setEnabled]=useState(false);
+ useEffect(()=>{if(!active)return;let live=true;helperEnabled(studio,request).then(on=>{if(live)setEnabled(on);});return()=>{live=false;};},[studio.id,active]);
+ return active&&enabled;
+}
 const COPY={
- reply:{title:'Draft a reply',start:'Draft a reply',intro:'A first draft in your voice, from this conversation.'},
  recap:{title:'Recap before a call',start:'Recap this project',intro:'One paragraph on where things stand, for you to read before you speak to the client.'},
  'follow-up':{title:'Follow-up draft',start:'Draft a follow-up',intro:'A gentle note to pick things up again, for you to check before it goes.'}
 };
 
 export function QuietHelper({studio,request,kind,target,useLabel,onUse,className=''}){
- const [enabled,setEnabled]=useState(false),[busy,setBusy]=useState(''),[draft,setDraft]=useState(null),[text,setText]=useState(''),[error,setError]=useState(''),[copied,setCopied]=useState(false);
+ const enabled=useHelperEnabled(studio,request),[busy,setBusy]=useState(''),[draft,setDraft]=useState(null),[text,setText]=useState(''),[error,setError]=useState(''),[copied,setCopied]=useState(false);
  const copy=COPY[kind],targetKey=JSON.stringify(target);
- useEffect(()=>{let live=true;helperEnabled(studio,request).then(on=>{if(live)setEnabled(on);});return()=>{live=false;};},[studio.id]);
  useEffect(()=>{setDraft(null);setText('');setError('');},[targetKey]);
  if(!enabled)return null;
  async function write(){setBusy('write');setError('');setCopied(false);try{const d=await request('/api/assistant?studio='+studio.id,'POST',{kind,...target});setDraft(d.draft);setText(d.draft.text);}catch(e){setError(e.message);}finally{setBusy('');}}
@@ -41,7 +45,3 @@ export function QuietHelper({studio,request,kind,target,useLabel,onUse,className
   {error&&<p className="quiet-helper-error" role="alert">{error}</p>}
  </section>;
 }
-
-// Hands a drafted reply to the open conversation's composer without sending it.
-export const USE_DRAFT_EVENT='caleane:use-draft';
-export const offerDraft=(conversationId,text)=>window.dispatchEvent(new CustomEvent(USE_DRAFT_EVENT,{detail:{conversationId,text}}));
