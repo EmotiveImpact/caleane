@@ -4,7 +4,7 @@ import {projectAccess} from './relationships.mjs';
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const text=(value,max,required=false)=>{if(typeof value!=='string'||value.length>max)fail(400,'Check the length and format of the details.');const v=value.trim();if(required&&!v)fail(400,'Complete the required details.');return v;};
 const day=value=>{const v=text(value,10,true);if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||isNaN(Date.parse(v))||new Date(v).toISOString().slice(0,10)!==v)fail(400,'Choose a valid date.');return v;};
-const sameName=(typed,name)=>{const fold=value=>String(value||'').normalize('NFKC').replace(/\s+/g,' ').trim().toLocaleLowerCase('en-GB');return fold(typed)===fold(name);};
+export const sameName=(typed,name)=>{const fold=value=>String(value||'').normalize('NFKC').replace(/\s+/g,' ').trim().toUpperCase().toLowerCase();return fold(typed)===fold(name);};
 export function agreementDocument(body){
  if(body.termsHtml===undefined)return {terms:text(body.terms,24000,true)};
  const raw=text(body.termsHtml,48000,true);

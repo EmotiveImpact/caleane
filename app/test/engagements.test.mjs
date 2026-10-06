@@ -36,3 +36,11 @@ test('agreements retain exact accepted terms and reject stale, expired and unaut
  edit('save-booking',{...b,status:'Cancelled'});edit('save-booking',base);assert.equal(read().bookings.length,2);assert.equal(read().agreements.find(x=>x.id===a.id).terms,'Exact agreed work. No substitutions.');
  }finally{db.close();await rm(dir,{recursive:true,force:true});}
 });
+
+test('signer names match regardless of case, spacing or script-specific casing',async()=>{
+ const {sameName}=await import('../engagements.mjs');
+ assert.ok(sameName('  amelia   taylor ','Amelia Taylor'));
+ assert.ok(sameName('ışık','IŞIK'));
+ assert.ok(sameName('STRASSE','Straße'));
+ assert.ok(!sameName('Someone Else','Amelia Taylor'));
+});
