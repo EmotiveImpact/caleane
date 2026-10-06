@@ -1,4 +1,5 @@
 const text=value=>String(value??'').toLocaleLowerCase('en-GB');
+const dueLabel=value=>/^\d{4}-\d{2}-\d{2}$/.test(value)?new Date(value+'T00:00:00Z').toLocaleDateString('en-GB',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'}):value;
 const matches=(query,...values)=>values.some(value=>text(value).includes(query));
 const rank=(query,title,subtitle='')=>{const main=text(title),secondary=text(subtitle);return main===query?0:main.startsWith(query)?1:main.includes(query)?2:secondary.includes(query)?3:4;};
 // The palette shows the first few per group and can expand to this many without another request.
@@ -20,7 +21,7 @@ export function searchWorkspace(db,studioId,rawQuery,scope='all'){
   .filter((item,index,list)=>text(item.email)!==text(item.client_email)&&list.findIndex(other=>other.id===item.id)===index&&matches(query,item.name,item.email,item.phone,item.organization_name))
   .map(item=>({type:'contact',id:item.id,clientId:item.client_id,title:item.name,subtitle:[item.client_name,item.email].filter(Boolean).join(' · '),meta:item.organization_name||item.role||'Contact'}));
  const references=projectRecords.flatMap(project=>(project.inspiration||[]).filter(ref=>matches(query,ref.title,ref.note,ref.category,ref.source)).map(ref=>({type:'reference',id:'reference:'+project.id+':'+ref.id,projectId:project.id,referenceId:ref.id,title:ref.title||'Untitled reference',subtitle:project.title,meta:ref.category||'Reference'})));
- const projectTasks=projectRecords.flatMap(project=>(project.tasks||[]).filter(task=>matches(query,task.title,task.detail,project.title,project.brief?.name)).map(task=>({type:'task',id:'project:'+project.id+':'+task.id,projectId:project.id,title:task.title,subtitle:project.title,meta:task.completed?'Complete':task.due||'To do'})));
+ const projectTasks=projectRecords.flatMap(project=>(project.tasks||[]).filter(task=>matches(query,task.title,task.detail,project.title,project.brief?.name)).map(task=>({type:'task',id:'project:'+project.id+':'+task.id,projectId:project.id,title:task.title,subtitle:project.title,meta:task.completed?'Complete':task.due?'Due '+dueLabel(task.due):'To do'})));
  const all=[['Projects',projects],['References',references],['Clients',clients],['Contacts',contacts],['Opportunities',opportunities],['Tasks',[...projectTasks,...tasks]],['Invoices',invoices]].filter(([,items])=>scope==='all'||items.some(item=>types[scope].includes(item.type)));
  return {query:rawQuery,groups:all.filter(([,items])=>items.length).map(([label,items])=>({label,items:top(items,query),total:items.length})),total:all.reduce((sum,[,items])=>sum+items.length,0),limit:SEARCH_GROUP_LIMIT};
 }

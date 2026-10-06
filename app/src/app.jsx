@@ -62,6 +62,7 @@ import {StudioProjects,BriefsIndex,ApprovalsIndex,defaultProjectsView} from './c
 import './spatial-references.css';
 import './design-system.css';
 import './contained-look.css';
+import {formatDay} from './lib/dates';
 const screen=(load,name)=>lazy(()=>load().then(module=>({default:module[name]})));
 const SettingsWorkspace=screen(()=>import('./components/SettingsWorkspace'),'SettingsWorkspace');
 const FormsWorkspace=screen(()=>import('./components/FormsWorkspace'),'FormsWorkspace');
@@ -97,9 +98,9 @@ const ComponentGallery=screen(()=>import('./components/workspace/ComponentGaller
 const StudioViewer=screen(()=>import('./components/StudioViewer'),'StudioViewer');
 const References=screen(()=>import('./components/References'),'References');
 const NewProject=screen(()=>import('./components/NewProject'),'NewProject');
-const fmt=value=>new Date(value).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+const fmt=value=>formatDay(value);
 const initials=name=>name.split(' ').map(x=>x[0]).slice(0,2).join('');
-async function request(url,method='GET',body){const r=await fetch(url,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'Please try again.');if(method==='POST'&&['/api/login','/api/logout'].includes(url)){try{localStorage.setItem('caleane-session-change',crypto.randomUUID());}catch{}}return data;}
+async function request(url,method='GET',body){const r=await fetch(url,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});let data;try{data=await r.json();}catch{data=null;}if(!r.ok||!data){const error=new Error(data?.error||(r.status===413?'That file is too large to upload.':'Caleane could not reach the server. Please try again.'));error.status=r.status;throw error;}if(method==='POST'&&['/api/login','/api/logout'].includes(url)){try{localStorage.setItem('caleane-session-change',crypto.randomUUID());}catch{}}return data;}
 function Icon({name,...props}){const paths={grid:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',people:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',settings:'M4 7h16 M4 17h16 M8 4v6 M16 14v6',arrow:'M5 12h14 M13 6l6 6-6 6',plus:'M12 5v14 M5 12h14',chevron:'M9 5l7 7-7 7',back:'M19 12H5 M11 6l-6 6 6 6',close:'M6 6l12 12 M18 6L6 18',check:'M5 12l4 4L19 6',search:'M21 21l-5-5 M10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14',file:'M14 2H6v20h12V6z M14 2v5h5',link:'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2 M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',mail:'M3 5h18v14H3z M3 5l9 7 9-7',logout:'M9 4H4v16h5 M10 12h11 M16 7l5 5-5 5'};return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d={paths[name]||paths.grid}/></svg>}
 function Button({children,secondary=false,className='',type='submit',...props}){return <WorkspaceButton variant={secondary?'secondary':'primary'} type={type} className={(secondary?'button secondary ':'button ')+className} {...props}>{children}</WorkspaceButton>}
 function Field({label,children,...props}){return <label className="field"><span>{label}</span>{children||<input {...props}/>}</label>}
@@ -119,7 +120,7 @@ function App(){
  useEffect(()=>{
   let active=true;
   const signature=value=>JSON.stringify([value?.user?.id,(value?.studios||[]).map(item=>[item.id,item.role])]);
-  const check=async()=>{if(document.visibilityState!=='visible')return;try{const current=await request('/api/me');if(active&&signature(current)!==signature(session))location.reload();}catch{if(active&&session)location.reload();}};
+  const check=async()=>{if(document.visibilityState!=='visible')return;try{const current=await request('/api/me');if(active&&signature(current)!==signature(session))location.reload();}catch(error){if(active&&session&&error.status===401)location.reload();}};
   const changed=event=>{if(event.key==='caleane-session-change')location.reload();};
   window.addEventListener('storage',changed);window.addEventListener('focus',check);document.addEventListener('visibilitychange',check);
   return()=>{active=false;window.removeEventListener('storage',changed);window.removeEventListener('focus',check);document.removeEventListener('visibilitychange',check);};

@@ -5,8 +5,9 @@ import {ProjectContext} from './ProjectWorkspace';
 import '../folio-journey.css';
 import {TaskCollaboration} from './TaskCollaboration';
 import './task-workspace.css';
+import {formatDay} from '../lib/dates';
 
-const date=value=>value?new Date(value.length===10?value+'T12:00:00':value).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+const date=value=>formatDay(value);
 
 export function ProjectPlan({p,studio,owner,mutate,busy,onNavigate,request}){
  const [discussion,setDiscussion]=useState(null);

@@ -24,7 +24,8 @@ test('agreements retain exact accepted terms and reject stale, expired and unaut
  a=edit('issue-agreement',a).agreements[0];assert.equal(a.digest.length,64);
  reject(()=>edit('respond-agreement',{...a,decision:'accept',signerName:'Client',consent:false},clientId),400);
  reject(()=>edit('respond-agreement',{...a,revision:0,decision:'accept',signerName:'Client',consent:true},clientId),409);
- a=edit('respond-agreement',{...a,decision:'accept',signerName:'Client',consent:true},clientId).agreements[0];assert.equal(a.status,'Accepted');assert.equal(a.response.digest,a.digest);reject(()=>edit('withdraw-agreement',{...a,reason:'Rewrite'}),409);
+ reject(()=>edit('respond-agreement',{...a,decision:'accept',signerName:'Someone Else',consent:true},clientId),400);
+ a=edit('respond-agreement',{...a,decision:'accept',signerName:'  client ',consent:true},clientId).agreements[0];assert.equal(a.status,'Accepted');assert.equal(a.response.digest,a.digest);reject(()=>edit('withdraw-agreement',{...a,reason:'Rewrite'}),409);
  let newer=edit('create-agreement',{title:'New terms',terms:'Replacement terms',expiresOn:'2099-01-01'}).agreements[0];newer=edit('issue-agreement',newer).agreements[0];project.briefRevision++;saveProject(db,project);reject(()=>edit('respond-agreement',{...newer,decision:'decline'},clientId),409);
  let exp=edit('create-agreement',{title:'Expiry',terms:'Time limited',expiresOn:'2099-01-01'}).agreements[0];exp=edit('issue-agreement',exp).agreements[0];exp.expiresOn='2000-01-01';db.prepare('UPDATE project_agreements SET data=? WHERE id=?').run(JSON.stringify(exp),exp.id);reject(()=>edit('respond-agreement',{...exp,decision:'decline'},clientId),409);
  const base={title:'Private room',resource:'The Hall',kind:'Venue',startDate:'2099-02-01',endDate:'2099-02-02',status:'Tentative',shared:false,note:'Private margin'};
