@@ -3,8 +3,9 @@ import {Check} from 'lucide-react';
 import {workflowFor} from '../lib/workflows';
 import {phaseSummary} from '../lib/phase-summary';
 import '../project-phases.css';
+import {formatDay} from '../lib/dates';
 
-const readable=value=>new Date(value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+const readable=value=>formatDay(value);
 export function ProjectPhases({p,studio,owner,request,onNavigate}){
  const [state,setState]=useState({loading:true}),[retry,setRetry]=useState(0);
  useEffect(()=>{let active=true;setState({loading:true});request(`/api/projects/${p.id}/operations?studio=${studio.id}`).then(result=>{if(active)setState({operations:result.operations});}).catch(error=>{if(active)setState({error:error.message||'Delivery steps could not be loaded.'});});return()=>{active=false;};},[p.id,p.updatedAt,studio.id,request,retry]);

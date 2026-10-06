@@ -2,8 +2,9 @@ import React from 'react';
 import {CalendarDays,FolderClosed,ListTodo} from 'lucide-react';
 import {StaffProjectWorkspace} from './StaffProjectWorkspace';
 import '../staff-project.css';
+import {formatDay} from '../lib/dates';
 
-const formatDate=value=>value?new Date(value).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'To be decided';
+const formatDate=value=>formatDay(value,'To be decided');
 export function StudioViewer({studio,projects,selected,tab,onTabChange,onSelect,request,onUpdate}){
  const project=projects.find(item=>item.id===selected);
  if(project?.canContribute)return <StaffProjectWorkspace studio={studio} summary={project} tab={tab} onTabChange={onTabChange} request={request} onBack={()=>onSelect(null)} onUpdate={onUpdate}/>;

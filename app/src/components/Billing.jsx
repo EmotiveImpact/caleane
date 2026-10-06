@@ -10,14 +10,15 @@ import '../studio-commerce.css';
 import {PaymentPlan} from './PaymentPlan';
 import {OpenedNote,useRecordOpen} from './OpenedNote';
 import {ProjectProfit,StudioCosts,StudioReports} from './FinanceViews';
+import {todayISO,daysFromToday} from '../lib/dates';
 
 const money=(minor,currency='GBP')=>{
  try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}
  catch{return `${((Number(minor)||0)/100).toFixed(2)} ${currency}`;}
 };
 const date=value=>value?new Date(value.length===10?`${value}T12:00:00`:value).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'—';
-const today=()=>new Date().toISOString().slice(0,10);
-const dueDefault=()=>new Date(Date.now()+14*86400000).toISOString().slice(0,10);
+const today=()=>todayISO();
+const dueDefault=()=>daysFromToday(14);
 const minorFromInput=value=>Math.round(Number(value)*100);
 const isOpen=invoice=>invoice.status==='Issued'||invoice.status==='Partially paid';
 export const invoiceBalance=invoice=>invoice.balanceMinor??Math.max(0,invoice.amountMinor-(invoice.paidMinor||0));
@@ -96,7 +97,7 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  if(!confirmed.length)return <div className="billing-empty billing-empty-form"><FileText size={26}/><h3>Agree the latest budget direction first.</h3><p>Share an estimate based on the current brief and ask the client to confirm its budget direction. That estimate remains separate from the invoice and payment record.</p><button className="billing-text-button" onClick={onCancel}>Close</button></div>;
  if(hasOlderInvoice)return <div className="billing-empty billing-empty-form"><FileText size={26}/><h3>Review the earlier invoices first.</h3><p>Active invoices refer to a different estimate version. Settle or cancel those records before issuing against the new estimate.</p><button className="billing-text-button" onClick={onCancel}>Close</button></div>;
  if(!saved)return <p className="billing-loading" role="status">Preparing the invoice…</p>;
- const dueFromTerms=Number.isInteger(saved.paymentTermsDays)?new Date(Date.now()+saved.paymentTermsDays*86400000).toISOString().slice(0,10):dueDefault();
+ const dueFromTerms=Number.isInteger(saved.paymentTermsDays)?daysFromToday(saved.paymentTermsDays):dueDefault();
  const shareMinor=kind==='Deposit'?minorFromInput(amount)||0:remaining;
  const shareNetMinor=!estimate?0:kind==='Full'?estimate.subtotal:kind==='Balance'?estimate.subtotal-active.reduce((total,item)=>total+(item.netMinor||0)+(item.discountNetMinor||0),0):Math.round(estimate.subtotal*shareMinor/(estimate.total||1));
  const discountInput=discountType==='percent'?{type:'percent',percent:Number(discountValue),reason:discountReason}:discountType==='amount'?{type:'amount',amountMinor:minorFromInput(discountValue),reason:discountReason}:null;

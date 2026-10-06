@@ -4,6 +4,7 @@ import {projectAccess} from './relationships.mjs';
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const text=(value,max,required=false)=>{if(typeof value!=='string'||value.length>max)fail(400,'Check the length and format of the details.');const v=value.trim();if(required&&!v)fail(400,'Complete the required details.');return v;};
 const day=value=>{const v=text(value,10,true);if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||isNaN(Date.parse(v))||new Date(v).toISOString().slice(0,10)!==v)fail(400,'Choose a valid date.');return v;};
+export const sameName=(typed,name)=>{const fold=value=>String(value||'').normalize('NFKC').replace(/\s+/g,' ').trim().toUpperCase().toLowerCase();return fold(typed)===fold(name);};
 export function agreementDocument(body){
  if(body.termsHtml===undefined)return {terms:text(body.terms,24000,true)};
  const raw=text(body.termsHtml,48000,true);
@@ -27,7 +28,7 @@ export function changeEngagements(db,{studioId,projectId,userId,action,body}){re
   if(!a||a.status!=='Issued'||a.revision!==body.revision||a.digest!==body.digest||a.briefRevision!==project.briefRevision)fail(409,'This agreement changed or is no longer current. Refresh before responding.');
   if(a.expiresOn<stamp.slice(0,10))fail(409,'This agreement expired. Ask the studio for a new version.');
   if(!['accept','decline'].includes(body.decision))fail(400,'Choose a response.');
-  if(body.decision==='accept'&&(body.consent!==true||text(body.signerName||'',120,true)!==actor.name))fail(400,'Enter your account name and confirm you have read and accept these terms.');
+  if(body.decision==='accept'&&(body.consent!==true||!sameName(text(body.signerName||'',120,true),actor.name)))fail(400,'Type your name as it appears on your account, and tick the box to confirm you accept these terms.');
   a.status=body.decision==='accept'?'Accepted':'Declined';a.response={decision:body.decision,name:actor.name,userId:actor.id,at:stamp,digest:a.digest,note:text(body.note||'',2000),consent:body.decision==='accept'};a.revision++;
   db.prepare('UPDATE project_agreements SET data=? WHERE id=? AND studio_id=?').run(JSON.stringify(a),a.id,studioId);
  }else{
