@@ -11,7 +11,7 @@ const origin='http://127.0.0.1:4321';
 function stateFrom(url){return new URL(url).searchParams.get('state');}
 
 async function fixture(){
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-onboarding-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-onboarding-'));
  const db=openStore(path.join(dir,'workspace.sqlite'));
  db.prepare('INSERT INTO studios VALUES(?,?,?,?,?)').run('studio-one','studio-one','Studio One','#000000','[]');
  db.prepare('INSERT INTO studios VALUES(?,?,?,?,?)').run('studio-two','studio-two','Studio Two','#000000','[]');

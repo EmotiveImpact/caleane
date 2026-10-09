@@ -9,7 +9,7 @@ import {DEFAULT_WORKFLOW,projectTypesFor} from '../src/lib/workflows.js';
 const origin='http://127.0.0.1:4320';
 
 test('signup validates and persists the chosen studio practice for first projects',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-signup-practice-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-signup-practice-'));
  const {server,db}=await createWorkspace({dbFile:path.join(dir,'workspace.sqlite'),origin});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const base=`http://127.0.0.1:${server.address().port}`;

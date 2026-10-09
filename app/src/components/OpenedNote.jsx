@@ -1,4 +1,5 @@
 import React,{useEffect} from 'react';
+import {shortDay} from '../lib/dates';
 import {Eye,EyeOff} from 'lucide-react';
 import './opened-note.css';
 
@@ -17,7 +18,7 @@ const when=value=>{
  const time=at.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
  if(days<1&&at.toDateString()===new Date().toDateString())return 'today at '+time;
  if(days<2&&at.toDateString()===new Date(Date.now()-86400000).toDateString())return 'yesterday at '+time;
- return 'on '+at.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:at.getFullYear()===new Date().getFullYear()?undefined:'numeric'});
+ return 'on '+shortDay(at);
 };
 const names=list=>list.length<=2?list.join(' and '):`${list.slice(0,-1).join(', ')} and ${list.at(-1)}`;
 

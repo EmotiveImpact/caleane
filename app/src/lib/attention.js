@@ -23,7 +23,7 @@ export function attentionFor(project,owner){
  if(owner&&latest?.status==='Changes requested')add('feedback','Revise the design','Designs',latest.feedback,latest.decidedAt);
  if(latest?.status==='Awaiting approval'&&latest.briefRevision!==project.briefRevision){if(owner)add('stale','Update the design','Designs','The brief changed after this version was shared.');}
  else if(!owner&&latest?.status==='Awaiting approval')add('approval','Your design is ready to review','Designs',latest.title,latest.at);
- if(owner&&project.status==='Enquiry'&&!project.enquiryReviewedAt)add('enquiry','Review new enquiry','Brief',project.brief.occasion,project.createdAt);
+ if(owner&&project.status==='Enquiry'&&!project.enquiryReviewedAt)add('enquiry','Review new enquiry','Brief','Read their brief and reply.',project.createdAt);
  if(owner&&latest?.comments?.some(c=>!c.resolved&&c.role==='client'))add('comment','Review design comments','Designs','Feedback is pinned to the design version.');
  return items;
 }

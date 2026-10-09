@@ -1,12 +1,11 @@
 import React,{useEffect,useState} from 'react';
 import {CalendarClock,CreditCard} from 'lucide-react';
-import {todayISO,formatDay} from '../lib/dates';
+import {todayISO,formatDay,shortDay} from '../lib/dates';
 
 const money=(minor,currency='GBP')=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}catch{return `${((Number(minor)||0)/100).toFixed(2)} ${currency}`;}};
 const autopayReturn=()=>new URLSearchParams(window.location.search).get('autopay');
 const date=value=>formatDay(value,'—');
 
-const shortDay=value=>{const at=new Date(value+'T12:00:00');return at.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:at.getFullYear()===new Date().getFullYear()?undefined:'numeric'});};
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 
 // With autopay on, what will happen to one issued plan invoice. Nothing for a

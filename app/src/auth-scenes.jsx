@@ -30,7 +30,7 @@ export function AuthScenes() {
     <div className="auth-visual" aria-hidden="true">
       {scenes.map((image, index) => <img key={image} className={index === active ? 'is-active' : ''} src={image} alt="" decoding="async" />)}
     </div>
-    <span className="auth-wordmark"><img src="/assets/identity/calenne-symbol-ivory.svg" alt=""/>Caleane</span>
+    <span className="auth-wordmark"><img src="/assets/identity/caleane-symbol-ivory.svg" alt=""/>Caleane</span>
     <div className="auth-story-copy">
       <p className="eyebrow">THE BUSINESS BEHIND THE BEAUTIFUL</p>
       <h1><span>Make room for</span>{' '}<span>the idea.</span></h1>

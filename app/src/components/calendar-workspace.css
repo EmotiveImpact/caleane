@@ -58,3 +58,9 @@
 }
 
 .calendar-scheduled-item.is-static{cursor:default}.folio-calendar-days small.is-booking{background:#e6ece8;color:#2f4a3c}
+.calendar-add-open{width:100%;justify-content:center;margin:18px 0 6px}
+.calendar-add-task{margin:18px 0 6px;padding:18px;border:1px solid #e1e2e4;border-radius:8px;background:#fff}
+.calendar-add-task h3{margin:0 0 14px;font-size:15px}
+.calendar-add-task select,.calendar-add-task input{width:100%}
+.calendar-add-actions{display:flex;gap:10px;align-items:center}
+.calendar-add-task .ws-field{margin-bottom:14px}

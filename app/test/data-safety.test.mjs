@@ -7,7 +7,7 @@ import path from 'node:path';
 import {createBackup,restoreBackup} from '../data-safety.mjs';
 
 test('a WAL database can be backed up, verified and restored only to a new path',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-backup-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-backup-'));
  const source=path.join(dir,'live.sqlite'),backup=path.join(dir,'backup.sqlite'),restored=path.join(dir,'restored.sqlite');
  const db=new DatabaseSync(source);db.exec('PRAGMA journal_mode=WAL; CREATE TABLE projects(id TEXT PRIMARY KEY,data TEXT NOT NULL);');
  db.prepare('INSERT INTO projects VALUES(?,?)').run('stable-id','{"title":"Preserved"}');

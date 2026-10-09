@@ -46,9 +46,9 @@ export async function runHostedDemo(input, { origin, key } = {}) {
   let workspace;
   try {
     if (input.state) await writeFile(dbFile, open(input.state, key));
-    workspace = await createWorkspace({ dbFile, origin, demo: true, disableExternalServices: true, notificationKey: '', accountMailKey: '', enableStripeCollection: false, stripeWebhookSecret: '' });
+    workspace = await createWorkspace({ dbFile, origin, demo: true, showcase: true, disableExternalServices: true, notificationKey: '', accountMailKey: '', enableStripeCollection: false, stripeWebhookSecret: '' });
     let response;
-    const blocked = /^(?:\/api\/signup|\/api\/webhooks\/|\/api\/account\/(?:recovery|reset|verify|verification)|\/api\/calendar-sync)/.test(url.pathname) || /stripe|checkout/.test(url.pathname);
+    const blocked = /^(?:\/api\/signup|\/api\/webhooks\/|\/api\/account\/(?:recovery|reset|verify|verification|email|confirm-email)|\/api\/calendar-sync)/.test(url.pathname) || /stripe|checkout/.test(url.pathname);
     if (blocked) {
       response = { status: 403, headers: { 'content-type': 'application/json' }, body: Buffer.from(JSON.stringify({ error: 'This is a sample workspace. Live accounts, connected services and payments are not available in the demo.' })).toString('base64') };
     } else {

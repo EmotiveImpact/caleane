@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {id,passwordHash,now} from '../store.mjs';
 import {createWorkspace} from '../server.mjs';
 
 test('conversations show who needs a reply, keep pins and open asks, and can be marked unread',async()=>{

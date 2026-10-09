@@ -1,4 +1,5 @@
 import {messagePreview,messageSearchText} from '../lib/message-preview';
+import {shortDay} from '../lib/dates';
 import React,{useEffect,useState} from 'react';
 import {Plus,MessageSquare,PanelRight,ArrowLeft,ChevronDown,Check} from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -7,7 +8,7 @@ import {ConversationPanel} from './ConversationPanel';
 import {ProjectImage} from './StudioViews';
 import {WorkspaceButton,WorkspaceHeading,WorkspaceSearch,WorkspaceFilters,WorkspaceAvatar,WorkspaceDialog,WorkspaceEmpty} from './workspace/WorkspaceUI';
 import './relationship-workspace.css';
-const when=at=>{if(!at)return '';const d=new Date(at),today=new Date();return d.toDateString()===today.toDateString()?d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):Date.now()-d<6*864e5?d.toLocaleDateString('en-GB',{weekday:'short'}):d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
+const when=at=>{if(!at)return '';const d=new Date(at),today=new Date();return d.toDateString()===today.toDateString()?d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):Date.now()-d<6*864e5?d.toLocaleDateString('en-GB',{weekday:'short'}):shortDay(d);};
 export const WIDE='(min-width: 1280px)',NARROW='(max-width: 760px)';
 const days=at=>Math.max(0,Math.floor((Date.now()-new Date(at))/864e5));
 const FILTERS={'Needs reply':t=>t.needsReply,Unread:t=>t.unreadMessages>0,Mentions:t=>t.mentionsMe>0,Waiting:t=>t.status!=='Resolved'&&(t.status==='Waiting'||!!t.waitingSince),All:t=>t.status!=='Resolved',Resolved:t=>t.status==='Resolved'};

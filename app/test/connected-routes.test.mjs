@@ -14,7 +14,7 @@ const webhookSecret='whsec_local_integration';
 const verifier=new Stripe('sk_test_only_for_local_signature_tests');
 
 test('HTTP checkout, signed webhook, date holds and queued invitations respect project access',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-connected-routes-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-connected-routes-'));
  const calls=[];
  const stripe={
   accounts:{async retrieve(id){return {id,charges_enabled:true};}},
@@ -100,7 +100,7 @@ test('HTTP checkout, signed webhook, date holds and queued invitations respect p
 });
 
 test('HTTP Stripe setup accepts only owner-bound single-use callbacks',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-connect-routes-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-connect-routes-'));
  let chargesEnabled=false,accountsCreated=0;
  const links=[];
  const stripe={
