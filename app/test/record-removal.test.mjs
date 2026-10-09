@@ -41,7 +41,9 @@ test('studios can remove tasks, references, drafts, comments, notes, contacts an
   assert.equal(r.data.project.inspiration[0].comments.length,0);
   r=await call(`/api/projects/${project.id}/reference-update${q}`,'POST',{referenceId:ref.id,remove:true});
   assert.equal(r.status,200);assert.ok(!r.data.project.inspiration.some(i=>i.id===ref.id));
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM files WHERE id=?').get(ref.fileId).n,0,'unused reference file is deleted');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM files WHERE id=?').get(ref.fileId).n,1,'the file waits in Recently deleted');
+  db.prepare("UPDATE deleted_items SET deleted_at='2000-01-01T00:00:00.000Z'").run();assert.equal((await call('/api/recently-deleted'+q)).status,200);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM files WHERE id=?').get(ref.fileId).n,0,'unused reference file is deleted after 30 days');
 
   // Design comments can be reopened, edited and deleted
   const design=project.designs.at(-1);
@@ -65,7 +67,9 @@ test('studios can remove tasks, references, drafts, comments, notes, contacts an
   r=await call(`/api/projects/${project.id}/drafts${q}`,'POST',{title:'Idea',description:'',assetIds:[asset.fileId],briefRevision:project.briefRevision});
   assert.equal(r.status,201);
   assert.equal((await call(`/api/projects/${project.id}/drafts/${r.data.draft.id}${q}`,'PATCH',{remove:true})).status,200);
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM files WHERE id=?').get(asset.fileId).n,0,'draft-only upload is deleted with the draft');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM files WHERE id=?').get(asset.fileId).n,1,'the upload waits with the draft in Recently deleted');
+  db.prepare("UPDATE deleted_items SET deleted_at='2000-01-01T00:00:00.000Z'").run();assert.equal((await call('/api/recently-deleted'+q)).status,200);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM files WHERE id=?').get(asset.fileId).n,0,'draft-only upload is deleted after 30 days');
 
   // Notes, contacts and archiving
   r=await call(`/api/clients/${client.id}/notes${q}`,'POST',{text:'Prefers calls'});const note=r.data.client.notes[0];
