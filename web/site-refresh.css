@@ -29,9 +29,8 @@
   .platform-page .pl-tour-tools [role=tablist]::-webkit-scrollbar{display:none}
   .platform-page .pl-tour-tools [role=tab]{white-space:nowrap;flex:none}
   .platform-page .pl-enlarge{flex:none;padding:10px 14px;font-size:12px}
-  /* A desktop screen shrunk to phone width is unreadable: skip the sidebar and show the page itself, larger. */
-  .platform-page .pl-tour-panel figure,.platform-page .pl-client figure{overflow:hidden;border-radius:4px}
-  .platform-page .pl-tour-panel img,.platform-page .pl-client figure img{width:150%;max-width:none;aspect-ratio:auto;margin-left:-24%}
+  /* Phones get real phone captures of the app (platform.html <picture>), shown whole. */
+  .platform-page .pl-tour-panel img,.platform-page .pl-client figure img{width:100%;max-width:360px;aspect-ratio:780/1520;margin-inline:auto;border-radius:14px}
 }
 
 /* For creatives: the seven kinds of work as boxed cards. */
