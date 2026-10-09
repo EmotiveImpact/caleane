@@ -3,6 +3,7 @@ import {invoiceFonts,invoiceLayouts,normaliseInvoiceDesign} from './src/lib/invo
 import {DEFAULT_VAT_RATE,isVatRegistered} from './src/lib/vat.js';
 import {CURRENCIES} from './src/lib/currencies.js';
 import {PRICE_UNITS} from './src/lib/price-units.js';
+import {DEFAULT_INVOICE_PREFIX,counterYear,validInvoicePrefix} from './src/lib/invoice-numbers.js';
 import {defaultLateFee,defaultTips,validateLateFee,validateTips} from './invoice-extras.mjs';
 
 // Studio-level libraries the owner reuses across projects: a price list,
@@ -20,7 +21,7 @@ export const defaultTemplates=[
  {name:'Thank you',category:'Follow-up',body:'Hi {client_first_name},\n\nThank you for trusting us with {project_title}. It was a pleasure working with you. If you have a moment, we would love to hear how you found the experience.\n\n{studio_name}'}
 ];
 
-export const defaultBillingDefaults={sellerAddress:'',sellerContact:'',taxRegistration:'',vatRegistered:false,paymentInstructions:'',paymentTermsDays:14,currency:'GBP',taxRate:0,lateFee:defaultLateFee,tips:defaultTips,
+export const defaultBillingDefaults={invoicePrefix:DEFAULT_INVOICE_PREFIX,invoiceYear:true,sellerAddress:'',sellerContact:'',taxRegistration:'',vatRegistered:false,paymentInstructions:'',paymentTermsDays:14,currency:'GBP',taxRate:0,lateFee:defaultLateFee,tips:defaultTips,
  plan:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}]};
 
 export function installStudioCommerce(db){db.exec(`
@@ -97,12 +98,23 @@ export function validatePlanTemplate(steps){
  return result;
 }
 // vatRegistered is worked out for settings saved before the switch existed, so their rate keeps showing.
-export function billingDefaults(db,studioId){const saved=readSetting(db,studioId,'billing_defaults',{});return {...structuredClone(defaultBillingDefaults),...saved,vatRegistered:isVatRegistered(saved),lateFee:{...defaultLateFee,...(saved.lateFee||{})},tips:{...defaultTips,...(saved.tips||{})}};}
+export function billingDefaults(db,studioId){const saved=readSetting(db,studioId,'billing_defaults',{});const result={...structuredClone(defaultBillingDefaults),...saved,vatRegistered:isVatRegistered(saved),lateFee:{...defaultLateFee,...(saved.lateFee||{})},tips:{...defaultTips,...(saved.tips||{})}};return {...result,nextInvoiceNumber:nextInvoiceNumber(db,studioId,result)};}
+// The number the next invoice will take under the studio's current numbering.
+function nextInvoiceNumber(db,studioId,settings){return db.prepare('SELECT next_number FROM invoice_counters WHERE studio_id=? AND year=?').get(studioId,counterYear(settings,Number(now().slice(0,4))))?.next_number||1;}
 export function saveBillingDefaults(db,studioId,body){
  const terms=body.paymentTermsDays??14;if(!Number.isInteger(terms)||terms<0||terms>120)fail(400,'Use payment terms between 0 and 120 days.');
  const vatRegistered=typeof body.vatRegistered==='boolean'?body.vatRegistered:isVatRegistered(body);if(body.vatRegistered!=null&&typeof body.vatRegistered!=='boolean')fail(400,'Choose whether the studio is VAT registered.');
  const currency=body.currency??'GBP',taxRate=body.taxRate??(vatRegistered?DEFAULT_VAT_RATE:0);if(!currencies.includes(currency))fail(400,'Choose a supported currency.');if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
- return writeSetting(db,studioId,'billing_defaults',{currency,vatRegistered,taxRate,sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan),lateFee:validateLateFee(body.lateFee),tips:validateTips(body.tips)});
+ const invoicePrefix=body.invoicePrefix??DEFAULT_INVOICE_PREFIX,invoiceYear=body.invoiceYear??true;
+ if(!validInvoicePrefix(invoicePrefix))fail(400,'Use up to 12 letters or numbers for the invoice prefix, with a dash or slash between parts if you like.');
+ if(typeof invoiceYear!=='boolean')fail(400,'Choose whether invoice numbers include the year.');
+ const next=body.nextInvoiceNumber;if(next!==undefined&&(!Number.isInteger(next)||next<1||next>999999))fail(400,'Use a next invoice number between 1 and 999999.');
+ return transaction(db,()=>{
+  writeSetting(db,studioId,'billing_defaults',{invoicePrefix,invoiceYear,currency,vatRegistered,taxRate,sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan),lateFee:validateLateFee(body.lateFee),tips:validateTips(body.tips)});
+  // A number already used is skipped when the invoice is issued, so moving the counter back cannot duplicate one.
+  if(next!==undefined)db.prepare('INSERT INTO invoice_counters VALUES(?,?,?) ON CONFLICT(studio_id,year) DO UPDATE SET next_number=excluded.next_number').run(studioId,counterYear({invoiceYear},Number(now().slice(0,4))),next);
+  return billingDefaults(db,studioId);
+ });
 }
 
 export function invoiceDesign(db,studioId){return normaliseInvoiceDesign(readSetting(db,studioId,'invoice_design',{}));}

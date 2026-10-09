@@ -42,6 +42,7 @@ import {seedShowcase} from './demo-showcase.mjs';
 import {defaultTaxRate,isVatDocument,isVatRegistered} from './src/lib/vat.js';
 import {isCurrency} from './src/lib/currencies.js';
 import {PRICE_UNITS} from './src/lib/price-units.js';
+import {counterYear,invoiceNumber} from './src/lib/invoice-numbers.js';
 import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
@@ -676,10 +677,11 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       if(missing.length)fail(400,`Add ${missing.length>1?missing.slice(0,-1).join(', ')+' and '+missing.at(-1):missing[0]}.`);
       if(dueDate<now().slice(0,10))fail(400,'Choose an invoice due date today or later.');
       return transaction(db,()=>{
-       const year=Number(now().slice(0,4));db.prepare('INSERT OR IGNORE INTO invoice_counters VALUES(?,?,1)').run(studio.id,year);
-       const next=db.prepare('SELECT next_number FROM invoice_counters WHERE studio_id=? AND year=?').get(studio.id,year).next_number;
-       db.prepare('UPDATE invoice_counters SET next_number=next_number+1 WHERE studio_id=? AND year=?').run(studio.id,year);
-       const number=`INV-${year}-${String(next).padStart(4,'0')}`;
+       // Numbering follows Settings, Invoice details. A number already in use (after the studio moved the counter) is skipped.
+       const year=Number(now().slice(0,4)),slot=counterYear(saved,year);db.prepare('INSERT OR IGNORE INTO invoice_counters VALUES(?,?,1)').run(studio.id,slot);
+       let next=db.prepare('SELECT next_number FROM invoice_counters WHERE studio_id=? AND year=?').get(studio.id,slot).next_number,number=invoiceNumber(saved,year,next);
+       while(db.prepare('SELECT 1 FROM invoices WHERE studio_id=? AND number=?').get(studio.id,number))number=invoiceNumber(saved,year,++next);
+       db.prepare('UPDATE invoice_counters SET next_number=? WHERE studio_id=? AND year=?').run(next+1,studio.id,slot);
        const shareMinor=amountMinor,shareNetMinor=quick?lines.subtotal:kind==='Balance'?estimate.subtotal-existing.reduce((sum,item)=>sum+item.net_minor,0):kind==='Full'?estimate.subtotal:Math.round(estimate.subtotal*amountMinor/estimate.total);
        if(shareNetMinor<0||shareMinor-shareNetMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
        const discount=discountFor(body.discount,{shareMinor,shareNetMinor});

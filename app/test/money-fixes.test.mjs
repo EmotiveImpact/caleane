@@ -84,3 +84,21 @@ test('estimate lines keep how a price list item is charged',async t=>{
  const saved=(await call(`/api/projects/${project.id}/estimates${q}`,'POST',{title:'Scope',currency:'EUR',taxRate:0,items:[{title:'Styling hours',quantity:3,unitAmount:8000,unit:'hour'},{title:'Arch',quantity:1,unitAmount:50000,unit:'each'},{title:'Odd',quantity:1,unitAmount:100,unit:'fortnight'}]})).data.project.estimates.at(-1);
  assert.deepEqual(saved.items.map(item=>item.unit),['hour',undefined,undefined]);
 });
+
+test('the studio chooses its invoice prefix, whether the year is included and the next number',async t=>{
+ const {call,q,issue,invoices}=await workspace(t);
+ const quick={...issue,quick:true,kind:'Full',label:'Extra hours',currency:'GBP',taxRate:0,items:[{title:'Styling',quantity:1,unitAmount:10000}]};
+ let defaults=(await call('/api/billing-defaults'+q)).data.defaults;
+ assert.deepEqual([defaults.invoicePrefix,defaults.invoiceYear,defaults.nextInvoiceNumber],['INV',true,1]);
+ assert.match((await call(invoices+q,'POST',quick)).data.invoice.number,new RegExp(`^INV-${new Date().getFullYear()}-0001$`));
+ assert.equal((await call('/api/billing-defaults'+q,'POST',{...defaults,invoicePrefix:'NAY '})).status,400);
+ defaults=(await call('/api/billing-defaults'+q,'POST',{...defaults,invoicePrefix:'NAY',invoiceYear:false,nextInvoiceNumber:42})).data.defaults;
+ assert.deepEqual([defaults.invoicePrefix,defaults.invoiceYear,defaults.nextInvoiceNumber],['NAY',false,42]);
+ assert.equal((await call(invoices+q,'POST',quick)).data.invoice.number,'NAY-0042');
+ assert.equal((await call(invoices+q,'POST',quick)).data.invoice.number,'NAY-0043');
+ // Saving other settings leaves the counter where it is; moving it back skips numbers already used.
+ const {nextInvoiceNumber:_skip,...rest}=(await call('/api/billing-defaults'+q)).data.defaults;
+ assert.equal((await call('/api/billing-defaults'+q,'POST',{...rest,paymentTermsDays:30})).data.defaults.nextInvoiceNumber,44);
+ await call('/api/billing-defaults'+q,'POST',{...rest,nextInvoiceNumber:42});
+ assert.equal((await call(invoices+q,'POST',quick)).data.invoice.number,'NAY-0044');
+});
