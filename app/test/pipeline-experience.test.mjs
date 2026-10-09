@@ -94,6 +94,20 @@ test('new enquiry needs only a client and title, preserves optional defaults and
  await screen.findByRole('heading',{name:'Next steps'});assert.equal(writes[0].body.title,'Summer flowers');assert.equal(writes[0].body.stage,'Discovery');assert.equal(writes[0].body.currency,'GBP');assert.equal(writes[0].body.amountMinor,0);
 });
 
+test('new enquiry can add a new client with the date and place, sent in one request',async()=>{
+ const input=user(),{writes}=fixture();await screen.findByRole('button',{name:'View Wedding flowers'});await input.click(screen.getByRole('button',{name:'New enquiry',exact:true}));
+ assert.equal(screen.queryByRole('textbox',{name:'Client name'}),null,'the new client fields wait until New client is chosen');
+ await choose(input,'Client','New client…');
+ await input.type(screen.getByRole('textbox',{name:'Client name'}),'Priya Shah');await input.type(screen.getByRole('textbox',{name:'Client email'}),'priya@example.test');
+ await input.type(screen.getByRole('textbox',{name:'Enquiry',exact:true}),'Garden anniversary');
+ const date=document.querySelector('.pipeline-create input[name="date"]');assert.ok(date.closest('label').textContent.trim(),'the date is labelled for the studio’s kind of work');
+ await input.type(date,'2027-06-12');await input.type(document.querySelector('.pipeline-create input[name="venue"]'),'Walled garden');
+ await input.click(screen.getByRole('button',{name:'Create enquiry',exact:true}));
+ await waitFor(()=>assert.ok(writes.length));
+ assert.deepEqual(writes[0].body.newClient,{name:'Priya Shah',email:'priya@example.test'});assert.equal(writes[0].body.clientId,undefined);
+ assert.equal(writes[0].body.date,'2027-06-12');assert.equal(writes[0].body.venue,'Walled garden');
+});
+
 test('board provides every open stage and editor keeps commercial data separate from project navigation',async()=>{
  const input=user(),{opened}=fixture();await screen.findByRole('button',{name:'View Wedding flowers'});await input.click(screen.getByRole('radio',{name:'Board',exact:true}));
  assert.ok(screen.getByRole('heading',{name:'Preparing quote',exact:true}));assert.ok(screen.getByRole('heading',{name:'Awaiting decision',exact:true}));
