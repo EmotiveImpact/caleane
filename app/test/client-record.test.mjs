@@ -41,3 +41,19 @@ test('a company typed on a client becomes their organisation, and the same name 
   assert.equal(renamed.data.client.organizationName,'Northlight Studio');
  }finally{await w.close();}
 });
+
+test('a follow-up can be ticked off, and saving the profile without one leaves it alone',async()=>{
+ const w=await workspace();
+ try{
+  const client=(await w.call('/api/clients'+w.q,'POST',{name:'Follow Person',email:'follow@example.test'})).data.client,route=`/api/clients/${client.id}${w.q}`;
+  await w.call(route,'PATCH',{name:'Follow Person',stage:'Lead',tags:[],followUp:'2027-01-10',followUpNote:'Send the moodboard'});
+  // The profile form no longer carries the follow-up; saving it must not clear one.
+  let saved=await w.call(route,'PATCH',{name:'Follow Person',stage:'Active',tags:[],company:'',phone:'',source:''});
+  assert.equal(saved.data.client.followUp,'2027-01-10');assert.equal(saved.data.client.followUpNote,'Send the moodboard');
+  saved=await w.call(route,'PATCH',{followUpDone:true});
+  assert.equal(saved.status,200);assert.equal(saved.data.client.followUp,'');assert.equal(saved.data.client.followUpNote,'');
+  const history=(await w.call(`/api/clients/${client.id}/activities${w.q}`)).data.activities;
+  assert.equal(history[0].title,'Follow-up done: Send the moodboard');
+  assert.equal((await w.call(route,'PATCH',{followUpDone:true})).status,409);
+ }finally{await w.close();}
+});
