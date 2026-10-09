@@ -1,4 +1,5 @@
 import React,{useState,useEffect} from 'react';
+import {shortDay} from '../lib/dates';
 import {CalendarDays,Check,FolderClosed,Mail,FileCheck2,MessageSquare} from 'lucide-react';
 import {ProjectImage,RecentDecisions} from './StudioViews';
 import {attentionFor} from '../lib/attention';
@@ -6,7 +7,7 @@ import {pendingReviews,projectInGroup} from '../lib/studio-view';
 import {StudioSetup} from './Onboarding';
 import './studio-overview.css';
 export const ATTENTION_PREVIEW=8,REFRESH_MS=60000,MAX_REFRESH_MS=300000;
-const date=v=>new Date(v.length===10?v+'T12:00:00':v).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const date=v=>shortDay(v);
 export function Dashboard({user,projects,owner,studio,openProject,showProjects,request,openClient,openMail,openTasks,openCalendar,openSetup}){
  const [extras,setExtras]=useState({tasks:[],clients:[],conversations:[]}),[loading,setLoading]=useState(owner),[error,setError]=useState(''),[showAll,setShowAll]=useState(false);
  // Refresh next steps only while the tab is visible: every minute, backing off after failures, and once on return if the data is stale.
