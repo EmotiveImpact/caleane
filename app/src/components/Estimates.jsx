@@ -15,7 +15,10 @@ function PriceListPicker({studio,onPick}){
 export function Estimates({p,studio,owner,mutate,busy}){
  const [adding,setAdding]=useState(false),[selected,setSelected]=useState(''),[lines,setLines]=useState([{title:'',quantity:1,amount:''}]),[decision,setDecision]=useState('');
  const [discarding,setDiscarding]=useState(false),[edited,setEdited]=useState(false),[confirm,confirmation]=useConfirm();
- const startFrom=()=>{const base=p.estimateDraft||(p.estimates||[]).at(-1);return base?{title:base.title,currency:base.currency,taxRate:base.taxRate,note:base.note||'',lines:base.items.map(i=>({title:i.title,quantity:i.quantity,amount:(i.unitAmount/100).toFixed(2)}))}:{title:'Your project estimate',currency:(p.estimates||[]).at(-1)?.currency||'GBP',taxRate:0,note:'',lines:[{title:'',quantity:1,amount:''}]};};
+ // A first estimate starts in the studio's usual currency and tax rate from Settings, Invoice details.
+ const [usual,setUsual]=useState({});
+ useEffect(()=>{if(!owner)return;let active=true;fetch(`/api/billing-defaults?studio=${studio.id}`,{credentials:'same-origin'}).then(r=>r.ok?r.json():{}).then(d=>{if(active)setUsual(d.defaults||{});}).catch(()=>{});return()=>{active=false;};},[owner,studio.id]);
+ const startFrom=()=>{const base=p.estimateDraft||(p.estimates||[]).at(-1);return base?{title:base.title,currency:base.currency,taxRate:base.taxRate,note:base.note||'',lines:base.items.map(i=>({title:i.title,quantity:i.quantity,amount:(i.unitAmount/100).toFixed(2)}))}:{title:'Your project estimate',currency:usual.currency||'GBP',taxRate:usual.taxRate||0,note:'',lines:[{title:'',quantity:1,amount:''}]};};
  const [start,setStart]=useState(startFrom);
  function open(){const next=startFrom();setStart(next);setLines(next.lines);setEdited(false);setAdding(true);}
  async function cancel(){if((edited||JSON.stringify(lines)!==JSON.stringify(start.lines))&&!await confirm({title:'Discard your changes to this estimate?',description:'The changes you made since opening it will be lost. Use Save draft to keep them for later.',confirmLabel:'Discard changes',cancelLabel:'Keep editing'}))return;setAdding(false);}

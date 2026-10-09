@@ -55,6 +55,11 @@ test('price list, templates and billing defaults are owner-only studio libraries
  assert.equal((await call('/api/billing-defaults'+suffix,'POST',{plan:[{label:'Deposit',percent:40,due:{type:'on_issue',days:0}}]},'owner')).status,400);
  response=await call('/api/billing-defaults'+suffix,'POST',{sellerAddress:'1 Studio Lane, London',sellerContact:'hello@studio.test',taxRegistration:'',paymentInstructions:'Bank transfer, reference the invoice number.',paymentTermsDays:14,plan:[{label:'Deposit',percent:25,due:{type:'on_issue',days:0}},{label:'Second payment',percent:25,due:{type:'days_after_confirm',days:30}},{label:'Balance',percent:50,due:{type:'days_before_event',days:14}}]},'owner');
  assert.equal(response.status,200);assert.equal(response.data.defaults.plan.length,3);
+ assert.equal(response.data.defaults.currency,'GBP');assert.equal(response.data.defaults.taxRate,0);
+ response=await call('/api/billing-defaults'+suffix,'POST',{...response.data.defaults,currency:'EUR',taxRate:21},'owner');
+ assert.equal(response.status,200);assert.equal(response.data.defaults.currency,'EUR');assert.equal(response.data.defaults.taxRate,21);
+ assert.equal((await call('/api/billing-defaults'+suffix,'POST',{...response.data.defaults,currency:'JPY'},'owner')).status,400);
+ assert.equal((await call('/api/billing-defaults'+suffix,'POST',{...response.data.defaults,taxRate:150},'owner')).status,400);
 });
 
 test('payment plans issue scheduled invoices, and refunds with credit notes settle them',async t=>{

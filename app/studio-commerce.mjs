@@ -17,7 +17,7 @@ export const defaultTemplates=[
  {name:'Thank you',category:'Follow-up',body:'Hi {client_first_name},\n\nThank you for trusting us with {project_title}. It was a pleasure working with you. If you have a moment, we would love to hear how you found the experience.\n\n{studio_name}'}
 ];
 
-export const defaultBillingDefaults={sellerAddress:'',sellerContact:'',taxRegistration:'',paymentInstructions:'',paymentTermsDays:14,lateFee:defaultLateFee,tips:defaultTips,
+export const defaultBillingDefaults={sellerAddress:'',sellerContact:'',taxRegistration:'',paymentInstructions:'',paymentTermsDays:14,currency:'GBP',taxRate:0,lateFee:defaultLateFee,tips:defaultTips,
  plan:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}]};
 
 export function installStudioCommerce(db){db.exec(`
@@ -96,7 +96,8 @@ export function validatePlanTemplate(steps){
 export function billingDefaults(db,studioId){const saved=readSetting(db,studioId,'billing_defaults',{});return {...structuredClone(defaultBillingDefaults),...saved,lateFee:{...defaultLateFee,...(saved.lateFee||{})},tips:{...defaultTips,...(saved.tips||{})}};}
 export function saveBillingDefaults(db,studioId,body){
  const terms=body.paymentTermsDays??14;if(!Number.isInteger(terms)||terms<0||terms>120)fail(400,'Use payment terms between 0 and 120 days.');
- return writeSetting(db,studioId,'billing_defaults',{sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan),lateFee:validateLateFee(body.lateFee),tips:validateTips(body.tips)});
+ const currency=body.currency??'GBP',taxRate=body.taxRate??0;if(!['GBP','EUR','USD'].includes(currency))fail(400,'Choose GBP, EUR or USD.');if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
+ return writeSetting(db,studioId,'billing_defaults',{currency,taxRate,sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan),lateFee:validateLateFee(body.lateFee),tips:validateTips(body.tips)});
 }
 
 export function invoiceDesign(db,studioId){return normaliseInvoiceDesign(readSetting(db,studioId,'invoice_design',{}));}
