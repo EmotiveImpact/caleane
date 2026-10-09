@@ -143,7 +143,7 @@ export function DealQuote({detail,signal,studio,request,run,busy,openProject,onC
  const update=(index,patch)=>setLines(list=>list.map((l,i)=>i===index?{...l,...patch}:l));
  function add(){const item=available.find(i=>i.id===pick);setLines(list=>[...list,item?{title:item.name,quantity:1,unitAmount:item.unitAmount}:{title:'',quantity:1,unitAmount:0}]);setPick('');}
  function newVersion(){setCurrency(estimate.currency);setLines(estimate.items.map(i=>({title:i.title,quantity:i.quantity,unitAmount:i.unitAmount})));setNote(estimate.note||'');setEditing(true);}
- async function share(e){e.preventDefault();const result=await deal.act(`/api/projects/${pid}/estimates?studio=${studio.id}`,'POST',{title:('Quote · '+detail.title).slice(0,200),note,currency,taxRate:0,items:lines.map(l=>({title:l.title.trim(),quantity:Number(l.quantity),unitAmount:Math.round(Number(l.unitAmount))}))});if(result){setEditing(false);setLines([]);await deal.done();}}
+ async function share(e){e.preventDefault();const result=await deal.act(`/api/projects/${pid}/estimates?studio=${studio.id}`,'POST',{title:('Quote · '+detail.title).slice(0,200),note,currency,items:lines.map(l=>({title:l.title.trim(),quantity:Number(l.quantity),unitAmount:Math.round(Number(l.unitAmount))}))});if(result){setEditing(false);setLines([]);await deal.done();}}
  const canPropose=estimate&&['Awaiting review','Budget confirmed'].includes(estimate.status)&&!['Awaiting response','Scope accepted'].includes(proposal?.status);
  return <div className="pl-quote">
   {deal.error&&<p className="crm-alert" role="alert">{deal.error}</p>}

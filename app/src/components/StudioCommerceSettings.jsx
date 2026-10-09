@@ -4,6 +4,7 @@ import {WorkspaceButton,WorkspaceField,WorkspaceSelect,WorkspaceStatus,Workspace
 import {InvoicePreview,printInvoice} from './InvoiceDocument';
 import {invoiceFonts,invoiceLayouts,invoicePageHtml,sampleInvoice} from '../lib/invoice-design';
 import {lateFeeTerms} from '../lib/invoice-charges';
+import {DEFAULT_VAT_RATE} from '../lib/vat';
 import '../studio-commerce.css';
 
 const money=(minor,currency='GBP')=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}catch{return `${((Number(minor)||0)/100).toFixed(2)} ${currency}`;}};
@@ -69,7 +70,7 @@ function PriceList({studio,request}){
 // Invoice details, the default plan, late fees and tips share one billing record.
 // Each settings section edits only its own fields and saves them on top of the
 // latest saved record, so saving one section never overwrites another.
-const invoiceKeys=['currency','taxRate','sellerAddress','paymentInstructions','sellerContact','taxRegistration','paymentTermsDays','plan'],extraKeys=['lateFee','tips'];
+const invoiceKeys=['currency','vatRegistered','taxRate','sellerAddress','paymentInstructions','sellerContact','taxRegistration','paymentTermsDays','plan'],extraKeys=['lateFee','tips'];
 function useBillingDefaults(studio,request,keys){
  const url=`/api/billing-defaults?studio=${studio.id}`;
  const {data,error,busy,send,setError}=useStudioData(url,request);
@@ -95,11 +96,15 @@ export function InvoiceDefaultsSettings({studio,request}){
     <WorkspaceField label="Studio address"><textarea rows={3} maxLength={500} value={form.sellerAddress} onChange={e=>set({sellerAddress:e.target.value})}/></WorkspaceField>
     <WorkspaceField label="Payment instructions"><textarea rows={3} maxLength={1000} value={form.paymentInstructions} onChange={e=>set({paymentInstructions:e.target.value})} placeholder="Bank name, sort code, account number and the reference to use"/></WorkspaceField>
     <WorkspaceField label="Studio contact" value={form.sellerContact} maxLength={300} onChange={e=>set({sellerContact:e.target.value})} placeholder="Email or phone"/>
-    <WorkspaceField label="VAT or tax number (optional)" value={form.taxRegistration} maxLength={100} onChange={e=>set({taxRegistration:e.target.value})}/>
     <WorkspaceField label="Usual currency"><select value={form.currency||'GBP'} onChange={e=>set({currency:e.target.value})}>{['GBP','EUR','USD'].map(code=><option key={code}>{code}</option>)}</select></WorkspaceField>
-    <WorkspaceField label="Usual tax rate (%)" type="number" min="0" max="100" step="0.01" value={form.taxRate??0} onChange={e=>set({taxRate:Number(e.target.value)})}/>
     <WorkspaceField label="Payment terms (days)" type="number" min="0" max="120" value={form.paymentTermsDays} onChange={e=>set({paymentTermsDays:Number(e.target.value)})}/>
    </div>
+   <header className="settings-pane-heading commerce-subheading"><h2>VAT</h2><p>Estimates and invoices show VAT only when you are registered. If you are not, there is no tax line at all.</p></header>
+   <WorkspaceSwitch label="VAT registered" description={form.vatRegistered?'Invoices show your VAT number and a VAT line, for example VAT (20%).':'Turn this on once you are registered with HMRC for VAT.'} checked={!!form.vatRegistered} onCheckedChange={on=>set(on?{vatRegistered:true,taxRate:form.taxRate>0?form.taxRate:DEFAULT_VAT_RATE}:{vatRegistered:false,taxRate:0})}/>
+   {form.vatRegistered&&<div className="settings-fields">
+    <WorkspaceField label="VAT number" value={form.taxRegistration} maxLength={100} onChange={e=>set({taxRegistration:e.target.value})} placeholder="For example, GB123456789"/>
+    <WorkspaceField label="Default VAT rate (%)" type="number" min="0" max="100" step="0.01" value={form.taxRate??DEFAULT_VAT_RATE} onChange={e=>set({taxRate:Number(e.target.value)})} hint="New estimates start with this rate. The standard UK rate is 20%."/>
+   </div>}
    <header className="settings-pane-heading commerce-subheading"><h2>Default payment plan</h2><p>How you usually split a project into payments. Each project starts from this plan, and you can adjust it there.</p></header>
    <PlanTemplateEditor plan={form.plan} onChange={plan=>set({plan})}/>
    {error&&<p className="commerce-error" role="alert">{error}</p>}

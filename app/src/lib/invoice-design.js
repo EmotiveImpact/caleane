@@ -3,6 +3,7 @@
 // what the studio designs is what the client sees and prints.
 import {brandStyle,readableOn} from './brand-kit.js';
 import {lateFeeTerms} from './invoice-charges.js';
+import {isVatDocument,isVatRegistered,showsTax,taxLabel,taxNumberLabel} from './vat.js';
 
 export const invoiceLayouts=[
  ['atelier','Atelier','Centred logo, fine rules and generous space.'],
@@ -41,6 +42,7 @@ export function invoicePageHtml(invoice,{studio={},design,brandKit,estimate}={})
  const fonts=d.font==='brand'?{heading:brand.heading,body:brand.body}:d.font==='serif'?{heading:`'Cormorant Garamond','Iowan Old Style',Georgia,serif`,body:`'EB Garamond','Iowan Old Style',Georgia,serif`}:{heading:`'Inter','Helvetica Neue',Arial,sans-serif`,body:`'Inter','Helvetica Neue',Arial,sans-serif`};
  const fontLink=d.font==='brand'?brand.fontLink:d.font==='serif'?'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=EB+Garamond:wght@400;600&display=swap':'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
  const seller=s.sellerName||studio.name||'';
+ const vat=isVatDocument(s,currency);
  const darkBand=['bold','studio'].includes(d.layout);
  const pick=d.showLogo?(darkBand&&onAccent==='#ffffff'?(brand.lightLogo||brand.logo):brand.logo)||safeImage(studio.branding?.logoUrl||studio.logoUrl):'';
  const logo=safeImage(pick),invertLogo=darkBand&&onAccent==='#ffffff'&&!brand.lightLogo;
@@ -52,17 +54,17 @@ export function invoicePageHtml(invoice,{studio={},design,brandKit,estimate}={})
  const due=refundDue?['Refund owed to you',money(refundDue)]:[cancelled?'Cancelled':balance===0&&paid>0?'Paid in full':'Amount due',money(cancelled?0:balance)];
  const meta=[['Issued',date(invoice.issuedAt)],['Due',date(invoice.dueDate)],['Service date',date(s.supplyDate)]].filter(([,v])=>v);
  const metaHtml=`<dl class="meta">${meta.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>`;
- const from=`<div class="party"><span class="label">From</span><strong>${escape(seller)}</strong><p>${lines(s.sellerAddress)}</p>${s.sellerContact?`<small>${escape(s.sellerContact)}</small>`:''}${s.taxRegistration?`<small>VAT / tax no. ${escape(s.taxRegistration)}</small>`:''}</div>`;
+ const from=`<div class="party"><span class="label">From</span><strong>${escape(seller)}</strong><p>${lines(s.sellerAddress)}</p>${s.sellerContact?`<small>${escape(s.sellerContact)}</small>`:''}${s.taxRegistration?`<small>${taxNumberLabel(vat)} ${escape(s.taxRegistration)}</small>`:''}</div>`;
  const to=`<div class="party"><span class="label">Billed to</span><strong>${escape(s.billToName)}</strong><p>${lines(s.customerAddress)}</p>${s.billToEmail?`<small>${escape(s.billToEmail)}</small>`:''}</div>`;
  const items=d.showItems&&Array.isArray(estimate?.items)&&estimate.items.length?estimate.items:null;
  const shareMinor=invoice.shareMinor??invoice.amountMinor,discountNet=invoice.discountNetMinor||0;
  const isPart=items&&estimate.total&&estimate.total!==shareMinor;
  const share=isPart?Math.round(shareMinor/estimate.total*1000)/10:100;
  const table=items
-  ?`<table class="items"><thead><tr><th>${isPart?'Project scope':'Description'}</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Amount</th></tr></thead><tbody>${items.map(item=>`<tr><td>${escape(item.title)}</td><td class="num">${escape(item.quantity)}</td><td class="num">${escape(money(item.unitAmount))}</td><td class="num">${escape(money(item.quantity*item.unitAmount))}</td></tr>`).join('')}</tbody>${isPart?`<tfoot><tr><td colspan="3">Project total${estimate.taxRate?` including ${escape(estimate.taxRate)}% tax`:''}</td><td class="num">${escape(money(estimate.total))}</td></tr><tr class="this"><td colspan="3"><strong>${escape(lineTitle(invoice))}</strong><small>${escape(share)}% of the project total</small></td><td class="num"><strong>${escape(money(invoice.amountMinor))}</strong></td></tr></tfoot>`:''}</table>`
+  ?`<table class="items"><thead><tr><th>${isPart?'Project scope':'Description'}</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Amount</th></tr></thead><tbody>${items.map(item=>`<tr><td>${escape(item.title)}</td><td class="num">${escape(item.quantity)}</td><td class="num">${escape(money(item.unitAmount))}</td><td class="num">${escape(money(item.quantity*item.unitAmount))}</td></tr>`).join('')}</tbody>${isPart?`<tfoot><tr><td colspan="3">Project total${estimate.taxRate?` including ${escape(estimate.taxRate)}% ${vat?'VAT':'tax'}`:''}</td><td class="num">${escape(money(estimate.total))}</td></tr><tr class="this"><td colspan="3"><strong>${escape(lineTitle(invoice))}</strong><small>${escape(share)}% of the project total</small></td><td class="num"><strong>${escape(money(invoice.amountMinor))}</strong></td></tr></tfoot>`:''}</table>`
   :`<table class="items"><thead><tr><th>Description</th><th class="num">Amount</th></tr></thead><tbody><tr><td><strong>${escape(lineTitle(invoice))}</strong><small>${escape(s.projectTitle||'')}${invoice.estimateVersion?` · Estimate version ${escape(invoice.estimateVersion)}`:''}</small></td><td class="num">${escape(money(invoice.netMinor))}</td></tr></tbody></table>`;
  const charges=(invoice.charges||[]).filter(item=>!item.waivedAt);
- const totals=[...(discountNet?[['Subtotal',money(invoice.netMinor+discountNet)],[invoice.discountLabel||'Discount','− '+money(discountNet)],['Net',money(invoice.netMinor)]]:[['Subtotal',money(invoice.netMinor)]]),[`Tax (${invoice.taxRate||0}%)`,money(invoice.taxMinor)],['Invoice total',money(invoice.amountMinor),'strong'],
+ const totals=[...(discountNet?[['Subtotal',money(invoice.netMinor+discountNet)],[invoice.discountLabel||'Discount','− '+money(discountNet)],['Net',money(invoice.netMinor)]]:[['Subtotal',money(invoice.netMinor)]]),...(showsTax(invoice.taxRate,invoice.taxMinor)?[[taxLabel(invoice.taxRate,vat),money(invoice.taxMinor)]]:[]),['Invoice total',money(invoice.amountMinor),'strong'],
   ...charges.map(item=>[item.kind==='tip'?'Tip, thank you':`${item.label}, added ${date(item.addedAt)}`,'+ '+money(item.amountMinor)]),
   ...(credited?[['Credit notes','− '+money(credited)]]:[]),...(paid?[['Paid','− '+money(paid)]]:[]),...(refunded?[['Refunded','+ '+money(refunded)]]:[])];
  const totalsHtml=`<section class="totals">${totals.map(([k,v,c])=>`<div class="${c||''}"><span>${escape(k)}</span><span>${escape(v)}</span></div>`).join('')}<div class="due"><span>${escape(due[0])}</span><strong>${escape(due[1])}</strong></div></section>`;
@@ -134,11 +136,13 @@ footer{margin-top:auto;padding-top:26px;font-size:10px;color:color-mix(in srgb,$
 </style></head><body><main class="page ${d.layout}">${stamp}${body}${footer}</main>${fontLink?`<link rel="stylesheet" href="${escape(fontLink)}">`:''}</body></html>`;
 }
 
-// A believable invoice for previewing a design before any are issued.
+// A believable invoice for previewing a design before any are issued. It
+// follows the studio's VAT setting, so an unregistered studio sees no tax line.
 export function sampleInvoice(studio={},defaults={}){
  const today=new Date().toISOString().slice(0,10),due=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
- return {invoice:{number:'INV-2026-0042',kind:'Deposit',label:'Deposit',status:'Issued',currency:'GBP',amountMinor:76320,netMinor:63600,taxMinor:12720,taxRate:20,issuedAt:today,dueDate:due,estimateVersion:2,balanceMinor:76320,
+ const vat=isVatRegistered(defaults)||!Object.keys(defaults).length,rate=vat?Number(defaults.taxRate)||20:0,tax=Math.round(63600*rate/100);
+ return {invoice:{number:'INV-2026-0042',kind:'Deposit',label:'Deposit',status:'Issued',currency:'GBP',amountMinor:63600+tax,netMinor:63600,taxMinor:tax,taxRate:rate,issuedAt:today,dueDate:due,estimateVersion:2,balanceMinor:63600+tax,
   paymentInstructions:defaults.paymentInstructions||'Bank transfer to your studio account. Use the invoice number as the reference.',note:'',
-  snapshot:{sellerName:studio.name||'Your studio',sellerAddress:defaults.sellerAddress||'12 Example Street\nLondon',sellerContact:defaults.sellerContact||'',taxRegistration:defaults.taxRegistration||'',billToName:'Amelia Taylor',customerAddress:'2 Elm Row\nLondon N1 1AA',billToEmail:'amelia@example.com',projectTitle:'Amelia’s wedding',supplyDate:'2027-06-12'}},
-  estimate:{items:[{title:'Ceremony arch installation',quantity:1,unitAmount:65000},{title:'Floral table centrepieces',quantity:12,unitAmount:8500},{title:'Organic balloon garland, 4 metres',quantity:1,unitAmount:45000}],taxRate:20,total:254400}};
+  snapshot:{sellerName:studio.name||'Your studio',sellerAddress:defaults.sellerAddress||'12 Example Street\nLondon',sellerContact:defaults.sellerContact||'',taxRegistration:vat?defaults.taxRegistration||'':'',vatRegistered:vat,billToName:'Amelia Taylor',customerAddress:'2 Elm Row\nLondon N1 1AA',billToEmail:'amelia@example.com',projectTitle:'Amelia’s wedding',supplyDate:'2027-06-12'}},
+  estimate:{items:[{title:'Ceremony arch installation',quantity:1,unitAmount:65000},{title:'Floral table centrepieces',quantity:12,unitAmount:8500},{title:'Organic balloon garland, 4 metres',quantity:1,unitAmount:45000}],taxRate:rate,total:Math.round(212000*(100+rate)/100)}};
 }
