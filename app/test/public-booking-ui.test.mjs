@@ -5,7 +5,7 @@ import {setupDom,bundle} from './ui-harness.mjs';
 
 // The public booking page a prospective client sees, with a fake server behind fetch.
 const dom=setupDom('http://localhost/book/nay-decor');
-const {module:ui,remove}=await bundle("export {PublicBooking} from './src/components/PublicBooking.jsx';",'public-booking-ui');
+const {module:ui,remove}=await bundle("export {PublicBooking,PublicBookingManage} from './src/components/PublicBooking.jsx';",'public-booking-ui');
 const {render,screen,cleanup,waitFor}=await import('@testing-library/react');
 const {default:userEvent}=await import('@testing-library/user-event');
 const h=React.createElement,user=()=>userEvent.setup({document:dom.window.document,pointerEventsCheck:0});
@@ -86,4 +86,40 @@ test('coming back from a cancelled payment releases the held time and says so',a
  const release=calls.find(c=>c.url==='/api/booking/nay-decor/release');
  assert.deepEqual(release.body,{bookingId:'b1'});
  await waitFor(()=>assert.equal(location.search,''));
+});
+
+test('the confirmation offers a calendar file and the private reschedule link',async()=>{
+ const input=user(),token='t'.repeat(32);
+ server((url,method)=>method==='POST'?reply(201,{reference:'BK-1042',bookingId:'b1',status:'Booked',title:'Discovery call',start:slots[0],end:'2027-03-02T10:30:00Z',manageToken:token,location:{type:'video',detail:'https://meet.example.test/nay'}}):reply(200,page()));
+ render(h(ui.PublicBooking,{slug:'nay-decor'}));
+ await chooseFirstTime(input);
+ await input.type(screen.getByRole('textbox',{name:'Your name'}),'Sophie Clarke');
+ await input.type(screen.getByRole('textbox',{name:'Email'}),'sophie@example.test');
+ await input.click(screen.getByRole('button',{name:'Confirm booking'}));
+ await screen.findByRole('heading',{name:'You’re booked in.'});
+ assert.ok(screen.getByText(/^Shown in your time zone/));
+ const calendar=screen.getByRole('link',{name:'Add to calendar'}),ics=decodeURIComponent(calendar.getAttribute('href').split(',')[1]);
+ assert.equal(calendar.getAttribute('download'),'discovery-call.ics');
+ assert.match(ics,/DTSTART:20270302T100000Z/);assert.match(ics,/SUMMARY:Discovery call with NAY Décor/);assert.match(ics,/LOCATION:https:\/\/meet\.example\.test\/nay/);
+ assert.equal(screen.getByRole('link',{name:'Reschedule or cancel'}).getAttribute('href'),`/book/nay-decor/manage#${token}`);
+});
+
+test('the private link lets the client move the booking or cancel it after confirming',async()=>{
+ const token='m'.repeat(32),booking=(extra={})=>({studio:{name:'NAY Décor',slug:'nay-decor',accent:'#2f4a3a'},booking:{reference:'BK-1042',bookingId:'b1',status:'Booked',title:'Discovery call',start:slots[0],end:'2027-03-02T10:30:00Z',durationMinutes:30,timezone:'Europe/London',canChange:true,location:{type:'video',detail:'https://meet.example.test/nay'},...extra},slots:slots.slice(1)});
+ history.replaceState(null,'','/book/nay-decor/manage#'+token);
+ const input=user(),calls=server((url,method,all)=>{const body=all.at(-1).body;return reply(200,body.action==='reschedule'?booking({start:body.start}):body.action==='cancel'?{...booking({status:'Cancelled',canChange:false}),slots:[]}:booking());});
+ render(h(ui.PublicBookingManage,{slug:'nay-decor'}));
+ assert.ok(await screen.findByRole('heading',{name:'Your booking'}));
+ assert.deepEqual(calls[0],{url:'/api/booking/nay-decor/manage',method:'POST',headers:{'Content-Type':'application/json'},body:{token,action:'view'}});
+ await input.click(screen.getByRole('button',{name:/Tue 2 Mar/}));
+ await input.click(screen.getByRole('button',{name:'14:00'}));
+ await input.click(screen.getByRole('button',{name:'Move my booking to Tue 2 Mar, 14:00'}));
+ assert.ok(await screen.findByText(/^Moved to Tuesday,? 2 March 2027 at 14:00\.$/));
+ assert.deepEqual(calls.at(-1).body,{token,action:'reschedule',start:slots[1]});
+ await input.click(screen.getByRole('button',{name:'Cancel this booking'}));
+ assert.equal(calls.length,2,'nothing is cancelled until the client confirms');
+ await input.click(screen.getByRole('button',{name:'Cancel booking'}));
+ assert.ok(await screen.findByRole('heading',{name:'This booking is cancelled.'}));
+ assert.deepEqual(calls.at(-1).body,{token,action:'cancel'});
+ assert.equal(screen.getByRole('link',{name:'Book another time'}).getAttribute('href'),'/book/nay-decor');
 });

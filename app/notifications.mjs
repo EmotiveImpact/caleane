@@ -11,7 +11,7 @@ const LEASE_MS=60_000;
 const IDEMPOTENCY_WINDOW_MS=23*60*60*1000;
 // Message emails wait a little, so someone already reading in Caleane is not emailed as well.
 export const MESSAGE_EMAIL_DELAY_MS=10*60*1000;
-const OUTBOX_KINDS=['invitation','project_activity','message'];
+const OUTBOX_KINDS=['invitation','project_activity','message','consultation'];
 
 function fail(status,message){throw Object.assign(new Error(message),{status});}
 function digest(value){return createHash('sha256').update(value).digest('hex');}
@@ -200,7 +200,17 @@ export function createNotificationOutbox(db,{encryptionKey,origin,clock=Date.now
   });
  }
 
+ // A booking confirmation goes to the person who booked; they have no account, so the booking itself is the check.
+ function enqueueConsultation({studioId,consultationId,change,sequence=0,to,subject,text}){
+  if(!['booked','rescheduled','cancelled'].includes(change))fail(400,'Choose a booking email.');
+  return insert({studioId,kind:'consultation',dedupeKey:`consultation:${consultationId}:${change}:${sequence}`,to:cleanEmail(to),payload:{subject,text}});
+ }
+
  function stillAuthorized(job){
+  if(job.kind==='consultation'){
+   const consultationId=job.dedupe_key.split(':')[1],change=job.dedupe_key.split(':')[2],row=db.prepare('SELECT status,data FROM consultations WHERE id=? AND studio_id=?').get(consultationId,job.studio_id);
+   return !!row&&String(JSON.parse(row.data).email).toLowerCase()===job.recipient_email&&(change==='cancelled'?row.status==='Cancelled':row.status==='Booked');
+  }
   const user=db.prepare('SELECT email FROM users WHERE id=?').get(job.recipient_user_id);
   if(job.kind!=='invitation'&&!job.recipient_user_id){
    // A lead's email stays valid while their invitation does, they still have not joined, and what it points to still exists.
@@ -278,7 +288,7 @@ export function createNotificationOutbox(db,{encryptionKey,origin,clock=Date.now
   }
  }
 
- return {enqueueInvitation,enqueueProjectActivity,enqueueMessage,dispatchOne};
+ return {enqueueInvitation,enqueueProjectActivity,enqueueMessage,enqueueConsultation,dispatchOne};
 }
 
 /** Opt-in Resend transport. Creating this function never sends a message. */

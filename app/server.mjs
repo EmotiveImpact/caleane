@@ -46,7 +46,7 @@ import {discountFor,invoiceFigures} from './src/lib/invoice-charges.js';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {handleCustomFields} from './custom-fields.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
-import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus} from './consultations.mjs';
+import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus,manageBooking,bookingEmail,issueManageToken} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
 import {installXero,handleXero,syncAllXero} from './xero.mjs';
 import {installFinances,handleFinances} from './finances.mjs';
@@ -108,6 +108,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  // Account mail has its own key when CALEANE_ACCOUNT_MAIL_KEY is set; the shared notification key still opens older queued mail.
  const accountSecurity=createAccountSecurity(db,{origin,encryptionKey:accountMailKey||notificationKey,previousKeys:[notificationKey]});
  const queueProjectEvent=(studioId,projectId,actorUserId,eventId)=>{if(!eventId)return;recordProjectEvent(db,{studioId,projectId,actorUserId,eventId});if(outbox)outbox.enqueueProjectActivity({studioId,projectId,actorUserId,eventId});};
+ // Booking confirmations wait in the outbox like every other email, so nothing is sent until email delivery is switched on.
+ const queueBookingEmail=(studio,consultationId,change)=>{if(!outbox||!consultationId)return;try{const row=db.prepare('SELECT data FROM consultations WHERE id=?').get(consultationId),sequence=(JSON.parse(row.data).history||[]).length;const manageUrl=`${origin}/book/${studio.slug}/manage#${issueManageToken(db,consultationId)}`;outbox.enqueueConsultation({studioId:studio.id,consultationId,change,sequence,...bookingEmail(db,{studio,consultationId,change,manageUrl})});}catch(error){console.error('Booking email could not be queued:',error.message);}};
  // Messages reach the bell at once; their email waits in the outbox and is dropped if the message is read first.
  const queueMessage=(studioId,c,actorUserId,messageId)=>{if(!messageId)return;recordMessage(db,{studioId,conversationId:c.id,messageId,actorUserId});if(outbox)try{outbox.enqueueMessage({studioId,conversationId:c.id,messageId,actorUserId});}catch(error){console.error('Message email could not be queued:',error.message);}};
  // With TRUST_PROXY=N, N reverse proxies each append the peer they saw to X-Forwarded-For; the client is the right-most entry they did not add.
@@ -144,7 +146,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     const chunks=[];let bytes=0;
     for await(const chunk of req){bytes+=chunk.length;if(bytes>1048576)fail(413,'Stripe webhook is too large.');chunks.push(chunk);}
     const stripeEvent=verifyStripeEvent(stripe,{rawBody:Buffer.concat(chunks),signature:req.headers['stripe-signature'],webhookSecret:stripeWebhookSecret});
-    if(isBookingEvent(stripeEvent))return reply(200,{ok:true,...applyBookingEvent(db,stripeEvent)});
+    if(isBookingEvent(stripeEvent)){const result=applyBookingEvent(db,stripeEvent);if(result.result==='booked'&&!result.duplicate&&result.bookingId){const bookingStudio=db.prepare('SELECT s.* FROM studios s JOIN consultations c ON c.studio_id=s.id WHERE c.id=?').get(result.bookingId);if(bookingStudio)queueBookingEmail(bookingStudio,result.bookingId,'booked');}return reply(200,{ok:true,...result});}
     if(isAutopayEvent(stripeEvent))return reply(200,{ok:true,...await applyAutopayEvent(db,stripe,stripeEvent,autopayHooks)});
     const result=transaction(db,()=>{
      const outcome=applyInvoiceCheckoutEvent(db,stripeEvent);
@@ -195,7 +197,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(route==='/xero/callback'&&req.method==='GET'){const back=new URLSearchParams({view:'settings',settingsTab:'integrations',xero_callback:'1'});for(const key of ['code','state','error'])if(url.searchParams.get(key))back.set(key,url.searchParams.get(key).slice(0,4000));res.writeHead(302,{Location:'/?'+back,'Cache-Control':'no-store'});return res.end();}
    const brandAssetMatch=route.match(/^\/api\/brand-assets\/([a-f0-9-]{36})$/);
    if(brandAssetMatch&&req.method==='GET')return serveBrandAsset(db,res,brandAssetMatch[1]);
-   const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)(?:\/(status|release))?$/);
+   const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)(?:\/(status|release|manage))?$/);
    if(bookingMatch){
     const bookingStudio=db.prepare('SELECT * FROM studios WHERE slug=?').get(bookingMatch[1]);if(!bookingStudio)fail(404,'Studio not found.');
     // Busy times from the owner's connected calendar, when they have chosen one; never in the hosted sample.
@@ -209,11 +211,14 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      return reply(200,status);
     }
     if(bookingMatch[2]==='release'&&req.method==='POST'){rate(req,'booking',20);if(stripe)await releaseBooking(db,stripe,{studio:bookingStudio,bookingId:body.bookingId});return reply(200,publicBookingStatus(db,bookingStudio,body.bookingId));}
+    // The client's private link: view, move or cancel. The token travels in the body, never the URL.
+    if(bookingMatch[2]==='manage'&&req.method==='POST'){rate(req,'booking',30);const {changed,...result}=manageBooking(db,{studio:bookingStudio,body,busy:body.action==='view'?await busyFor():await busyFor(30000)});if(changed)queueBookingEmail(bookingStudio,result.bookingId,changed);return reply(200,result);}
     if(bookingMatch[2])fail(405,'Method not allowed.');
     if(req.method==='GET'){try{return reply(200,publicBooking(db,bookingStudio,{busy:await busyFor(),takePayment:takesBookingPayment(bookingStudio)}));}catch(error){if(error.status!==404)throw error;return reply(404,{error:error.message,studio:{name:bookingStudio.name,slug:bookingStudio.slug,accent:bookingStudio.accent}});}}
     if(req.method==='POST'){
      rate(req,'booking',20);const result=bookConsultation(db,{studio:bookingStudio,body,key:req.headers['idempotency-key'],busy:await busyFor(30000),takePayment:takesBookingPayment(bookingStudio)});
      // Make the video link and calendar event now, so the client sees the link on the confirmation screen.
+     if(result.status===201&&result.data.status==='Booked')queueBookingEmail(bookingStudio,result.data.bookingId,'booked');
      if(result.status===201&&calendarIntervalMs){const consultationId=db.prepare('SELECT consultation_id FROM consultation_receipts WHERE studio_id=? AND key=?').get(bookingStudio.id,req.headers['idempotency-key'])?.consultation_id;const meetingUrl=await linkBooking(consultationId);if(meetingUrl)result.data.location={...result.data.location,detail:meetingUrl};}
      
      // A held booking (new, or a retried request) goes on to Stripe Checkout.
@@ -903,7 +908,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(asset){const file=asset[1];const ext=path.extname(file);res.setHeader('Content-Type',({'.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.txt':'text/plain'})[ext]||'application/octet-stream');return res.end(await readFile(path.join(root,'dist',file)));}
    const intakeSlug=route.match(/^\/intake\/([a-z0-9-]+)(?:\/[a-z0-9-]+)?$/)?.[1];
    if(intakeSlug){const s=db.prepare('SELECT origins FROM studios WHERE slug=?').get(intakeSlug);if(!s)fail(404,'Studio not found.');res.setHeader('Content-Security-Policy',`${appCSP}; frame-ancestors 'self' ${JSON.parse(s.origins).join(' ')}`);}else res.setHeader('Content-Security-Policy',`${appCSP}; frame-ancestors 'none'`);
-   if(!['/','/join','/join-studio','/login','/embed-demo','/recover','/reset-password','/verify-email','/confirm-email','/account'].includes(route)&&!intakeSlug&&!/^\/book\/[a-z0-9-]+$/.test(route))fail(404,'Not found.');res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(await readFile(path.join(root,'dist/index.html')));
+   if(!['/','/join','/join-studio','/login','/embed-demo','/recover','/reset-password','/verify-email','/confirm-email','/account'].includes(route)&&!intakeSlug&&!/^\/book\/[a-z0-9-]+(\/manage)?$/.test(route))fail(404,'Not found.');res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(await readFile(path.join(root,'dist/index.html')));
   }catch(error){if(!error?.status)console.error(`Unexpected error on ${req.method} ${route??'(invalid address)'}:`,error?.stack||error);if(res.headersSent)return res.end();reply(error.status||500,{error:error.status?error.message:'Something went wrong. Please try again.'});}
  });
  // Bound slow clients: headers within 20 s, a whole request (including an 8.5 MB upload) within 2 minutes.
