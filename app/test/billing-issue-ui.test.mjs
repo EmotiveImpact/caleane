@@ -67,3 +67,36 @@ test('the client tells the studio they have paid and sees that it was passed on'
  assert.ok(await screen.findByText(/You told the studio on 9 Oct 2026 that you paid by bank transfer/));
  assert.equal(screen.queryByRole('button',{name:'I’ve paid'}),null);
 });
+
+test('a quick invoice line can be zero-rated, and the summary shows VAT at each rate',async()=>{
+ const input=user();p.estimates=[];
+ const sent=harness([]);
+ await input.click(await screen.findByRole('button',{name:/Issue invoice/}));
+ await input.type(await screen.findByPlaceholderText(/extra styling hours/),'Extras');
+ await input.type(screen.getByLabelText('Line 1'),'Styling');
+ await input.type(screen.getByLabelText(/Unit price/),'100');
+ await input.click(screen.getByRole('button',{name:/Add a line/}));
+ await input.type(screen.getByLabelText('Line 2'),'Printed menus');
+ await input.type(screen.getAllByLabelText(/Unit price/)[1],'50');
+ const rates=screen.getAllByLabelText('VAT');
+ assert.deepEqual([...rates[1].options].map(option=>option.textContent),['Usual rate','Reduced (5%)','Zero-rated (0%)','Exempt']);
+ await input.selectOptions(rates[1],'0');
+ const summary=screen.getByRole('complementary',{name:'Invoice summary'});
+ assert.match(summary.textContent,/VAT at 20% on £100\.00£20\.00/);
+ assert.match(summary.textContent,/Zero-rated on £50\.00£0\.00/);
+ assert.match(summary.textContent,/Invoice amount£170\.00/);
+ await input.type(screen.getByLabelText('Client billing address'),'2 Elm Row');
+ await input.click(screen.getByRole('button',{name:'Issue invoice'}));
+ await waitFor(()=>assert.equal(sent.length,1));
+ assert.deepEqual(sent[0].body.items,[{title:'Styling',quantity:1,unitAmount:10000},{title:'Printed menus',quantity:1,unitAmount:5000,taxRate:0}]);
+ p.estimates=[estimate];
+});
+
+test('an issued invoice at more than one rate lists the VAT at each',async()=>{
+ const mixed={...deposit,id:'i3',number:'INV-2026-0003',estimateId:'',kind:'Full',label:'Extras',status:'Issued',shareMinor:17000,amountMinor:17000,netMinor:15000,taxMinor:2000,discountMinor:0,discountNetMinor:0,discountLabel:'',paidMinor:0,balanceMinor:17000,dueMinor:17000,
+  snapshot:{vatRegistered:true,vatBreakdown:[{rate:20,exempt:false,netMinor:10000,taxMinor:2000},{rate:0,exempt:false,netMinor:5000,taxMinor:0}],lines:{taxRate:20,items:[{title:'Styling',quantity:1,unitAmount:10000},{title:'Printed menus',quantity:1,unitAmount:5000,taxRate:0}]}}};
+ harness([mixed]);
+ assert.ok(await screen.findByText(/1 × £50\.00 · Zero-rated/));
+ assert.ok(screen.getByText('VAT at 20% on £100.00'));assert.ok(screen.getByText('Zero-rated on £50.00'));
+ assert.equal(screen.queryByText('VAT (20%)'),null);
+});

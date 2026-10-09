@@ -4,7 +4,7 @@ import {WorkspaceButton,WorkspaceField,WorkspaceSelect,WorkspaceStatus,Workspace
 import {InvoicePreview,printInvoice} from './InvoiceDocument';
 import {invoiceFonts,invoiceLayouts,invoicePageHtml,sampleInvoice} from '../lib/invoice-design';
 import {lateFeeTerms} from '../lib/invoice-charges';
-import {DEFAULT_VAT_RATE} from '../lib/vat';
+import {DEFAULT_VAT_RATE,LINE_VAT,lineVatChoice,lineVatLabel,withLineVat} from '../lib/vat';
 import '../studio-commerce.css';
 import {CURRENCIES} from '../lib/currencies.js';
 import {invoiceNumber} from '../lib/invoice-numbers.js';
@@ -40,10 +40,10 @@ function PlanTemplateEditor({plan,onChange}){
 
 function PriceList({studio,request}){
  const {data,error,busy,send}=useStudioData(`/api/catalogue?studio=${studio.id}`,request);
- const blank={name:'',description:'',category:'',unitAmount:'',currency:'GBP',unit:'each'};
+ const blank={name:'',description:'',category:'',unitAmount:'',currency:'GBP',unit:'each',vat:'usual'};
  const [draft,setDraft]=useState(blank),[editing,setEditing]=useState(''),[showArchived,setShowArchived]=useState(false);
  const items=(data?.items||[]).filter(item=>showArchived||!item.archived);
- async function save(event){event.preventDefault();const item={...draft,unitAmount:Math.round(Number(draft.unitAmount)*100)};const result=await send(editing?{action:'update',id:editing,item}:{action:'create',item});if(result){setDraft(blank);setEditing('');}}
+ async function save(event){event.preventDefault();const {vat,...rest}=draft,item=withLineVat({...rest,unitAmount:Math.round(Number(draft.unitAmount)*100)},vat==='usual'?'':vat);const result=await send(editing?{action:'update',id:editing,item}:{action:'create',item});if(result){setDraft(blank);setEditing('');}}
  return <section className="commerce-section" aria-labelledby="price-list-title">
   <header className="settings-pane-heading"><h2 id="price-list-title">Price list</h2><p>Services, add-ons and hire items you can add to an estimate in one click. Changing a price here never changes an estimate you have already shared.</p></header>
   {error&&<p className="commerce-error" role="alert">{error}</p>}
@@ -53,16 +53,17 @@ function PriceList({studio,request}){
    <WorkspaceField label="Price" type="number" min="0" step="0.01" value={draft.unitAmount} required onChange={e=>setDraft({...draft,unitAmount:e.target.value})}/>
    <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={draft.currency} onValueChange={currency=>setDraft({...draft,currency})} options={CURRENCIES}/></WorkspaceField>
    <WorkspaceField label="Charged"><WorkspaceSelect label="Charged" value={draft.unit} onValueChange={unit=>setDraft({...draft,unit})} options={Object.entries(units).map(([value,label])=>({value,label}))}/></WorkspaceField>
-   <WorkspaceField className="commerce-span-3" label="Description (optional)" value={draft.description} maxLength={500} onChange={e=>setDraft({...draft,description:e.target.value})}/>
+   <WorkspaceField label="VAT"><WorkspaceSelect label="VAT" value={draft.vat} onValueChange={vat=>setDraft({...draft,vat})} options={LINE_VAT.map(([value,label])=>({value:value||'usual',label}))}/></WorkspaceField>
+   <WorkspaceField className="commerce-span-2" label="Description (optional)" value={draft.description} maxLength={500} onChange={e=>setDraft({...draft,description:e.target.value})}/>
    <div className="commerce-form-actions"><WorkspaceButton type="submit" disabled={busy}>{editing?'Save item':'Add to price list'}</WorkspaceButton>{editing&&<WorkspaceButton variant="ghost" onClick={()=>{setEditing('');setDraft(blank);}}>Cancel</WorkspaceButton>}</div>
   </form>
   {!data&&!error?<p className="commerce-muted">Loading your price list…</p>:items.length?<ul className="commerce-list">{items.map((item,index)=><li key={item.id} className={item.archived?'is-archived':''}>
    <div><strong>{item.name}</strong><small>{[item.category,item.description].filter(Boolean).join(' · ')||'No description'}</small></div>
-   <span className="commerce-price">{money(item.unitAmount,item.currency)}<small>{units[item.unit]}</small></span>
+   <span className="commerce-price">{money(item.unitAmount,item.currency)}<small>{units[item.unit]}</small>{lineVatChoice(item)&&<small>{lineVatLabel(item,0)}</small>}</span>
    <div className="commerce-row-actions">{item.archived?<WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={()=>send({action:'restore',id:item.id})}>Restore</WorkspaceButton>:<>
     <WorkspaceButton variant="ghost" iconOnly aria-label={`Move ${item.name} up`} disabled={busy||index===0} onClick={()=>send({action:'move',id:item.id,direction:'up'})}><ArrowUp size={15}/></WorkspaceButton>
     <WorkspaceButton variant="ghost" iconOnly aria-label={`Move ${item.name} down`} disabled={busy||index===items.filter(x=>!x.archived).length-1} onClick={()=>send({action:'move',id:item.id,direction:'down'})}><ArrowDown size={15}/></WorkspaceButton>
-    <WorkspaceButton variant="ghost" size="small" onClick={()=>{setEditing(item.id);setDraft({name:item.name,description:item.description,category:item.category,unitAmount:(item.unitAmount/100).toFixed(2),currency:item.currency,unit:item.unit});}}>Edit</WorkspaceButton>
+    <WorkspaceButton variant="ghost" size="small" onClick={()=>{setEditing(item.id);setDraft({name:item.name,description:item.description,category:item.category,unitAmount:(item.unitAmount/100).toFixed(2),currency:item.currency,unit:item.unit,vat:lineVatChoice(item)||'usual'});}}>Edit</WorkspaceButton>
     <WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={()=>send({action:'archive',id:item.id})}>Archive</WorkspaceButton></>}</div>
   </li>)}</ul>:<p className="commerce-muted">Nothing on your price list yet. Add the services you quote most often.</p>}
   {data?.items?.some(item=>item.archived)&&<WorkspaceButton variant="ghost" size="small" onClick={()=>setShowArchived(!showArchived)}>{showArchived?'Hide archived items':'Show archived items'}</WorkspaceButton>}

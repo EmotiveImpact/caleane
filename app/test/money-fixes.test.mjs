@@ -181,3 +181,36 @@ test('a plan payment can carry a discount, and a plan can issue its own payments
  assert.deepEqual(await ws.issueDuePlanSteps({today:'2027-05-20'}),[],'nothing is issued twice');
  assert.equal((await call(plan,'POST',{action:'auto-issue',on:false})).data.plan.autoIssue,null);
 });
+
+test('lines can be zero-rated, exempt or at the reduced rate, and the invoice shows VAT at each rate',async t=>{
+ const {call,q,issue,confirmedEstimate,invoices}=await workspace(t);
+ const {invoicePageHtml}=await import('../src/lib/invoice-design.js');
+ const defaults=(await call('/api/billing-defaults'+q)).data.defaults;
+ await call('/api/billing-defaults'+q,'POST',{...defaults,vatRegistered:true,taxRate:20,taxRegistration:'GB123456789'});
+ // A price list item keeps its own rate.
+ const saved=(await call('/api/catalogue'+q,'POST',{action:'create',item:{name:'Printed menus',unitAmount:300,currency:'GBP',unit:'item',exempt:false,taxRate:0}})).data.items.find(item=>item.name==='Printed menus');
+ assert.equal(saved.taxRate,0);
+ assert.equal((await call('/api/catalogue'+q,'POST',{action:'create',item:{name:'Bad',unitAmount:300,currency:'GBP',taxRate:120}})).status,400);
+ const items=[{title:'Styling',quantity:1,unitAmount:19500},{title:'Printed menus',quantity:100,unitAmount:300,taxRate:0},{title:'Venue hire',quantity:1,unitAmount:13500,exempt:true},{title:'Fuel',quantity:1,unitAmount:3000,taxRate:5}];
+ const estimate=await confirmedEstimate({items});
+ assert.deepEqual([estimate.subtotal,estimate.tax,estimate.total],[66000,4050,70050],'20% of £195, 5% of £30, nothing on the rest');
+ assert.deepEqual(estimate.items.slice(1).map(item=>[item.taxRate,item.exempt]),[[0,undefined],[undefined,true],[5,undefined]]);
+ // A deposit takes its share of each rate, and the parts add up to the invoice exactly.
+ const deposit=(await call(invoices+q,'POST',{...issue,estimateId:estimate.id,kind:'Deposit',amountMinor:20000})).data.invoice;
+ const parts=deposit.snapshot.vatBreakdown;
+ assert.deepEqual(parts.map(part=>[part.rate,part.exempt]),[[20,false],[5,false],[0,false],[0,true]]);
+ assert.equal(parts.reduce((sum,part)=>sum+part.netMinor,0),deposit.netMinor);
+ assert.equal(parts.reduce((sum,part)=>sum+part.taxMinor,0),deposit.taxMinor);
+ const page=invoicePageHtml(deposit,{estimate});
+ assert.match(page,/VAT at 20% on £[\d.,]+/);assert.match(page,/Zero-rated on £/);assert.match(page,/Exempt on £/);assert.match(page,/VAT at 5% on £/);
+ assert.match(page,/Project total including VAT/);
+ // A quick invoice works the same way, and one all at a rate other than its own still names it.
+ const quick=(await call(invoices+q,'POST',{...issue,quick:true,kind:'Full',label:'Extras',currency:'GBP',taxRate:20,items:[{title:'Hire',quantity:1,unitAmount:10000},{title:'Booklet',quantity:2,unitAmount:500,taxRate:0}]})).data.invoice;
+ assert.deepEqual([quick.netMinor,quick.taxMinor],[11000,2000]);
+ assert.deepEqual(quick.snapshot.lines.items[1],{title:'Booklet',quantity:2,unitAmount:500,taxRate:0});
+ const exempt=(await call(invoices+q,'POST',{...issue,quick:true,kind:'Full',label:'Venue',currency:'GBP',taxRate:20,items:[{title:'Venue hire',quantity:1,unitAmount:5000,exempt:true}]})).data.invoice;
+ assert.deepEqual([exempt.taxMinor,exempt.snapshot.vatBreakdown],[0,[{rate:0,exempt:true,netMinor:5000,taxMinor:0}]]);
+ assert.match(invoicePageHtml(exempt,{}),/Exempt on £50\.00/);
+ assert.doesNotMatch(invoicePageHtml(exempt,{}),/VAT \(20%\)/);
+ assert.equal((await call(invoices+q,'POST',{...issue,quick:true,kind:'Full',label:'Bad',currency:'GBP',items:[{title:'Hire',quantity:1,unitAmount:100,taxRate:'zero'}]})).status,400);
+});

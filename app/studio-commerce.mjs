@@ -1,6 +1,6 @@
 import {id,now,transaction} from './store.mjs';
 import {invoiceFonts,invoiceLayouts,normaliseInvoiceDesign} from './src/lib/invoice-design.js';
-import {DEFAULT_VAT_RATE,isVatRegistered} from './src/lib/vat.js';
+import {DEFAULT_VAT_RATE,cleanLineVat,isVatRegistered} from './src/lib/vat.js';
 import {CURRENCIES} from './src/lib/currencies.js';
 import {PRICE_UNITS} from './src/lib/price-units.js';
 import {DEFAULT_INVOICE_PREFIX,counterYear,validInvoicePrefix} from './src/lib/invoice-numbers.js';
@@ -39,7 +39,8 @@ function catalogueItem(input){
  if(!Number.isSafeInteger(unitAmount)||unitAmount<0||unitAmount>100000000)fail(400,'Enter a price between zero and one million.');
  const currency=input.currency||'GBP';if(!currencies.includes(currency))fail(400,'Choose a supported currency.');
  const unit=input.unit||'each';if(!catalogueUnits.includes(unit))fail(400,'Choose how this item is priced.');
- return {name:text(input.name,120,'the item name',true),description:text(input.description,500,'the description'),category:text(input.category,60,'the category'),unitAmount,currency,unit};
+ // An item can carry its own VAT rate, such as zero-rated or exempt, which estimates and invoices pick up with it.
+ return {name:text(input.name,120,'the item name',true),description:text(input.description,500,'the description'),category:text(input.category,60,'the category'),unitAmount,currency,unit,...cleanLineVat(input,fail)};
 }
 export function listCatalogue(db,studioId,{includeArchived=false}={}){
  return db.prepare(`SELECT * FROM service_catalogue WHERE studio_id=?${includeArchived?'':' AND archived=0'} ORDER BY archived,position,updated_at`).all(studioId).map(row=>({id:row.id,...JSON.parse(row.data),archived:!!row.archived,updatedAt:row.updated_at}));

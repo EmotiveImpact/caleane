@@ -3,7 +3,7 @@
 // what the studio designs is what the client sees and prints.
 import {brandStyle,readableOn} from './brand-kit.js';
 import {lateFeeTerms} from './invoice-charges.js';
-import {isVatDocument,isVatRegistered,showsTax,taxLabel,taxNumberLabel} from './vat.js';
+import {isVatDocument,isVatRegistered,lineVatLabel,showsTax,taxLabel,taxNumberLabel,vatGroupLabel} from './vat.js';
 import {perUnit} from './price-units.js';
 
 export const invoiceLayouts=[
@@ -52,7 +52,7 @@ export function invoiceModel(invoice,{studio={},design,brandKit,estimate,creditN
   return {...base,kind:'credit',label:'Credit note',number:credit.number,stamp:'',due:['Total credited',money(credit.amountMinor)],dueBy:'',
    meta:[['Issued',date(credit.issuedAt)],['Original invoice',invoice.number],['Invoice date',date(invoice.issuedAt)]].filter(([,v])=>v),
    table:{head:['Description','Amount'],rows:[[`Credit against invoice ${invoice.number}`,credit.reason||'',money(credit.netMinor)]]},
-   totals:[['Net credit',money(credit.netMinor)],...(showsTax(rate,tax)?[[taxLabel(rate,vat),money(tax)]]:[])],
+   totals:[['Net credit',money(credit.netMinor)],...(showsTax(rate,tax)||s.vatBreakdown&&tax?[[s.vatBreakdown?(vat?'VAT':'Tax'):taxLabel(rate,vat),money(tax)]]:[])],
    pay:null,note:`This credit note reduces invoice ${invoice.number}${invoice.issuedAt?`, issued ${date(invoice.issuedAt)},`:''} by ${money(credit.amountMinor)}.`};
  }
  const credited=invoice.creditedMinor||0,paid=invoice.grossPaidMinor??invoice.paidMinor??0,refunded=invoice.refundedMinor||0;
@@ -65,12 +65,14 @@ export function invoiceModel(invoice,{studio={},design,brandKit,estimate,creditN
  const shareMinor=invoice.shareMinor??invoice.amountMinor,discountNet=invoice.discountNetMinor||0;
  const isPart=!own&&!!(items&&estimate.total&&estimate.total!==shareMinor);
  const share=isPart?Math.round(shareMinor/estimate.total*1000)/10:100;
+ // On an invoice at more than one VAT rate, each line says which rate it is at.
+ const mixed=Array.isArray(s.vatBreakdown),lineRate=own?s.lines.taxRate:estimate?.taxRate;
  const table=items
-  ?{head:[isPart?'Project scope':'Description','Qty','Unit','Amount'],rows:items.map(item=>[item.title,perUnit(item.unit),String(item.quantity),money(item.unitAmount),money(item.quantity*item.unitAmount)]),
-    part:isPart?{total:[`Project total${estimate.taxRate?` including ${estimate.taxRate}% ${vat?'VAT':'tax'}`:''}`,money(estimate.total)],line:[lineTitle(invoice),`${share}% of the project total`,money(invoice.amountMinor)]}:null}
+  ?{head:[isPart?'Project scope':'Description','Qty','Unit','Amount'],rows:items.map(item=>[item.title,[perUnit(item.unit),mixed?lineVatLabel(item,lineRate,vat):''].filter(Boolean).join(' · '),String(item.quantity),money(item.unitAmount),money(item.quantity*item.unitAmount)]),
+    part:isPart?{total:[`Project total${mixed?` including ${vat?'VAT':'tax'}`:estimate.taxRate?` including ${estimate.taxRate}% ${vat?'VAT':'tax'}`:''}`,money(estimate.total)],line:[lineTitle(invoice),`${share}% of the project total`,money(invoice.amountMinor)]}:null}
   :{head:['Description','Amount'],rows:[[lineTitle(invoice),`${s.projectTitle||''}${invoice.estimateVersion?` · Estimate version ${invoice.estimateVersion}`:''}`,money(invoice.netMinor)]]};
  const charges=(invoice.charges||[]).filter(item=>!item.waivedAt);
- const totals=[...(discountNet?[['Subtotal',money(invoice.netMinor+discountNet)],[invoice.discountLabel||'Discount','− '+money(discountNet)],['Net',money(invoice.netMinor)]]:[['Subtotal',money(invoice.netMinor)]]),...(showsTax(invoice.taxRate,invoice.taxMinor)?[[taxLabel(invoice.taxRate,vat),money(invoice.taxMinor)]]:[]),['Invoice total',money(invoice.amountMinor),'strong'],
+ const totals=[...(discountNet?[['Subtotal',money(invoice.netMinor+discountNet)],[invoice.discountLabel||'Discount','− '+money(discountNet)],['Net',money(invoice.netMinor)]]:[['Subtotal',money(invoice.netMinor)]]),...(mixed?s.vatBreakdown.map(group=>[`${vatGroupLabel(group,vat)} on ${money(group.netMinor)}`,money(group.taxMinor)]):showsTax(invoice.taxRate,invoice.taxMinor)?[[taxLabel(invoice.taxRate,vat),money(invoice.taxMinor)]]:[]),['Invoice total',money(invoice.amountMinor),'strong'],
   ...charges.map(item=>[item.kind==='tip'?'Tip, thank you':`${item.label}, added ${date(item.addedAt)}`,'+ '+money(item.amountMinor)]),
   ...(credited?[['Credit notes','− '+money(credited)]]:[]),...(paid?[['Paid','− '+money(paid)]]:[]),...(refunded?[['Refunded','+ '+money(refunded)]]:[])];
  const terms=invoice.lateFeeRule&&!cancelled&&balance>0&&!charges.some(item=>item.kind==='late_fee')?lateFeeTerms(invoice.lateFeeRule,currency):'';
