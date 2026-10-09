@@ -57,3 +57,46 @@ test('a follow-up can be ticked off, and saving the profile without one leaves i
   assert.equal((await w.call(route,'PATCH',{followUpDone:true})).status,409);
  }finally{await w.close();}
 });
+
+const PNG=Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),Buffer.alloc(40,1)]).toString('base64');
+
+test('custom fields can be yes or no, money, a web link or a file',async()=>{
+ const w=await workspace();
+ try{
+  const saved=await w.call('/api/custom-fields'+w.q,'PUT',{client:[{label:'Signed NDA',type:'yesno'},{label:'Budget',type:'money',currency:'EUR'},{label:'Website',type:'link'},{label:'Brief',type:'file'}],project:[{label:'Fee',type:'money'}]});
+  assert.equal(saved.status,200);
+  const [nda,budget,site,brief]=saved.data.fields.client;
+  assert.equal(budget.currency,'EUR');assert.equal(saved.data.fields.project[0].currency,'GBP');
+  const client=(await w.call('/api/clients'+w.q,'POST',{name:'Field Person',email:'fields@example.test'})).data.client,route=`/api/clients/${client.id}/fields${w.q}`;
+  assert.equal((await w.call(route,'PATCH',{fields:{[nda.id]:'maybe'}})).status,400);
+  assert.equal((await w.call(route,'PATCH',{fields:{[budget.id]:'-5'}})).status,400);
+  assert.equal((await w.call(route,'PATCH',{fields:{[site.id]:'javascript:alert(1)'}})).status,400);
+  assert.equal((await w.call(route,'PATCH',{fields:{[brief.id]:{fileId:'00000000-0000-0000-0000-000000000000'}}})).status,400);
+  assert.equal((await w.call('/api/custom-fields/files'+w.q,'POST',{name:'notes.txt',content:Buffer.from('just some plain text here').toString('base64')})).status,415);
+  const upload=await w.call('/api/custom-fields/files'+w.q,'POST',{name:'brief.png',content:PNG});
+  assert.equal(upload.status,201);assert.equal(upload.data.file.mime,'image/png');
+  const updated=await w.call(route,'PATCH',{fields:{[nda.id]:false,[budget.id]:'1,250.5',[site.id]:'pigment.example/work',[brief.id]:{fileId:upload.data.file.id}}});
+  assert.equal(updated.status,200);
+  assert.deepEqual(updated.data.client.customFields,{[nda.id]:false,[budget.id]:1250.5,[site.id]:'https://pigment.example/work',[brief.id]:{fileId:upload.data.file.id,name:'brief.png'}});
+  // The file opens for the studio, and leaves with the client on erasure.
+  assert.equal(w.db.prepare('SELECT COUNT(*) AS n FROM custom_field_files').get().n,1);
+  assert.equal((await w.call(`/api/clients/${client.id}/erase${w.q}`,'POST',{confirmName:'Field Person'})).status,200);
+  assert.equal(w.db.prepare('SELECT COUNT(*) AS n FROM custom_field_files').get().n,0);
+ }finally{await w.close();}
+});
+
+test('a file nobody attached is cleared after a day, and one still on a record is kept',async()=>{
+ const {cleanupFieldFiles}=await import('../custom-fields.mjs');
+ const w=await workspace();
+ try{
+  const field=(await w.call('/api/custom-fields'+w.q,'PUT',{client:[{label:'Brief',type:'file'}],project:[]})).data.fields.client[0];
+  const kept=(await w.call('/api/custom-fields/files'+w.q,'POST',{name:'kept.png',content:PNG})).data.file;
+  const stray=(await w.call('/api/custom-fields/files'+w.q,'POST',{name:'stray.png',content:PNG})).data.file;
+  const client=(await w.call('/api/clients'+w.q,'POST',{name:'Keeper',email:'keeper@example.test'})).data.client;
+  await w.call(`/api/clients/${client.id}/fields${w.q}`,'PATCH',{fields:{[field.id]:{fileId:kept.id}}});
+  assert.equal(cleanupFieldFiles(w.db),0);
+  assert.equal(cleanupFieldFiles(w.db,{clock:()=>Date.now()+2*86400000}),1);
+  assert.deepEqual(w.db.prepare('SELECT id FROM custom_field_files').all().map(r=>r.id),[kept.id]);
+  void stray;
+ }finally{await w.close();}
+});

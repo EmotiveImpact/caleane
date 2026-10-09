@@ -4,11 +4,12 @@ const hasTable=(db,name)=>!!db.prepare("SELECT 1 FROM sqlite_master WHERE type='
 export const DEFAULT_STUDIO_QUOTA_BYTES=2*1024**3;
 /** CALEANE_STUDIO_STORAGE_BYTES overrides the 2 GB default. */
 export function studioQuotaBytes(env=process.env){const n=Number(env.CALEANE_STUDIO_STORAGE_BYTES);return Number.isFinite(n)&&n>0?n:DEFAULT_STUDIO_QUOTA_BYTES;}
-/** Bytes stored for a studio across project files, task attachments and conversation files. */
+/** Bytes stored for a studio across project files, task attachments, conversation files and files kept in custom fields. */
 export function studioStorageBytes(db,studioId){
  let total=db.prepare('SELECT COALESCE(SUM(length(f.content)),0) AS n FROM files f JOIN projects p ON p.id=f.project_id WHERE p.studio_id=?').get(studioId).n;
  if(hasTable(db,'task_attachments'))total+=db.prepare('SELECT COALESCE(SUM(length(content)),0) AS n FROM task_attachments WHERE studio_id=?').get(studioId).n;
  if(hasTable(db,'conversation_files'))total+=db.prepare('SELECT COALESCE(SUM(length(f.content)),0) AS n FROM conversation_files f JOIN conversations c ON c.id=f.conversation_id WHERE c.studio_id=?').get(studioId).n;
+ if(hasTable(db,'custom_field_files'))total+=db.prepare('SELECT COALESCE(SUM(length(content)),0) AS n FROM custom_field_files WHERE studio_id=?').get(studioId).n;
  return total;
 }
 export function assertQuota(db,studioId,bytes,limit=studioQuotaBytes()){

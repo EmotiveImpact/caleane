@@ -46,7 +46,7 @@ import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState
 import {setTip,waiveLateFee} from './invoice-extras.mjs';
 import {discountFor,invoiceFigures} from './src/lib/invoice-charges.js';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
-import {handleCustomFields} from './custom-fields.mjs';
+import {cleanupFieldFiles,handleCustomFields,installCustomFieldFiles} from './custom-fields.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus,manageBooking,bookingEmail,issueManageToken} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
@@ -87,7 +87,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installFinances(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBookingPayments(db);installPlanAutopay(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map(),bookingLinks=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installCustomFieldFiles(db);installStripePayments(db);installFinances(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBookingPayments(db);installPlanAutopay(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map(),bookingLinks=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  // Payment at booking and plan autopay take money without an invoice being opened, so a live
@@ -176,7 +176,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(!publicMatch&&req.headers.origin!==origin)fail(403,'Please use this workspace to make changes.');
     if(!/^application\/json(?:;|$)/i.test(String(req.headers['content-type']||'')))fail(415,'Use JSON for this request.');
     // Public form and booking submissions are text only and fit the 64 KB limit; uploads require a session.
-    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references))$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
+    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references)|custom-fields\/files)$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
     // Refusals before the body is read close the connection, so the unread body is discarded rather than parsed as the next request.
     if((large&&!user)||Number(req.headers['content-length']||0)>limit){res.setHeader('Connection','close');fail(large&&!user?401:413,large&&!user?'Please sign in.':tooLarge);}
     await new Promise((resolve,reject)=>{let bytes=0;req.on('data',chunk=>{if(bytes<0)return;bytes+=chunk.length;if(bytes>limit){bytes=-1;res.setHeader('Connection','close');reject(Object.assign(new Error(tooLarge),{status:413}));}else chunks.push(chunk);});req.on('end',resolve);req.on('error',reject);});
@@ -286,7 +286,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     const studio=memberships.find(s=>s.id===url.searchParams.get('studio'));if(!studio)fail(403,'You do not have access to this studio.');const owner=studio.role==='owner',staffViewer=studio.role==='staff_viewer',bookkeeper=studio.role==='staff_bookkeeper';
     // Bookkeepers read the money and nothing else: no project content, messages, files, settings or changes of any kind.
     if(bookkeeper&&!(req.method==='GET'&&(['/api/invoices','/api/projects',`/api/studios/${studio.id}/stripe-status`,'/api/expenses','/api/finance-report'].includes(route)||/^\/api\/projects\/[a-f0-9-]+\/invoices(?:\/(?:plan|[a-f0-9-]+(?:\/pdf|\/credit-notes\/[a-f0-9-]{36}\/pdf)?))?$/.test(route)||/^\/api\/expenses\/[a-f0-9-]{36}\/receipt$/.test(route))))fail(403,'Bookkeeper access is read-only and limited to finances.');const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
-    if(req.method==='POST'&&((route.startsWith('/api/conversations/')&&route.endsWith('/files'))||(route.startsWith('/api/task-workspace/')&&body.action==='file')||(route==='/api/expenses'&&body.receipt)))rate(req,'upload',40);
+    if(req.method==='POST'&&(route==='/api/custom-fields/files'||(route.startsWith('/api/conversations/')&&route.endsWith('/files'))||(route.startsWith('/api/task-workspace/')&&body.action==='file')||(route==='/api/expenses'&&body.receipt)))rate(req,'upload',40);
     const formRoute=route.match(/^\/api\/forms(?:\/([a-f0-9-]+)(?:\/(responses|export))?)?$/);
     if(formRoute){requireOwner();const formId=formRoute[1],action=formRoute[2];
      if(req.method==='GET'&&action==='export'){res.setHeader('Content-Type','text/csv; charset=utf-8');res.setHeader('Content-Disposition','attachment; filename=caleane-form-responses.csv');return res.end(formResponseCSV(db,studio.id,formId));}
@@ -338,7 +338,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     const createInvitation=mail=>{requireOwner();const linked=db.prepare(`SELECT u.email FROM crm_contacts ct JOIN users u ON u.id=ct.user_id WHERE ct.studio_id=? AND ct.email=?`).get(studio.id,mail);if(linked&&linked.email!==mail)fail(409,'This contact already has a portal login at a different email.');const token=randomBytes(32).toString('hex'),result={url:`${origin}/join#${token}`,email:mail,expiresDays:7,delivery:outbox?'queued':'copy_link'};transaction(db,()=>{db.prepare('UPDATE invitations SET used=1 WHERE studio_id=? AND email=?').run(studio.id,mail);db.prepare('INSERT INTO invitations VALUES(?,?,?,?,0)').run(hash(token),studio.id,mail,Date.now()+7*86400000);if(outbox)outbox.enqueueInvitation({studioId:studio.id,email:mail,inviteUrl:result.url});});return result;};
     const clientDTO=row=>{const organization=db.prepare(`SELECT o.name FROM crm_client_organizations co JOIN crm_organizations o ON o.id=co.organization_id AND o.studio_id=co.studio_id WHERE co.client_id=? AND co.studio_id=?`).get(row.id,studio.id);return {id:row.id,email:row.email,name:row.name,...JSON.parse(row.data),organizationName:organization?.name||''};};
-    if(handleCustomFields({db,req,route,body,studio,owner,reply,clientDTO,decorate}))return;
+    if(handleCustomFields({db,req,res,route,body,studio,owner,reply,clientDTO,decorate,sniffMime,assertQuota}))return;
     if(route==='/api/search'&&req.method==='GET'){requireOwner();const query=str(url.searchParams.get('q')||'',80);return reply(200,searchWorkspace(db,studio.id,query,url.searchParams.get('scope')||'all'));}
     if(route==='/api/staff'){
      requireOwner();
@@ -938,7 +938,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const scheduledTimer=scheduledIntervalMs>0?setInterval(()=>{try{sendDueScheduled(db,{afterSend:queueMessage});}catch(error){console.error('Scheduled messages could not be sent:',error.message);}},scheduledIntervalMs):null;scheduledTimer?.unref();
  const reminderTimer=reminderIntervalMs>0?setInterval(()=>{runAllReminders(db,{outbox});syncAllPipelines(db,{outbox});collectAutopay();},reminderIntervalMs):null;reminderTimer?.unref();
  // Uploads never attached to a message or task are removed at start-up and then hourly.
- const cleanUploads=()=>{try{cleanupUnattachedUploads(db);}catch(error){console.error('Upload cleanup failed:',error?.stack||error);}};cleanUploads();
+ const cleanUploads=()=>{try{cleanupUnattachedUploads(db);cleanupFieldFiles(db);}catch(error){console.error('Upload cleanup failed:',error?.stack||error);}};cleanUploads();
  const uploadTimer=uploadCleanupIntervalMs>0?setInterval(cleanUploads,uploadCleanupIntervalMs):null;uploadTimer?.unref();
  // Outgoing webhooks: find new events and send what is due every 15 seconds.
  let webhookRun=null;const tickWebhooks=()=>{if(webhookRun)return;webhookRun=runWebhooks(db).catch(error=>console.error('Webhook delivery failed:',error?.stack||error)).finally(()=>{webhookRun=null;});};
