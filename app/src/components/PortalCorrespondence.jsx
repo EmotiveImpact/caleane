@@ -1,10 +1,11 @@
 import {messagePreview} from '../lib/message-preview';
 import {ProjectChat} from './ProjectChat';
+import {watchConversations} from '../lib/conversationFeed';
 import React,{useEffect,useState,useRef} from 'react';
 import {Mail,Plus,Send} from 'lucide-react';
 export function PortalCorrespondence({studio,request,run,busy,projects,projectId,openProject,user,onThreadSelect,projectOnly=false,owner=false}){
  const [threads,setThreads]=useState([]),[selected,setSelected]=useState(null),[drafts,setDrafts]=useState({}),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);const revision=useRef(0),heldUnread=useRef(null);
- useEffect(()=>{let active=true;async function load(){const version=revision.current;try{const d=await request('/api/conversations?studio='+studio.id);if(active&&version===revision.current)setThreads(d.conversations);}catch(e){if(active)setError(e.message);}finally{if(active)setLoaded(true);}}load();const timer=setInterval(()=>{if(document.visibilityState==='visible')load();},6000);return()=>{active=false;clearInterval(timer);};},[studio.id]);
+ useEffect(()=>{return watchConversations(studio.id,request,{start:()=>revision.current,data:(list,version)=>{if(version===revision.current)setThreads(list);},error:e=>setError(e.message),done:()=>setLoaded(true)});},[studio.id]);
  const visibleThreads=projectOnly?threads.filter(t=>t.projectId===projectId):threads;
  const thread=visibleThreads.find(t=>t.id===selected)||visibleThreads.find(t=>t.projectId===projectId)||visibleThreads[0],project=projects.find(p=>p.id===thread?.projectId);
  useEffect(()=>{if(!thread?.unreadMessages||!thread.messages.length||heldUnread.current===thread.id)return;const last=thread.messages.at(-1).id;request(`/api/conversations/${thread.id}/seen?studio=${studio.id}`,'POST',{lastMessageId:last}).then(d=>setThreads(prev=>prev.map(t=>t.id===d.conversation.id&&t.messages.at(-1)?.id===last?{...t,unreadMessages:0}:t))).catch(e=>setError(e.message));},[thread?.id,thread?.unreadMessages,studio.id]);

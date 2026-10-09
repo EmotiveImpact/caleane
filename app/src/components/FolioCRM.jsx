@@ -9,6 +9,7 @@ import '../folio.css';
 import '../folio-finances.css';
 import {ClientCRMPanel} from './PipelineCRM';
 import {RelationshipPeople} from './RelationshipPeople';
+import {watchConversations} from '../lib/conversationFeed';
 import {demoCoverFor} from '../lib/workflows';
 import {WorkspaceConfirm} from './workspace/WorkspaceUI';
 import './record-actions.css';
@@ -37,7 +38,7 @@ export function FolioCRM({studio,projects,request,run,busy,openProject,clientId,
  useEffect(()=>{setTab(mode==='inbox'?'Correspondence':'Overview');setEditing(false);},[mode]);
  useEffect(()=>{let active=true;setLoading(true);setLocalError('');Promise.all([request('/api/clients?studio='+studio.id),request('/api/conversations?studio='+studio.id)]).then(([c,t])=>{if(active){setClients(c.clients);setConversations(t.conversations);}}).catch(e=>{if(active)setLocalError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[studio.id]);
  useEffect(()=>{let active=true;setInvoiceLoading(true);setInvoiceError('');request('/api/invoices?studio='+studio.id).then(data=>{if(active)setInvoices(data.invoices||[]);}).catch(error=>{if(active)setInvoiceError(error.message);}).finally(()=>{if(active)setInvoiceLoading(false);});return()=>{active=false;};},[studio.id,invoiceRefresh,request]);
- useEffect(()=>{let active=true;const reload=()=>{if(document.visibilityState!=='visible')return;const version=writeVersion.current;request('/api/conversations?studio='+studio.id).then(d=>{if(active&&version===writeVersion.current)setConversations(d.conversations);}).catch(()=>{});};const timer=setInterval(reload,6000);window.addEventListener('focus',reload);return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',reload);};},[studio.id]);
+ useEffect(()=>{return watchConversations(studio.id,request,{start:()=>writeVersion.current,data:(list,version)=>{if(version===writeVersion.current)setConversations(list);}});},[studio.id]);
  const projectThread=projectId?conversations.find(c=>c.projectId===projectId):null;
  const missingClient=mode!=='inbox'&&!!clientId&&!loading&&!clients.some(c=>c.id===clientId),client=missingClient?null:clients.find(c=>c.id===clientId)||clients.find(c=>c.id===projectThread?.clientId)||clients[0],clientProjects=client?projects.filter(p=>p.clientId===client.id):[],threads=client?conversations.filter(c=>c.clientId===client.id).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)):[],thread=threads.find(c=>c.id===conversationId)||threads.find(c=>c.id===projectThread?.id)||threads[0],project=tab==='Correspondence'&&thread?projects.find(p=>p.id===thread.projectId):clientProjects[0];
  useEffect(()=>{if(mode==='inbox'&&client&&client.id!==clientId)onSelect(client.id,false);},[client?.id,clientId,mode]);

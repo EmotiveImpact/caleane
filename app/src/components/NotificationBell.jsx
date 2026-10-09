@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import {NotificationDrawer} from './NotificationDrawer';
 import {attentionFor} from '../lib/attention';
+import {watchConversations} from '../lib/conversationFeed';
 
 const todayLocal=()=>{const date=new Date();return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;};
 
@@ -18,8 +19,10 @@ export function replyItems(conversations){
 export function NotificationBell({studio,owner,projects,request,openProject,openMail,openConversation,openTasks,openOverview,openNotification,openEmailSettings,onInboxCount}){
  const [conversations,setConversations]=useState([]),[tasks,setTasks]=useState([]),[loadError,setLoadError]=useState(false);
  useEffect(()=>{setConversations([]);setTasks([]);setLoadError(false);let active=true;
-  async function reload(){const results=await Promise.allSettled([request('/api/conversations?studio='+studio.id),owner?request('/api/crm/tasks?studio='+studio.id):Promise.resolve({tasks:[]})]);if(!active)return;let failed=false;if(results[0].status==='fulfilled')setConversations(results[0].value.conversations||[]);else failed=true;if(results[1].status==='fulfilled')setTasks(results[1].value.tasks||[]);else failed=true;setLoadError(failed);}
-  reload();const timer=setInterval(()=>{if(document.visibilityState==='visible')reload();},20000);return()=>{active=false;clearInterval(timer);};
+  let messagesFailed=false,tasksFailed=false;const show=()=>{if(active)setLoadError(messagesFailed||tasksFailed);};
+  const stop=watchConversations(studio.id,request,{data:list=>{if(!active)return;messagesFailed=false;setConversations(list||[]);show();},error:()=>{messagesFailed=true;show();}});
+  async function reload(){if(!owner)return;try{const data=await request('/api/crm/tasks?studio='+studio.id);if(active)setTasks(data.tasks||[]);tasksFailed=false;}catch{tasksFailed=true;}show();}
+  reload();const timer=setInterval(()=>{if(document.visibilityState==='visible')reload();},20000);return()=>{active=false;clearInterval(timer);stop();};
  },[owner,studio.id,request]);
  const items=useMemo(()=>{const today=todayLocal();const due=owner?tasks.filter(t=>!t.completed&&t.dueDate&&t.dueDate<=today).map(t=>({id:'crm-'+t.id,kind:'task',label:t.title,detail:t.dueDate<today?'Overdue next step':'Due today',at:t.dueDate,context:t.clientName,destination:'tasks'})):[];
   const messages=owner?replyItems(conversations):[];

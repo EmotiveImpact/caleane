@@ -16,7 +16,7 @@ import http from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {randomBytes,timingSafeEqual} from 'node:crypto';
+import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import Stripe from 'stripe';
 import {openStore,STAFF_ACCESS,id,now,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
 import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask,deleteTask} from './crm.mjs';
@@ -503,7 +503,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       // Hosts that pause between requests may miss the timer, so anything due goes out before the list is read.
       sendDueScheduled(db,{afterSend:queueMessage});
       const rows=db.prepare('SELECT c.* FROM conversations c WHERE c.studio_id=? ORDER BY c.updated_at DESC,c.id').all(studio.id).filter(c=>owner||conversationAccess(db,c,user.id));
-      return reply(200,{conversations:rows.map(c=>conversationDTO(db,c,user))});
+      // A tag of the list lets open pages ask "anything new?" and skip downloading an unchanged list.
+      const conversations=rows.map(c=>conversationDTO(db,c,user)),tag=createHash('sha256').update(JSON.stringify(conversations)).digest('base64url').slice(0,22);
+      if(url.searchParams.get('since')===tag)return reply(200,{unchanged:true,tag});
+      return reply(200,{conversations,tag});
      }
      if(req.method==='POST'){
       requireOwner();const clientId=str(body.clientId,100),projectId=body.projectId?str(body.projectId,100):null,subject=str(body.subject,200),text=str(body.text||'',5000);
