@@ -52,7 +52,7 @@ const projects=[project('a','Active planning','Planning'),project('b','New enqui
 test('the projects list keeps its tab, search and layout in the parent so they survive opening a project',()=>{
  let view={...defaultProjectsView};
  const props={projects,studio,owner:true,openProject(){},createAction:null,board:()=>h('p',null,'board')};
- const {rerender,unmount}=render(h(StudioProjects,{...props,view,onViewChange:next=>{view=next;}}));
+ const {unmount}=render(h(StudioProjects,{...props,view,onViewChange:next=>{view=next;}}));
  fireEvent.click(screen.getByRole('button',{name:/^Enquiries/}));
  assert.equal(view.group,'Enquiries');
  unmount();

@@ -4,7 +4,7 @@ import {formatDay} from '../lib/dates';
 import React,{useEffect,useState} from 'react';
 import {TaskCollaboration} from './TaskCollaboration';
 import './task-workspace.css';
-import {ArrowLeft,Check,Link2,MessageSquareText,Plus} from 'lucide-react';
+import {ArrowLeft,Check,Link2,Plus} from 'lucide-react';
 import {briefFieldsFor,workflowFor} from '../lib/workflows.js';
 import {DesignDrafts} from './DesignDrafts.jsx';
 import {questionIsVisible} from '../lib/intake-visibility.js';

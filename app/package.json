@@ -9,7 +9,8 @@
     "demo": "WORKSPACE_DEMO=1 node --experimental-sqlite server.mjs",
     "pretest": "node scripts/ensure-build.mjs",
     "test": "node --experimental-sqlite --test test/*.test.mjs",
-    "dev": "WORKSPACE_DEMO=1 node --experimental-sqlite server.mjs --dev"
+    "dev": "WORKSPACE_DEMO=1 node --experimental-sqlite server.mjs --dev",
+    "lint": "eslint ."
   },
   "engines": {
     "node": ">=22.12"
@@ -39,10 +40,15 @@
     "stripe": "^22.6.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@vitejs/plugin-react": "^5.1.0",
     "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.13.0",
     "jsdom": "^30.1.1",
     "vite": "^7.3.0"
   }

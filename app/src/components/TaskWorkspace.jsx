@@ -3,7 +3,7 @@ import {shortDay} from '../lib/dates';
 import {WorkspaceCheckbox,WorkspaceConfirm,WorkspaceFilters,WorkspaceSelect} from './workspace/WorkspaceUI';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import {Plus,Search,X,Check,FolderClosed,MessageSquare,UserRound} from 'lucide-react';
+import {Plus,X,Check,UserRound} from 'lucide-react';
 import {ProjectImage} from './StudioViews';
 import './task-workspace.css';
 import {TaskCollaboration} from './TaskCollaboration';

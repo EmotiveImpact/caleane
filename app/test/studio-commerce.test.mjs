@@ -201,7 +201,7 @@ test('a credit note is not kept when its project event cannot be saved',async t=
 });
 
 test('invoice design is saved by the owner, readable by the client and rendered safely',async t=>{
- const {call,studio,suffix,project}=await workspace(t);
+ const {call,suffix,project}=await workspace(t);
  const {invoicePageHtml,normaliseInvoiceDesign}=await import('../src/lib/invoice-design.js');
  let r=await call('/api/invoice-design'+suffix,'GET',undefined,'owner');assert.equal(r.status,200);assert.equal(r.data.design.layout,'atelier');
  r=await call('/api/invoice-design'+suffix,'POST',{layout:'bold',font:'serif',accent:'#2b4a3a',showLogo:true,thankYou:'With thanks',footer:'Company 0123456'},'client');assert.equal(r.status,403);

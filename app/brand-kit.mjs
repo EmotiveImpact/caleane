@@ -15,7 +15,7 @@ function sniff(kind,data){
   if(head[0]===0x89&&ascii.slice(1,4)==='PNG')return 'image/png';
   if(head[0]===0xff&&head[1]===0xd8&&head[2]===0xff)return 'image/jpeg';
   if(ascii.slice(0,4)==='RIFF'&&ascii.slice(8,12)==='WEBP')return 'image/webp';
-  const text=data.subarray(0,512).toString('utf8').replace(/^﻿/,'').trimStart();
+  const text=data.subarray(0,512).toString('utf8').replace(/^\uFEFF/,'').trimStart();
   if(/^(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE svg[^>]*>\s*)?<svg[\s>]/i.test(text))return 'image/svg+xml';
   return '';
  }

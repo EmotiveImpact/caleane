@@ -1,6 +1,6 @@
 import React,{useState,useEffect} from 'react';
 import {shortDay} from '../lib/dates';
-import {CalendarDays,Check,FolderClosed,Mail,FileCheck2,MessageSquare} from 'lucide-react';
+import {Check,FolderClosed,Mail,FileCheck2,MessageSquare} from 'lucide-react';
 import {ProjectImage,RecentDecisions} from './StudioViews';
 import {attentionFor} from '../lib/attention';
 import {pendingReviews,projectInGroup} from '../lib/studio-view';

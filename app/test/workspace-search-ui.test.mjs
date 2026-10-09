@@ -9,7 +9,7 @@ import {createWorkspace} from '../server.mjs';
 
 const dom=setupDom();
 const {module:ui,remove}=await bundle("export {WorkspaceSearch} from './src/components/WorkspaceSearch.jsx';",'workspace-search-ui');
-const {render,screen,cleanup,waitFor}=await import('@testing-library/react');
+const {render,screen,cleanup}=await import('@testing-library/react');
 const {default:userEvent}=await import('@testing-library/user-event');
 const h=React.createElement,user=()=>userEvent.setup({document:dom.window.document,pointerEventsCheck:0});
 afterEach(()=>cleanup());
