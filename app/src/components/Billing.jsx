@@ -1,7 +1,7 @@
 import {CollectionFilter} from './CollectionFilter';
 import {InvoicePreview,printInvoice} from './InvoiceDocument';
 import {invoicePageHtml} from '../lib/invoice-design';
-import {discountFor,invoiceFigures,lateFeeShort,lateFeeTerms,tipFor,tipPercents} from '../lib/invoice-charges';
+import {discountFor,invoiceFigures,lateFeeFits,lateFeeShort,lateFeeTerms,tipFor,tipPercents} from '../lib/invoice-charges';
 import {WorkspaceSwitch} from './workspace/WorkspaceUI';
 import React,{useEffect,useMemo,useState} from 'react';
 import {Check,Copy,Download,FileText,Plus,Printer,Trash2} from 'lucide-react';
@@ -117,7 +117,7 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  if(discountInput&&discountValue!==''&&shareMinor>0){try{discount=discountFor(discountInput,{shareMinor,shareNetMinor});}catch(error){discountError=error.message;}}
  const issueKind=quick?quickKind:kind;
  const lateFeeRule=saved.lateFee?.enabled?saved.lateFee:null,tipsAvailable=!!saved.tips?.enabled&&issueKind!=='Deposit';
- const currency=quick?quickCurrency||latestEstimate?.currency||saved.currency||'GBP':estimate?.currency||'GBP',figures=invoiceFigures({shareMinor,shareNetMinor,discount});
+ const currency=quick?quickCurrency||latestEstimate?.currency||saved.currency||'GBP':estimate?.currency||'GBP',figures=invoiceFigures({shareMinor,shareNetMinor,discount}),feeFits=lateFeeFits(lateFeeRule,currency);
  const setLine=(index,key,value)=>setQuickLines(lines=>lines.map((line,i)=>i===index?{...line,[key]:value}:line));
  return <form className="billing-issue-form" onSubmit={async event=>{
   event.preventDefault();setFormError('');
@@ -136,7 +136,7 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
    if(kind==='Deposit')body.amountMinor=amountMinor;
   }
   if(discountInput){if(discountValue===''||discountError||!discount){setFormError(discountError||'Enter the discount, or choose no discount.');return;}body.discount=discountInput;}
-  if(lateFeeRule)body.lateFee=lateFeeOn;
+  if(lateFeeRule&&feeFits)body.lateFee=lateFeeOn;
   if(tipsAvailable)body.tips=tipsOn;
   const result=await mutate('invoices',body);
   if(result?.invoice)onIssued(result.invoice);
@@ -166,7 +166,8 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
     {discountType!=='none'&&discountError&&<p className="billing-extras-note is-error" role="alert">{discountError}</p>}
    </IssueSection>
    {(lateFeeRule||tipsAvailable)&&<IssueSection title="Late fee and tip" hint="Both are shown to the client on the invoice. No message or email is sent when a fee is added.">
-    {lateFeeRule&&<WorkspaceSwitch label="Include your late fee terms" description={lateFeeTerms(lateFeeRule,currency)} checked={lateFeeOn} onCheckedChange={setLateFeeOn}/>}
+    {lateFeeRule&&(feeFits?<WorkspaceSwitch label="Include your late fee terms" description={lateFeeTerms(lateFeeRule,currency)} checked={lateFeeOn} onCheckedChange={setLateFeeOn}/>
+    :<p className="billing-extras-note">Your late fee is a fixed {money(lateFeeRule.amountMinor,lateFeeRule.currency)}, so it isn’t added to a {currency} invoice. A percentage fee in Settings, Late fees and tips covers every currency.</p>)}
     {tipsAvailable&&<WorkspaceSwitch label="Let the client add a tip" description="They can choose a tip on this invoice before paying. Tips carry no tax." checked={tipsOn} onCheckedChange={setTipsOn}/>}
    </IssueSection>}
    <IssueSection title="Due date and note" hint="The note is shown to the client as the payment context.">
@@ -179,7 +180,7 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
     <label><span>Instructions for the client</span><textarea name="paymentInstructions" rows="3" maxLength="1000" required placeholder="Include the bank or external payment details and the reference the client should use." defaultValue={saved.paymentInstructions||''}/></label>
    </IssueSection>
   </div>
-  <IssueSummary figures={figures} currency={currency} taxRate={quick?quickRate:estimate?.taxRate||0} vat={isVatRegistered(saved)} discount={discount} lateFee={lateFeeRule&&lateFeeOn?lateFeeRule:null} tips={tipsAvailable&&tipsOn} waiting={quick?(!(quickNet>0)&&'Add a line with a price to see the figures.'):kind==='Deposit'&&!(shareMinor>0)}/>
+  <IssueSummary figures={figures} currency={currency} taxRate={quick?quickRate:estimate?.taxRate||0} vat={isVatRegistered(saved)} discount={discount} lateFee={lateFeeRule&&feeFits&&lateFeeOn?lateFeeRule:null} tips={tipsAvailable&&tipsOn} waiting={quick?(!(quickNet>0)&&'Add a line with a price to see the figures.'):kind==='Deposit'&&!(shareMinor>0)}/>
   </div></div>
   {formError&&<p className="billing-error" role="alert">{formError}</p>}
   <div className="billing-form-foot"><button className="billing-primary" disabled={busy||(!quick&&remaining<=0)}>Issue invoice </button><p>An invoice is a request for payment. Its status changes only when the studio records money received.</p></div>

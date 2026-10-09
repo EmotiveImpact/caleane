@@ -1,6 +1,7 @@
 import {id,now,transaction,event,saveProject} from './store.mjs';
 import {invoiceAdjustments,invoiceCharges,invoiceState} from './invoice-adjustments.mjs';
-import {discountFor} from './src/lib/invoice-charges.js';
+import {discountFor,lateFeeFits} from './src/lib/invoice-charges.js';
+import {CURRENCIES} from './src/lib/currencies.js';
 export {discountFor};
 
 // Discounts, late fees and tips. A discount is part of the issued invoice. A late
@@ -14,13 +15,16 @@ const money=(minor,currency)=>{try{return new Intl.NumberFormat('en-GB',{style:'
 export const defaultLateFee={enabled:false,type:'fixed',amountMinor:2500,percent:5,afterDays:7};
 export const defaultTips={enabled:false};
 
-export function validateLateFee(input={}){
- const rule={...defaultLateFee,...(input||{})};
+// A fixed fee is an amount in one currency, so it only goes on invoices in that currency.
+// `usualCurrency` covers rules saved before the fee had a currency of its own.
+export function validateLateFee(input={},usualCurrency='GBP'){
+ const rule={...defaultLateFee,currency:usualCurrency,...(input||{})};
+ if(!CURRENCIES.includes(rule.currency))fail(400,'Choose a currency for the fixed late fee.');
  if(!['fixed','percent'].includes(rule.type))fail(400,'Choose a fixed or percentage late fee.');
  if(!Number.isSafeInteger(rule.amountMinor)||rule.amountMinor<1||rule.amountMinor>100000)fail(400,'Use a fixed late fee between 0.01 and 1,000.');
  if(typeof rule.percent!=='number'||!Number.isFinite(rule.percent)||rule.percent<=0||rule.percent>25)fail(400,'Use a late fee percentage above 0 and no more than 25.');
  if(!Number.isInteger(rule.afterDays)||rule.afterDays<1||rule.afterDays>90)fail(400,'Add the late fee between 1 and 90 days after the due date.');
- return {enabled:rule.enabled===true,type:rule.type,amountMinor:rule.amountMinor,percent:Math.round(rule.percent*100)/100,afterDays:rule.afterDays};
+ return {enabled:rule.enabled===true,type:rule.type,amountMinor:rule.amountMinor,currency:rule.currency,percent:Math.round(rule.percent*100)/100,afterDays:rule.afterDays};
 }
 export const validateTips=input=>({enabled:input?.enabled===true});
 
@@ -34,11 +38,13 @@ const checkoutOpen=(db,invoice)=>{try{return !!db.prepare("SELECT 1 FROM stripe_
 // Late fees that are due on `today`. Only invoices issued with a late fee rule
 // qualify, and only while the studio still has late fees switched on.
 export function dueLateFees(db,studioId,today=now().slice(0,10)){
- const saved=db.prepare("SELECT data FROM studio_settings_kv WHERE studio_id=? AND key='billing_defaults'").get(studioId),setting=saved&&JSON.parse(saved.data).lateFee;
+ const saved=db.prepare("SELECT data FROM studio_settings_kv WHERE studio_id=? AND key='billing_defaults'").get(studioId),defaults=saved?JSON.parse(saved.data):{},setting=defaults.lateFee;
  if(!setting?.enabled)return [];
  const result=[];
  for(const invoice of db.prepare("SELECT * FROM invoices WHERE studio_id=? AND cancelled_at IS NULL AND late_fee_rule<>''").all(studioId)){
   const rule=JSON.parse(invoice.late_fee_rule);
+  // Invoices issued before fees had a currency: a fixed fee in the usual currency never lands on another one.
+  if(!lateFeeFits({currency:defaults.currency||'GBP',...rule},invoice.currency))continue;
   if(dayNumber(today)-dayNumber(invoice.due_date)<rule.afterDays)continue;
   if(db.prepare("SELECT 1 FROM invoice_charges WHERE invoice_id=? AND kind='late_fee'").get(invoice.id))continue;
   if(checkoutOpen(db,invoice))continue;

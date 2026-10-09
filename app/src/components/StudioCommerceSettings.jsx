@@ -136,10 +136,10 @@ export function LateFeeSettings({studio,request}){
    <WorkspaceSwitch label="Add a late fee to overdue invoices" description="Applies once, after the grace period, to invoices issued while this is on. Caleane adds it to the invoice and notes it on the project. It does not message, email or charge the client." checked={fee.enabled} onCheckedChange={enabled=>update({enabled})}/>
    {fee.enabled&&<div className="settings-fields commerce-late-fee">
     <WorkspaceField label="Fee"><WorkspaceSelect label="Fee" value={fee.type} onValueChange={type=>update({type})} options={[{value:'fixed',label:'Fixed amount'},{value:'percent',label:'Percentage of the unpaid balance'}]}/></WorkspaceField>
-    {fee.type==='fixed'?<WorkspaceField label="Amount" type="number" min="0.01" max="1000" step="0.01" value={(fee.amountMinor/100).toFixed(2)} onChange={e=>update({amountMinor:Math.round(Number(e.target.value)*100)})}/>
+    {fee.type==='fixed'?<><WorkspaceField label="Amount" type="number" min="0.01" max="1000" step="0.01" value={(fee.amountMinor/100).toFixed(2)} onChange={e=>update({amountMinor:Math.round(Number(e.target.value)*100)})}/><WorkspaceField label="Currency" hint="A fixed fee only goes on invoices in this currency. Choose a percentage to cover every currency."><WorkspaceSelect label="Late fee currency" value={fee.currency||form.currency||'GBP'} onValueChange={currency=>update({currency})} options={CURRENCIES}/></WorkspaceField></>
     :<WorkspaceField label="Percentage" type="number" min="0.1" max="25" step="0.1" value={fee.percent} onChange={e=>update({percent:Number(e.target.value)})}/>}
     <WorkspaceField label="Days after the due date" type="number" min="1" max="90" value={fee.afterDays} onChange={e=>update({afterDays:Number(e.target.value)})}/>
-    <p className="commerce-muted commerce-late-fee-preview">Clients will read: “{lateFeeTerms(fee,'GBP')}”</p>
+    <p className="commerce-muted commerce-late-fee-preview">Clients will read: “{lateFeeTerms(fee,fee.currency||form.currency||'GBP')}”</p>
    </div>}
    <WorkspaceSwitch label="Let clients add a tip to final invoices" description="Adds an optional tip choice to balance and full invoices. Deposits never ask for a tip. Tips carry no tax." checked={form.tips.enabled} onCheckedChange={enabled=>set({tips:{enabled}})}/>
    {error&&<p className="commerce-error" role="alert">{error}</p>}

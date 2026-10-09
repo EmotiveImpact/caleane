@@ -102,3 +102,23 @@ test('the studio chooses its invoice prefix, whether the year is included and th
  await call('/api/billing-defaults'+q,'POST',{...rest,nextInvoiceNumber:42});
  assert.equal((await call(invoices+q,'POST',quick)).data.invoice.number,'NAY-0044');
 });
+
+test('a fixed late fee keeps its currency and never lands on an invoice in another one',async t=>{
+ const {ws,call,studio,q,issue,invoices}=await workspace(t);
+ const {applyLateFees}=await import('../invoice-extras.mjs');
+ const defaults=(await call('/api/billing-defaults'+q)).data.defaults;
+ assert.equal((await call('/api/billing-defaults'+q,'POST',{...defaults,lateFee:{enabled:true,type:'fixed',amountMinor:2500,currency:'XYZ',percent:5,afterDays:1}})).status,400);
+ const saved=(await call('/api/billing-defaults'+q,'POST',{...defaults,lateFee:{enabled:true,type:'fixed',amountMinor:2500,percent:5,afterDays:1}})).data.defaults;
+ assert.equal(saved.lateFee.currency,'GBP','a fee saved without a currency takes the usual currency');
+ const line=currency=>({...issue,quick:true,kind:'Full',label:'Extra hours',currency,taxRate:0,items:[{title:'Styling',quantity:1,unitAmount:10000}]});
+ const pounds=(await call(invoices+q,'POST',line('GBP'))).data.invoice,euros=(await call(invoices+q,'POST',line('EUR'))).data.invoice;
+ assert.deepEqual(pounds.lateFeeRule,{type:'fixed',amountMinor:2500,currency:'GBP',percent:5,afterDays:1});
+ assert.equal(euros.lateFeeRule,null,'£25 is not added to a euro invoice as €25');
+ // An invoice issued before fees had a currency, in euros, with the old pound rule.
+ ws.db.prepare('UPDATE invoices SET late_fee_rule=? WHERE id=?').run(JSON.stringify({type:'fixed',amountMinor:2500,percent:5,afterDays:1}),euros.id);
+ const later=new Date(Date.now()+5*86400000).toISOString().slice(0,10);
+ assert.deepEqual(applyLateFees(ws.db,{studioId:studio,today:later}).map(fee=>fee.number),[pounds.number]);
+ // A percentage fee suits every currency.
+ await call('/api/billing-defaults'+q,'POST',{...saved,lateFee:{...saved.lateFee,type:'percent'}});
+ assert.equal((await call(invoices+q,'POST',line('EUR'))).data.invoice.lateFeeRule.type,'percent');
+});

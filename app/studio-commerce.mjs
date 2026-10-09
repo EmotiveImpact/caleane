@@ -98,7 +98,7 @@ export function validatePlanTemplate(steps){
  return result;
 }
 // vatRegistered is worked out for settings saved before the switch existed, so their rate keeps showing.
-export function billingDefaults(db,studioId){const saved=readSetting(db,studioId,'billing_defaults',{});const result={...structuredClone(defaultBillingDefaults),...saved,vatRegistered:isVatRegistered(saved),lateFee:{...defaultLateFee,...(saved.lateFee||{})},tips:{...defaultTips,...(saved.tips||{})}};return {...result,nextInvoiceNumber:nextInvoiceNumber(db,studioId,result)};}
+export function billingDefaults(db,studioId){const saved=readSetting(db,studioId,'billing_defaults',{});const result={...structuredClone(defaultBillingDefaults),...saved,vatRegistered:isVatRegistered(saved),lateFee:{...defaultLateFee,currency:saved.currency||'GBP',...(saved.lateFee||{})},tips:{...defaultTips,...(saved.tips||{})}};return {...result,nextInvoiceNumber:nextInvoiceNumber(db,studioId,result)};}
 // The number the next invoice will take under the studio's current numbering.
 function nextInvoiceNumber(db,studioId,settings){return db.prepare('SELECT next_number FROM invoice_counters WHERE studio_id=? AND year=?').get(studioId,counterYear(settings,Number(now().slice(0,4))))?.next_number||1;}
 export function saveBillingDefaults(db,studioId,body){
@@ -110,7 +110,7 @@ export function saveBillingDefaults(db,studioId,body){
  if(typeof invoiceYear!=='boolean')fail(400,'Choose whether invoice numbers include the year.');
  const next=body.nextInvoiceNumber;if(next!==undefined&&(!Number.isInteger(next)||next<1||next>999999))fail(400,'Use a next invoice number between 1 and 999999.');
  return transaction(db,()=>{
-  writeSetting(db,studioId,'billing_defaults',{invoicePrefix,invoiceYear,currency,vatRegistered,taxRate,sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan),lateFee:validateLateFee(body.lateFee),tips:validateTips(body.tips)});
+  writeSetting(db,studioId,'billing_defaults',{invoicePrefix,invoiceYear,currency,vatRegistered,taxRate,sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan),lateFee:validateLateFee(body.lateFee,currency),tips:validateTips(body.tips)});
   // A number already used is skipped when the invoice is issued, so moving the counter back cannot duplicate one.
   if(next!==undefined)db.prepare('INSERT INTO invoice_counters VALUES(?,?,?) ON CONFLICT(studio_id,year) DO UPDATE SET next_number=excluded.next_number').run(studioId,counterYear({invoiceYear},Number(now().slice(0,4))),next);
   return billingDefaults(db,studioId);

@@ -4,16 +4,18 @@ const fail=(status,message)=>{throw Object.assign(new Error(message),{status});}
 const money=(minor,currency)=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(minor/100);}catch{return `${(minor/100).toFixed(2)} ${currency}`;}};
 
 // The words a client reads on the invoice before any fee is added.
+// A percentage fee suits any invoice; a fixed fee only one in its own currency.
+export const lateFeeFits=(rule,currency)=>!!rule&&(rule.type==='percent'||!rule.currency||rule.currency===currency);
 export function lateFeeTerms(rule,currency){
  if(!rule)return '';
- const fee=rule.type==='percent'?`${rule.percent}% of the unpaid balance`:money(rule.amountMinor,currency);
+ const fee=rule.type==='percent'?`${rule.percent}% of the unpaid balance`:money(rule.amountMinor,rule.currency||currency);
  return `A late fee of ${fee} is added once, if this invoice is still unpaid ${rule.afterDays} ${rule.afterDays===1?'day':'days'} after the due date.`;
 }
 
 // The same terms in a few words, for the issue form's summary.
 export function lateFeeShort(rule,currency){
  if(!rule)return '';
- const fee=rule.type==='percent'?`${rule.percent}% of the unpaid balance`:money(rule.amountMinor,currency);
+ const fee=rule.type==='percent'?`${rule.percent}% of the unpaid balance`:money(rule.amountMinor,rule.currency||currency);
  return `${fee}, ${rule.afterDays} ${rule.afterDays===1?'day':'days'} after the due date`;
 }
 

@@ -47,7 +47,7 @@ import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {setTip,waiveLateFee} from './invoice-extras.mjs';
-import {discountFor,invoiceFigures} from './src/lib/invoice-charges.js';
+import {discountFor,invoiceFigures,lateFeeFits} from './src/lib/invoice-charges.js';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {handleCustomFields} from './custom-fields.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
@@ -689,7 +689,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
        const {netMinor,taxMinor}=figures;
        if(netMinor<0||taxMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
        // Late fee terms and tips are fixed on the invoice when it is issued, so the client sees them from the start.
-       const lateFeeRule=saved.lateFee?.enabled&&body.lateFee!==false?JSON.stringify({type:saved.lateFee.type,amountMinor:saved.lateFee.amountMinor,percent:saved.lateFee.percent,afterDays:saved.lateFee.afterDays}):'';
+       const lateFeeRule=saved.lateFee?.enabled&&body.lateFee!==false&&lateFeeFits(saved.lateFee,basis.currency)?JSON.stringify({type:saved.lateFee.type,amountMinor:saved.lateFee.amountMinor,currency:saved.lateFee.currency,percent:saved.lateFee.percent,afterDays:saved.lateFee.afterDays}):'';
        const tipsAllowed=saved.tips?.enabled&&kind!=='Deposit'&&body.tips!==false?1:0;
        const snapshot={sellerName:studio.name,sellerAddress,sellerContact,taxRegistration,vatRegistered:isVatDocument({vatRegistered:basis.vatRegistered,taxRegistration},basis.currency),billToName:project.brief?.name||'',billToEmail:project.clientEmail,customerAddress,supplyDate,projectTitle:project.title,...(quick?{lines}:{estimate:{id:estimate.id,version:estimate.version,title:estimate.title,note:estimate.note,items:structuredClone(estimate.items),currency:estimate.currency,taxRate:estimate.taxRate,vatRegistered:estimate.vatRegistered,subtotal:estimate.subtotal,tax:estimate.tax,total:estimate.total,briefRevision:estimate.briefRevision,decidedAt:estimate.decidedAt||'',decidedBy:estimate.decidedBy||''}})};
        const invoiceId=id(),issuedAt=now();
