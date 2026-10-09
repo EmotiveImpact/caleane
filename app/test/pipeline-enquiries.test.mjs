@@ -44,3 +44,26 @@ test('a manual enquiry can bring a new client, its date and its venue in one ste
  assert.equal((await call('/api/opportunities'+q)).data.opportunities.length,count,'a failed enquiry leaves nothing half made');
  assert.equal((await call('/api/clients'+q,'POST',{name:'Priya Shah',email:'priya@example.test'})).status,409,'adding a client by hand still refuses duplicates');
 }));
+
+test('lost reasons come from a short list and older free text is counted with them',async()=>{
+ const {lostReasonGroup,splitLostReason,joinLostReason}=await import('../src/lib/pipeline.mjs');
+ assert.equal(lostReasonGroup('Budget'),'Budget');
+ assert.equal(lostReasonGroup('Budget: they had £2,000'),'Budget');
+ assert.equal(lostReasonGroup('over budget'),'Budget');
+ assert.equal(lostReasonGroup('Went with another florist'),'Chose someone else');
+ assert.equal(lostReasonGroup('Never replied'),'No reply');
+ assert.equal(lostReasonGroup('Something unusual'),'Other');
+ assert.equal(lostReasonGroup(''),'No reason recorded');
+ assert.deepEqual(splitLostReason('Dates not available: moved to 2028'),{reason:'Dates not available',note:'moved to 2028'});
+ assert.deepEqual(splitLostReason('Dates changed'),{reason:'Other',note:'Dates changed'},'old free text opens as Other with its words kept');
+ assert.equal(joinLostReason('No reply',''),'No reply');
+ await workspace(async(call,q)=>{
+  const client=(await call('/api/clients'+q,'POST',{name:'Lost Prospect',email:'lost@example.test'})).data.client;
+  for(const reason of ['Budget','over budget','Budget: half what we quoted','No reply']){
+   const o=(await call('/api/opportunities'+q,'POST',{clientId:client.id,title:'Enquiry '+reason})).data.opportunity;
+   assert.equal((await call('/api/opportunities/'+o.id+q,'PATCH',{revision:o.revision,stage:'Lost',lostReason:reason})).status,200);
+  }
+  const insights=(await call('/api/pipeline'+q)).data.insights;
+  assert.deepEqual(insights.lostReasons.filter(r=>['Budget','No reply'].includes(r.reason)),[{reason:'Budget',count:3},{reason:'No reply',count:1}]);
+ });
+});

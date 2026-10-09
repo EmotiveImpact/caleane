@@ -76,8 +76,9 @@ test('adding a dated follow-up removes enquiry from attention, supports assignme
 test('not proceeding requires an explanation and keeps project accessible; Undo restores previous stage',async()=>{
  const input=user(),{writes}=fixture();await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));await screen.findByRole('heading',{name:'Next steps'});
  await input.click(screen.getByRole('button',{name:'Not proceeding',exact:true}));assert.ok(screen.getByRole('dialog',{name:'Not proceeding'}));assert.equal(writes.length,0);
- await input.type(screen.getByRole('textbox',{name:'Reason',exact:true}),'Dates changed');await input.click(screen.getByRole('button',{name:'Mark as not proceeding'}));
- await waitFor(()=>assert.equal(screen.queryByRole('dialog',{name:'Not proceeding'}),null));assert.equal(writes[0].body.lostReason,'Dates changed');assert.ok(screen.getByRole('button',{name:'Open project brief',exact:true}));
+ await input.click(screen.getByRole('button',{name:'Mark as not proceeding'}));assert.ok(await within(screen.getByRole('dialog',{name:'Not proceeding'})).findByText('Choose a reason.'));assert.equal(writes.length,0);
+ await choose(input,'Reason not proceeding','Dates not available');await input.type(screen.getByRole('textbox',{name:'Note (optional)'}),'Moved to 2028');await input.click(screen.getByRole('button',{name:'Mark as not proceeding'}));
+ await waitFor(()=>assert.equal(screen.queryByRole('dialog',{name:'Not proceeding'}),null));assert.equal(writes[0].body.lostReason,'Dates not available: Moved to 2028');assert.ok(screen.getByRole('button',{name:'Open project brief',exact:true}));
  await input.click(screen.getByRole('button',{name:'Undo',exact:true}));await waitFor(()=>assert.equal(writes.length,2));assert.equal(writes[1].body.stage,'Discovery');
 });
 

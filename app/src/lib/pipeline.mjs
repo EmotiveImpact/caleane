@@ -22,3 +22,20 @@ export function sortByAttention(opportunities,tasks,today){return [...opportunit
  return (left?.rank??4)-(right?.rank??4)||(left?.task?.dueDate||'9999').localeCompare(right?.task?.dueDate||'9999')||a.title.localeCompare(b.title);
 });}
 export function opportunityTotals(opportunities){return Object.entries(opportunities.filter(isOpenEnquiry).filter(o=>o.amountMinor>0).reduce((result,o)=>{result[o.currency]=(result[o.currency]||0)+o.amountMinor;return result;},{}));}
+
+// Why work is lost, from a short fixed list so "Budget" and "over budget" count together.
+// A reason is stored as the choice, or "Choice: note" when the studio adds a note.
+export const LOST_REASONS=['Budget','Dates not available','Chose someone else','No reply','Plans changed','Other'];
+const LOST_WORDS=[['Budget',/budget|price|cost|expensive|afford|money|quote too/],['Dates not available',/\bdates?\b|availab|booked|clash/],['Chose someone else',/another|someone else|competitor|went with|chose|cheaper/],['No reply',/no (reply|response|answer)|ghost|went quiet|silence|never (heard|replied)|unresponsive/],['Plans changed',/cancel|postpon|called off|changed|not going ahead|scaled back/]];
+export function splitLostReason(text){
+ const value=String(text||'').trimStart(),match=LOST_REASONS.find(r=>value.trimEnd().toLowerCase()===r.toLowerCase()||value.toLowerCase().startsWith(r.toLowerCase()+':'));
+ return match?{reason:match,note:value.slice(match.length+1).replace(/^ /,'')}:{reason:value.trim()?'Other':'',note:value};
+}
+// The note keeps its spaces while it is typed; the server trims the saved reason.
+export const joinLostReason=(reason,note)=>String(note||'').trim()?`${reason}: ${note}`:reason;
+// Older reasons were free text, so they are matched to the list by their words.
+export function lostReasonGroup(text){
+ const value=String(text||'').trim();if(!value)return 'No reason recorded';
+ const {reason}=splitLostReason(value);if(reason!=='Other'||/^other\b/i.test(value))return reason;
+ return LOST_WORDS.find(([,words])=>words.test(value.toLowerCase()))?.[0]||'Other';
+}
