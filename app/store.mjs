@@ -171,8 +171,11 @@ export function openStore(file){
 }
 export function event(project,actor,text){project.activity.unshift({id:id(),actor:actor.name,text,at:now()});project.updatedAt=now();}
 export function makeProject(studioId,brief,actor,clientId=null){const p={id:id(),studioId,title:brief.occasion==='Wedding'?`${brief.name.split(' ')[0]}’s wedding`:brief.occasion+' · '+brief.name,clientEmail:brief.email,...(clientId?{clientId}:{}),status:'Enquiry',brief,briefRevision:1,briefAuthor:actor?.name,briefLocked:false,briefHistory:[],changeRequests:[],messages:[],inspiration:[],designs:[],estimates:[],tasks:[],decisions:[],activity:[],createdAt:now(),updatedAt:now()};event(p,actor,'Submitted the first brief');return p;}
-export function saveProject(db,p){transaction(db,()=>{db.prepare('UPDATE projects SET data=? WHERE id=? AND studio_id=?').run(JSON.stringify(p),p.id,p.studioId);materializeProjectConversation(db,p);});}
-export function insertProject(db,p){transaction(db,()=>{db.prepare('INSERT INTO projects VALUES(?,?,?,?)').run(p.id,p.studioId,p.clientEmail,JSON.stringify(p));materializeProjectConversation(db,p);ensureProjectOpportunity(db,p);});}
+// Messages live in conversation_messages. The project record never stores a copy, so a save
+// does not rewrite the whole history; projectMessages reads them back for the project views.
+export function storedProject(p){const {messages,...record}=p;return JSON.stringify(record);}
+export function saveProject(db,p){transaction(db,()=>{db.prepare('UPDATE projects SET data=? WHERE id=? AND studio_id=?').run(storedProject(p),p.id,p.studioId);materializeProjectConversation(db,p);});}
+export function insertProject(db,p){transaction(db,()=>{db.prepare('INSERT INTO projects VALUES(?,?,?,?)').run(p.id,p.studioId,p.clientEmail,storedProject(p));materializeProjectConversation(db,p);ensureProjectOpportunity(db,p);});}
 
 export function ensureClient(db,p){
  const existing=clientForProject(db,p);
@@ -198,14 +201,14 @@ export function materializeProjectConversation(db,p){
  ensureClient(db,p);
  const relation=ensureProjectRelationship(db,p);
  let c=db.prepare('SELECT * FROM conversations WHERE project_id=?').get(p.id);
- // Project messages are copied once, when the conversation is first created (new or legacy projects).
- // After that appendConversationMessage writes each message to both places, so saves never rewrite history.
+ // Messages on a new or legacy project are copied once, when its conversation is first created.
+ // After that conversation_messages is the only copy; saves strip messages from the project record.
  if(!c){const cid=id();db.prepare('INSERT INTO conversations VALUES(?,?,?,?,?,?,?,?)').run(cid,p.studioId,relation.client_id,p.id,p.title,p.threadStatus||'Open',p.createdAt,p.updatedAt);c=db.prepare('SELECT * FROM conversations WHERE id=?').get(cid);
  for(const m of p.messages||[]){
   const author=m.userId?db.prepare('SELECT id FROM users WHERE id=?').get(m.userId):db.prepare('SELECT u.id FROM users u JOIN memberships ms ON ms.user_id=u.id WHERE ms.studio_id=? AND ms.role=? AND u.name=?').get(p.studioId,m.role,m.by);
   db.prepare('INSERT OR IGNORE INTO conversation_messages(id,conversation_id,user_id,author_name,role,text,created_at) VALUES(?,?,?,?,?,?,?)').run(m.id,c.id,author?.id||null,m.by,m.role,m.text,m.at);
  }}
- // Existing project actions still own their primary thread status and messages.
+ // Existing project actions still own their primary thread status.
  const latest=(p.messages||[]).at(-1)?.at||c.updated_at;
  db.prepare('UPDATE conversations SET status=?,updated_at=MAX(updated_at,?) WHERE id=?').run(p.threadStatus||c.status,latest,c.id);
  return db.prepare('SELECT * FROM conversations WHERE id=?').get(c.id);
@@ -222,6 +225,13 @@ export function conversationDTO(db,c,user){
   messages,unreadMessages:rows.filter(m=>m.seq>seen&&(m.user_id?m.user_id!==user.id:m.author_name!==user.name)).length,...conversationExtras(db,c,user,rows,messages,seen,people),
   // The studio sees who cannot read this yet because they have not joined.
   ...(db.prepare("SELECT 1 FROM memberships WHERE user_id=? AND studio_id=? AND role='owner'").get(user.id,c.studio_id)?{waitingToJoin:joinStatus(db,c.studio_id,c.project_id?{projectId:c.project_id}:{clientId:c.client_id}).waiting}:{})};
+}
+
+// The project's messages in the shape project views have always used. latestOnly suits lists.
+export function projectMessages(db,c,{latestOnly=false}={}){
+ if(!c)return [];
+ const rows=latestOnly?db.prepare('SELECT * FROM conversation_messages WHERE conversation_id=? ORDER BY seq DESC LIMIT 1').all(c.id):db.prepare('SELECT * FROM conversation_messages WHERE conversation_id=? ORDER BY seq').all(c.id);
+ return rows.map(m=>({id:m.id,userId:m.user_id,by:m.author_name,role:m.role,text:m.text,at:m.created_at,...messageDetails(db,m.id)}));
 }
 
 // Project list badges should not load full conversation histories into memory.
@@ -247,7 +257,7 @@ export function appendConversationMessage(db,c,user,role,text,clientKey=null,det
   db.prepare('INSERT INTO conversation_messages(id,conversation_id,user_id,author_name,role,text,created_at,client_key) VALUES(?,?,?,?,?,?,?,?)').run(message.id,c.id,user.id,user.name,role,text,message.at,clientKey);
   saveMessageDetails(db,message.id,metadata);
   db.prepare("UPDATE conversations SET updated_at=?,status='Open' WHERE id=?").run(message.at,c.id);
-  if(c.project_id){const p=JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(c.project_id,c.studio_id).data);p.messages.push(message);p.threadStatus='Open';event(p,user,'Added a message');saveProject(db,p);}
+  if(c.project_id){const p=JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(c.project_id,c.studio_id).data);p.threadStatus='Open';event(p,user,'Added a message');saveProject(db,p);}
   return message.id;
  });
 }

@@ -39,11 +39,13 @@ test('saving a project does not rewrite its conversation messages and files are 
  const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-save-project-')),file=path.join(dir,'test.sqlite');let db;
  try{
   ({db}=await createWorkspace({dbFile:file,demo:true}));
-  const row=db.prepare("SELECT data FROM projects WHERE json_array_length(data,'$.messages')>0").get(),p=JSON.parse(row.data),c=db.prepare('SELECT id FROM conversations WHERE project_id=?').get(p.id);
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM conversation_messages WHERE conversation_id=?').get(c.id).n,p.messages.length);
-  db.prepare('DELETE FROM conversation_messages WHERE id=?').run(p.messages[0].id);
-  saveProject(db,p);db.close();db=openStore(file);
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM conversation_messages WHERE conversation_id=?').get(c.id).n,p.messages.length-1,'saves and restarts leave materialised messages alone');
+  const c=db.prepare('SELECT c.id,c.project_id FROM conversations c WHERE EXISTS(SELECT 1 FROM conversation_messages m WHERE m.conversation_id=c.id)').get(),p=JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(c.project_id).data);
+  assert.equal(p.messages,undefined,'the project record holds no copy of its messages');
+  const messages=db.prepare('SELECT id,author_name AS by,role,text,created_at AS at FROM conversation_messages WHERE conversation_id=? ORDER BY seq').all(c.id);
+  db.prepare('DELETE FROM conversation_messages WHERE id=?').run(messages[0].id);
+  saveProject(db,{...p,messages});db.close();db=openStore(file);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM conversation_messages WHERE conversation_id=?').get(c.id).n,messages.length-1,'saves and restarts leave materialised messages alone');
+  assert.equal(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(c.project_id).data).messages,undefined,'a save never writes messages into the project record');
   assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type='index' AND name='files_project'").get());
  }finally{db?.close();await rm(dir,{recursive:true,force:true});}
 });
