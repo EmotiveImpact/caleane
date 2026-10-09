@@ -33,7 +33,7 @@ Selected product-section mock implemented in the existing static homepage. Front
 2. Final comparison retains minor differences in supplementary thumbnail imagery, avatar crops and established site header scale (P3). No remaining blocking P0/P1/P2 findings in the implemented scope.
 
 ## Files
-`web/index.html`, `web/product-review.css`, `web/product-review.js`, `web/assets/review-reception.png`.
+`web/index.html`, `web/product-review.css`, `web/product-review.js`, `frontpage-design/source-images/review-reception.png`.
 Original page files backed up under `frontpage-design/backups/product-review-oct1/`.
 
 ## Lower page completion — 1 October

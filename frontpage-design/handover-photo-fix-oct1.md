@@ -1,6 +1,6 @@
 # Print proof photo correction
 
-Built-in image_gen edit of web/assets/story-brand-handover-v1.png.
+Built-in image_gen edit of frontpage-design/source-images/story-brand-handover-v1.png.
 
 ## Prompt
 
@@ -8,7 +8,7 @@ Keep Sofia and Daniel, the print workshop, original natural warm daylight and wi
 
 ## Output
 
-- web/assets/story-brand-handover-v2.png — original generated image, 1672 x 941
+- frontpage-design/source-images/story-brand-handover-v2.png — original generated image, 1672 x 941
 - web/assets/story-brand-handover-v2.webp — quality 94, original dimensions
 
 Used on the homepage, audience mock, brand story, how-it-works, platform and reference page. Version 1 preserved.
