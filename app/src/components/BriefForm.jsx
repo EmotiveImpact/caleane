@@ -3,6 +3,7 @@ import {ArrowLeft,ArrowRight,Check,X} from 'lucide-react';
 import {formFields,screensFor} from '../lib/form-flow.js';
 import {briefSteps,chaptersOf,inspectSteps,IMAGE_LAYOUTS} from '../lib/brief-steps.js';
 import {answerText,answerForSending,FileAnswer} from './QuestionInput';
+import {formBrand} from '../lib/brand-kit.js';
 
 // The brief look: one question at a time, chapters across the top and the brief filling in beside it.
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -113,7 +114,7 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
  const screen=step.screen,layout=step.kind==='welcome'?(screens[0]?.kind!=='welcome'&&IMAGE_LAYOUTS.includes(screens[0]?.layout)&&screens[0]?.imageUrl?screens[0].layout:'center'):screen?.layout,image=step.kind==='welcome'?screens[0]?.imageUrl:screen?.imageUrl;
  const media=!receipt&&IMAGE_LAYOUTS.includes(layout)&&image?layout:'',tone=useImageTone(media?image:'',(step.kind==='welcome'?screens[0]:screen)?.textTone);
  const onScreen=receipt||step.kind!=='question',chapters=chaptersOf(steps),answered=s=>filled(valueOf(s.field));
- const accent=d.accent||'#202326';
+ const look=formBrand(studio,d);
  const cls=['bf','palette-'+(theme.palette||'paper'),'shape-'+(theme.radius||'soft'),preview?'is-preview':'',!preview&&new URLSearchParams(location.search).get('embed')==='inline'?'is-inline':'',showBrief&&!onScreen?'has-brief':'',briefOpen?'brief-open':'',onScreen?'on-screen':'',media==='image-left'?'media-left':'',media==='image-right'?'media-right':'',media==='cover'?'media-cover':'',media?'mark-'+(media==='cover'?'light':tone):'',back?'going-back':''].filter(Boolean).join(' ');
  const logo=d.logoUrl||studio.branding?.logoUrl,brand=logo?<img className="bf-logo" src={logo} alt={studio.name}/>:<span>{studio.name}</span>;
  const count=questions.filter(answered).length;
@@ -142,7 +143,8 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
    <div className="bf-actions">{index>0&&<button type="button" className="bf-back" onClick={()=>go(pool[index-1].key,-1)}><ArrowLeft size={15} aria-hidden="true"/>Back</button>}<button type="submit" className="bf-btn" disabled={busy}>{busy?'Sending…':isLast?d.submitLabel||'Send my brief':step.lastOnScreen&&screen.buttonLabel||'Continue'}{!busy&&<ArrowRight size={16} aria-hidden="true"/>}</button><span className="bf-hint">{['choice','multi'].includes(f.type)?'or press a letter':'or press Enter'}</span></div></div>;
  }
 
- return <div className="form-render-surface bf-frame"><div ref={rootRef} className={cls} style={{'--accent':accent,'--img-pos':screen?.imagePosition||'center'}} onKeyDown={onKey}>
+ return <div className="form-render-surface bf-frame"><div ref={rootRef} className={cls} style={{'--accent':look.accent,'--on-accent':look.onAccent,...(look.body?{'--bf-body':look.body,'--bf-heading':look.heading}:{}),'--img-pos':screen?.imagePosition||'center'}} onKeyDown={onKey}>
+  {look.fontCss&&<style>{look.fontCss}</style>}{look.fontLink&&<link rel="stylesheet" href={look.fontLink}/>}
   {media==='cover'&&<div className="bf-cover" style={{backgroundImage:`url("${image.replace(/"/g,'%22')}")`}} aria-hidden="true"/>}
   <span className="bf-mark" aria-hidden="true">{brand}</span>
   <header className="bf-top"><span className="bf-brand">{brand}</span>{showChapters&&chapters.length>0&&<div className="bf-chapters" aria-label="Progress">{chapters.map(c=>{const done=c.steps.filter(answered).length;return <div key={c.name} className={'bf-ch'+(step.chapter===c.name?' on':'')}><span>{c.name}</span><i><b style={{width:Math.round(done/c.steps.length*100)+'%'}}/></i></div>;})}</div>}{showBrief&&<button type="button" className="bf-brieftoggle" aria-expanded={briefOpen} onClick={()=>setBriefOpen(!briefOpen)}>Your brief <span>{count}</span></button>}</header>

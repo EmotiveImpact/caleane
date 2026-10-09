@@ -3,7 +3,6 @@ import {Check,FileText,MessageSquare,ReceiptText,ScrollText} from 'lucide-react'
 import {WorkspaceButton} from './workspace/WorkspaceUI';
 import {starterContract,starterFormDefinition,starterFormSlug,starterKindFor,starterKinds,starterKit} from '../lib/starter-gallery';
 import {fillMergeFields} from '../lib/merge-fields';
-import {accentContrast} from '../lib/accent-theme';
 import '../studio-commerce.css';
 import '../starter-gallery.css';
 
@@ -33,7 +32,7 @@ export function StarterGallery({studio,request,navigate,onAdded}){
  async function run(key,work){setBusy(key);setError('');setNotice('');try{await work();}catch(e){setError(e.message);}finally{setBusy('');}}
  const addTemplates=list=>run('messages',async()=>{let templates=saved.templates;for(const template of list){templates=(await request(`/api/message-templates?studio=${studio.id}`,'POST',{action:'create',template})).templates;}setSaved(s=>({...s,templates}));setNotice(list.length===1?`Added “${list[0].name}” to your message templates.`:`Added ${list.length} message templates.`);onAdded?.();});
  const addItems=list=>run('prices',async()=>{let items=saved.items;for(const item of list){items=(await request(`/api/catalogue?studio=${studio.id}`,'POST',{action:'create',item})).items;}setSaved(s=>({...s,items}));setNotice(list.length===1?`Added “${list[0].name}” to your price list.`:`Added ${list.length} items to your price list.`);});
- const createForm=()=>run('form',async()=>{const definition=starterFormDefinition(kind,{accent:accentContrast(studio.accent)>=4.5?studio.accent:'#202326'});const result=await request(`/api/forms?studio=${studio.id}`,'POST',{slug:starterFormSlug(kind),definition});setSaved(s=>({...s,forms:[...(s.forms||[]),result.form]}));setNotice(`Created “${definition.name}” as a draft in Forms.`);});
+ const createForm=()=>run('form',async()=>{const definition=starterFormDefinition(kind,{accent:''});const result=await request(`/api/forms?studio=${studio.id}`,'POST',{slug:starterFormSlug(kind),definition});setSaved(s=>({...s,forms:[...(s.forms||[]),result.form]}));setNotice(`Created “${definition.name}” as a draft in Forms.`);});
  const missingTemplates=kit.messages.filter(item=>!hasTemplate(item)),missingItems=kit.prices.filter(item=>!hasItem(item));
  const added=<WorkspaceButton variant="ghost" size="small" className="starter-added" disabled><Check size={14} aria-hidden="true"/>Added</WorkspaceButton>;
 

@@ -40,7 +40,7 @@ import {validateIntakeQuestions,captureIntakeAnswers,updateIntakeAnswers,normali
 import {searchWorkspace} from './workspace-search.mjs';
 import {seedShowcase} from './demo-showcase.mjs';
 import {defaultTaxRate,isVatDocument,isVatRegistered} from './src/lib/vat.js';
-import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
+import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign,writeSetting} from './studio-commerce.mjs';
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {setTip,waiveLateFee} from './invoice-extras.mjs';
@@ -117,7 +117,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  // With TRUST_PROXY=N, N reverse proxies each append the peer they saw to X-Forwarded-For; the client is the right-most entry they did not add.
  const secureOrigin=origin.startsWith('https://');
  // Production pages only: Vite dev serves inline scripts. 'unsafe-inline' styles cover React style props and the print preview frame.
- const appCSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
+ const appCSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; frame-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
  const trustedHops=Math.max(0,Math.floor(Number(trustProxy))||0);
  const clientIP=req=>{const peer=req.socket?.remoteAddress||'';if(!trustedHops)return peer;const hops=String(req.headers['x-forwarded-for']||'').split(',').map(s=>s.trim()).filter(Boolean);return hops[Math.max(0,hops.length-trustedHops)]||peer;};
  function rate(req,bucket,max=30,subject=clientIP(req)){const key=bucket+':'+subject;const time=Date.now();for(const [k,v] of limits)if(v.until<time)limits.delete(k);const v=limits.get(key)||{n:0,until:time+600000};if(++v.n>max)fail(429,'Please wait a few minutes before trying again.');limits.set(key,v);}
@@ -135,6 +135,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    insertProject(db,p);
   }
   bindInvitedContact(db,studioId,client.email,client.id);
+  // The sample studio has its own brand, so forms and documents show what a Brand kit changes.
+  writeSetting(db,studioId,'brand_kit',{colours:{primary:'#7b4b3a',secondary:'#efe4d6',ink:'#1d1f1e',paper:'#ffffff'},fonts:{heading:{type:'preset',preset:'cormorant-garamond'},body:{type:'preset',preset:'instrument-sans'}}});
  }
  const vite=dev?await (await import('vite')).createServer({configFile:path.join(root,'vite.config.js'),server:{middlewareMode:true},appType:'spa'}):null;
  const server=http.createServer(async(req,res)=>{
@@ -190,9 +192,9 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     const brand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(publicStudio.id)?.data||'{}');let form;
     // A paused form still tells the visitor how to reach the studio: the owner's email and the studio's own website.
     try{form=publicForm(db,publicStudio.id,publicMatch[3]||'enquiry');}catch(e){if(e.status!==410)throw e;const owner=db.prepare("SELECT u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.studio_id=? AND m.role='owner' ORDER BY u.email LIMIT 1").get(publicStudio.id);
-     return reply(410,{error:e.message,contact:{name:brand.portalTitle||publicStudio.name,email:owner?.email||'',website:JSON.parse(publicStudio.origins||'[]')[0]||'',logoUrl:brand.logoUrl||''}});}
+     return reply(410,{error:e.message,contact:{name:brand.portalTitle||publicStudio.name,email:owner?.email||'',website:JSON.parse(publicStudio.origins||'[]')[0]||'',logoUrl:brand.logoUrl||'',accent:publicStudio.accent,brandKit:brandKit(db,publicStudio.id)}});}
     if(publicMatch[3]&&!form)fail(404,'Form not found.');
-    return reply(200,{enabled:true,studio:{name:publicStudio.name,slug:publicStudio.slug,accent:publicStudio.accent,branding:brand},form,plannerUrl:`${origin}/intake/${publicStudio.slug}${publicMatch[3]?'/'+publicMatch[3]:''}`});
+    return reply(200,{enabled:true,studio:{name:publicStudio.name,slug:publicStudio.slug,accent:publicStudio.accent,branding:brand,brandKit:brandKit(db,publicStudio.id)},form,plannerUrl:`${origin}/intake/${publicStudio.slug}${publicMatch[3]?'/'+publicMatch[3]:''}`});
    }
    if(publicMatch?.[4]==='uploads'&&req.method==='POST')return reply(201,{upload:storeEnquiryUpload(db,publicStudio,publicMatch[3],body,sniffMime)});
    if(publicMatch&&(publicMatch[2]||publicMatch[4])&&req.method==='POST'){
@@ -284,7 +286,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      CASE WHEN i.cancelled_at IS NULL AND i.amount_minor>COALESCE((SELECT SUM(ip.amount_minor) FROM invoice_payments ip WHERE ip.studio_id=i.studio_id AND ip.invoice_id=i.id),0) THEN 0 ELSE 1 END,
      i.issued_at DESC,i.number DESC LIMIT 1`).get(p.studioId,p.id):null;const invoice=latest?invoiceDTO(db,latest):null;const moneyHidden=accessRole!=='Owner'&&accessRole!=='Approver';return {...p,...(owner?{}:{tags:undefined,customFields:undefined}),...(moneyHidden?{estimates:[],proposals:[],moneyHidden:true,activity:(p.activity||[]).filter(entry=>!MONEY_ACTIVITY.test(entry.text||entry.title||''))}:{}),viewerId:user.id,enquiryReviewedAt:owner?db.prepare('SELECT r.reviewed_at FROM crm_enquiry_reviews r JOIN crm_opportunities o ON o.id=r.opportunity_id AND o.studio_id=r.studio_id WHERE o.project_id=? AND o.studio_id=?').get(p.id,p.studioId)?.reviewed_at:undefined,operations:owner?p.operations:undefined,documentOpens:owner?documentOpens(db,p.studioId,p.id):undefined,waitingToJoin:owner?joinStatus(db,p.studioId,{projectId:p.id}).waiting:undefined,estimateDraft:owner?p.estimateDraft:undefined,clientId:projectClientId(db,p.studioId,p.id),accessRole,conversationId:c?.id,unreadMessages:c?conversationUnreadCount(db,c,user):0,latestInvoice:invoice?{id:invoice.id,number:invoice.number,kind:invoice.kind,currency:invoice.currency,amountMinor:invoice.amountMinor,paidMinor:invoice.paidMinor,dueDate:invoice.dueDate,issuedAt:invoice.issuedAt,status:invoice.status}:null};};
     const memberships=[...db.prepare('SELECT s.*,m.role FROM studios s JOIN memberships m ON m.studio_id=s.id WHERE m.user_id=?').all(user.id),...db.prepare("SELECT s.*,CASE st.access WHEN 'bookkeeper' THEN 'staff_bookkeeper' ELSE 'staff_viewer' END AS role FROM studios s JOIN studio_staff st ON st.studio_id=s.id WHERE st.user_id=? AND st.access IN ('viewer','bookkeeper')").all(user.id)];
-    if(route==='/api/me'&&req.method==='GET')return reply(200,{user:{id:user.id,name:user.name,email:user.email},studios:memberships.map(s=>({...s,origins:JSON.parse(s.origins),branding:branding(s.id)}))});
+    if(route==='/api/me'&&req.method==='GET')return reply(200,{user:{id:user.id,name:user.name,email:user.email},studios:memberships.map(s=>({...s,origins:JSON.parse(s.origins),branding:branding(s.id),brandKit:brandKit(db,s.id)}))});
     if(route==='/api/stripe/connect/refresh'&&req.method==='GET'){
      if(!stripe)fail(503,'Stripe account setup is not configured.');
      const link=await refreshStripeOnboarding(db,stripe,{ownerUserId:user.id,state:url.searchParams.get('state'),appOrigin:origin});

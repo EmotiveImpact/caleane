@@ -59,3 +59,11 @@ export function brandStyle(kit,{fallbackAccent=''}={}){
 }
 
 export function readableOn(color){const value=hex(color)||'#ffffff';const [r,g,b]=[1,3,5].map(i=>parseInt(value.slice(i,i+2),16)/255).map(c=>c<=.03928?c/12.92:((c+.055)/1.055)**2.4);return .2126*r+.7152*g+.0722*b>.4?'#141414':'#ffffff';}
+
+// How a client form wears the studio's brand. A form's own accent wins;
+// without one it uses the Brand kit's primary colour, then the studio accent.
+export function formBrand(studio,definition={}){
+ const kit=studio?.brandKit?normaliseBrandKit(studio.brandKit):null,style=kit?brandStyle(kit):null;
+ const accent=hex(definition.accent)||kit?.colours.primary||(hex(studio?.accent)&&readableOn(studio.accent)==='#ffffff'?hex(studio.accent):'')||'#202326';
+ return {accent,onAccent:readableOn(accent),brandColour:kit?.colours.primary||'',heading:style?.heading||'',body:style?.body||'',fontCss:style?.fontCss||'',fontLink:style?.fontLink||''};
+}
