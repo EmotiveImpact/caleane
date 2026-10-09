@@ -122,3 +122,23 @@ test('a fixed late fee keeps its currency and never lands on an invoice in anoth
  await call('/api/billing-defaults'+q,'POST',{...saved,lateFee:{...saved.lateFee,type:'percent'}});
  assert.equal((await call(invoices+q,'POST',line('EUR'))).data.invoice.lateFeeRule.type,'percent');
 });
+
+test('the client can say they have paid, and recording the payment sends them a receipt',async t=>{
+ const {call,q,issue,invoices}=await workspace(t);
+ const invoice=(await call(invoices+q,'POST',{...issue,quick:true,kind:'Full',label:'Extra hours',currency:'GBP',taxRate:0,items:[{title:'Styling',quantity:1,unitAmount:27000}]})).data.invoice;
+ const notice=`${invoices}/${invoice.id}/paid-notice${q}`;
+ assert.equal((await call(notice,'POST',{paidOn:today(),method:'bank_transfer'})).status,403,'the studio does not tell itself');
+ assert.equal((await call(notice,'POST',{paidOn:'2999-01-01',method:'bank_transfer'},'client')).status,400);
+ let response=await call(notice,'POST',{paidOn:today(),method:'bank_transfer',reference:'AMELIA-EXTRA'},'client');
+ assert.equal(response.status,200);
+ assert.deepEqual([response.data.invoice.paidNotice.method,response.data.invoice.paidNotice.reference,response.data.invoice.status,response.data.invoice.balanceMinor],['bank_transfer','AMELIA-EXTRA','Issued',27000]);
+ assert.equal((await call(notice,'POST',{paidOn:today(),method:'bank_transfer'},'client')).status,409);
+ const ownerFeed=(await call('/api/notifications'+q)).data;
+ assert.ok(JSON.stringify(ownerFeed).includes(`says they paid invoice ${invoice.number}`),'the studio is told');
+ assert.equal((await call(`${invoices}/${invoice.id}${q}`)).data.invoice.paidNotice.paidOn,today());
+ response=await call(`${invoices}/${invoice.id}/payments${q}`,'POST',{amountMinor:27000,method:'bank_transfer',reference:'AMELIA-EXTRA',receivedAt:today()});
+ assert.equal(response.data.invoice.status,'Paid');assert.equal(response.data.invoice.paidNotice,null);
+ const clientFeed=(await call('/api/notifications'+q,'GET',undefined,'client')).data;
+ assert.ok(JSON.stringify(clientFeed).includes(`Payment of £270.00 received for invoice ${invoice.number}`),'the client gets a receipt');
+ assert.equal((await call(notice,'POST',{paidOn:today(),method:'bank_transfer'},'client')).status,409,'nothing left to pay');
+});

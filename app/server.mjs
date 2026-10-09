@@ -45,7 +45,7 @@ import {PRICE_UNITS} from './src/lib/price-units.js';
 import {counterYear,invoiceNumber} from './src/lib/invoice-numbers.js';
 import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
-import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
+import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,openPaidNotice,PAID_NOTICE_METHODS,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {setTip,waiveLateFee} from './invoice-extras.mjs';
 import {discountFor,invoiceFigures,lateFeeFits} from './src/lib/invoice-charges.js';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
@@ -68,12 +68,14 @@ function brief(input){const result={};for(const [key,max] of Object.entries({nam
 function designDraftDTO(db,projectId,row){const assetIds=JSON.parse(row.asset_ids),creator=db.prepare('SELECT name FROM users WHERE id=?').get(row.created_by);return {id:row.id,projectId:row.project_id,title:row.title,description:row.description,assetIds,assets:assetIds.map(fileId=>{const file=db.prepare('SELECT name,mime,length(content) AS size FROM files WHERE id=? AND project_id=?').get(fileId,projectId);return {fileId,name:file?.name||'Project file',mime:file?.mime||'',size:file?.size||0};}),briefRevision:row.brief_revision,revision:row.revision,status:row.status,createdBy:row.created_by,createdByName:creator?.name||'Studio contributor',createdAt:row.created_at,updatedAt:row.updated_at,sharedDesignId:row.shared_design_id||null};}
 function sniffMime(data){if(data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'image/png';if(data[0]===255&&data[1]===216&&data[2]===255)return 'image/jpeg';if(data.toString('ascii',0,4)==='RIFF'&&data.toString('ascii',8,12)==='WEBP')return 'image/webp';if(data.toString('ascii',0,5)==='%PDF-')return 'application/pdf';return '';}
 function staffProjectDTO(p){return {id:p.id,title:p.title,status:p.status,briefRevision:p.briefRevision,briefLocked:!!p.briefLocked,brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,venue:p.brief.venue,vision:p.brief.vision,colours:p.brief.colours||[],customColours:p.brief.customColours||'',pinterest:p.brief.pinterest||'',workflowType:p.brief.workflowType,details:p.brief.details||{},intakeAnswers:p.brief.intakeAnswers||[]},tasks:(p.tasks||[]).map(task=>({...task})),references:(p.inspiration||[]).map(ref=>({id:ref.id,title:ref.title,note:ref.note||'',url:ref.url||'',category:ref.category||'',source:ref.source||'',fileId:ref.fileId||'',mime:ref.mime||'',sample:ref.sample||'',by:ref.by,at:ref.at})),messages:(p.messages||[]).map(message=>({id:message.id,by:message.by,role:message.role,text:message.text,at:message.at}))};}
+const moneyText=(minor,currency)=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(minor/100);}catch{return `${(minor/100).toFixed(2)} ${currency}`;}};
+const dayText=day=>new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
 function invoiceDTO(db,row){
  const payments=db.prepare('SELECT * FROM invoice_payments WHERE studio_id=? AND invoice_id=? ORDER BY recorded_at,id').all(row.studio_id,row.id).map(payment=>({id:payment.id,amountMinor:payment.amount_minor,method:payment.method,reference:payment.reference,receivedAt:payment.received_at,note:payment.note,recordedAt:payment.recorded_at,recordedBy:payment.recorded_by,source:payment.source}));
  const grossPaidMinor=payments.reduce((sum,payment)=>sum+payment.amountMinor,0),adjustments=invoiceAdjustments(db,row.studio_id,row.id),extras=invoiceCharges(db,row.studio_id,row.id);
  const state=invoiceState({amountMinor:row.amount_minor,chargesMinor:extras.chargesMinor,grossPaidMinor,creditedMinor:adjustments.creditedMinor,refundedMinor:adjustments.refundedMinor,cancelled:!!row.cancelled_at}),paidMinor=state.paidMinor;
  const checkout=activeStripeCheckout(db,{studioId:row.studio_id,invoiceId:row.id});
- return {id:row.id,number:row.number,projectId:row.project_id,estimateId:row.estimate_id,estimateVersion:row.estimate_version,kind:row.kind,label:row.label||'',currency:row.currency,amountMinor:row.amount_minor,netMinor:row.net_minor,taxMinor:row.tax_minor,taxRate:row.tax_rate,discountMinor:row.discount_minor||0,discountNetMinor:row.discount_net_minor||0,discountLabel:row.discount_label||'',shareMinor:row.amount_minor+(row.discount_minor||0),lateFeeRule:row.late_fee_rule?JSON.parse(row.late_fee_rule):null,tipsAllowed:!!row.tips_allowed,charges:extras.charges,lateFeeMinor:extras.lateFeeMinor,tipMinor:extras.tipMinor,chargesMinor:extras.chargesMinor,dueDate:row.due_date,note:row.note,paymentInstructions:row.payment_instructions,snapshot:JSON.parse(row.snapshot),status:state.status,dueMinor:state.dueMinor,balanceMinor:state.balanceMinor,refundDueMinor:state.refundDueMinor,grossPaidMinor,creditedMinor:adjustments.creditedMinor,refundedMinor:adjustments.refundedMinor,credits:adjustments.credits,refunds:adjustments.refunds,issuedAt:row.issued_at,issuedBy:row.issued_by,cancelledAt:row.cancelled_at||'',cancelledBy:row.cancelled_by||'',cancelReason:row.cancel_reason||'',paidMinor,payments,checkout:checkout?{status:checkout.status,url:checkout.checkout_url||null}:null};
+ return {id:row.id,number:row.number,projectId:row.project_id,estimateId:row.estimate_id,estimateVersion:row.estimate_version,kind:row.kind,label:row.label||'',currency:row.currency,amountMinor:row.amount_minor,netMinor:row.net_minor,taxMinor:row.tax_minor,taxRate:row.tax_rate,discountMinor:row.discount_minor||0,discountNetMinor:row.discount_net_minor||0,discountLabel:row.discount_label||'',shareMinor:row.amount_minor+(row.discount_minor||0),lateFeeRule:row.late_fee_rule?JSON.parse(row.late_fee_rule):null,tipsAllowed:!!row.tips_allowed,charges:extras.charges,lateFeeMinor:extras.lateFeeMinor,tipMinor:extras.tipMinor,chargesMinor:extras.chargesMinor,dueDate:row.due_date,note:row.note,paymentInstructions:row.payment_instructions,snapshot:JSON.parse(row.snapshot),status:state.status,dueMinor:state.dueMinor,balanceMinor:state.balanceMinor,refundDueMinor:state.refundDueMinor,grossPaidMinor,creditedMinor:adjustments.creditedMinor,refundedMinor:adjustments.refundedMinor,credits:adjustments.credits,refunds:adjustments.refunds,issuedAt:row.issued_at,issuedBy:row.issued_by,cancelledAt:row.cancelled_at||'',cancelledBy:row.cancelled_by||'',cancelReason:row.cancel_reason||'',paidMinor,payments,paidNotice:openPaidNotice(db,row.studio_id,row.id),checkout:checkout?{status:checkout.status,url:checkout.checkout_url||null}:null};
 }
 function invoiceRows(db,studioId,projectId=null){return projectId?db.prepare('SELECT * FROM invoices WHERE studio_id=? AND project_id=? ORDER BY issued_at DESC,number DESC').all(studioId,projectId):db.prepare('SELECT * FROM invoices WHERE studio_id=? ORDER BY issued_at DESC,number DESC').all(studioId);}
 function previewAuthorized(header,userDigest,passDigest){
@@ -634,7 +636,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(req.method==='POST'&&operationsMatch[2]){transaction(db,()=>{const changed=changeProjectOperations(db,{...args,action:operationsMatch[2],body});queueProjectEvent(studio.id,changed.project.id,user.id,changed.project.activity?.[0]?.id);return changed;});automate(studio.id,args.projectId);return reply(200,{project:decorate(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(args.projectId).data)),operations:getProjectOperations(db,args)});}
      fail(405,'Method not allowed.');
     }
-    const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/(plan|[a-f0-9-]+)(?:\/(payments|cancel|credit-notes(?:\/[a-f0-9-]{36}\/pdf)?|refunds|tip|late-fee|checkout(?:\/expire)?|attempts|pdf))?)?$/);
+    const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/(plan|[a-f0-9-]+)(?:\/(payments|paid-notice|cancel|credit-notes(?:\/[a-f0-9-]{36}\/pdf)?|refunds|tip|late-fee|checkout(?:\/expire)?|attempts|pdf))?)?$/);
     if(invoiceMatch){
      const projectRow=db.prepare('SELECT * FROM projects WHERE id=? AND studio_id=?').get(invoiceMatch[1],studio.id);
      const accessRole=projectRow&&(owner?'Owner':bookkeeper?'Bookkeeper':projectAccess(db,studio.id,projectRow.id,user.id));
@@ -750,6 +752,23 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       if(previous!==body.amountMinor){event(project,user,body.amountMinor?`Added a tip to invoice ${invoice.number}`:`Removed the tip from invoice ${invoice.number}`);saveProject(db,project);}
       return reply(200,{invoice:invoiceDTO(db,db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoice.id,studio.id))});
      }
+     if(req.method==='POST'&&subaction==='paid-notice'){
+      // The client says they have paid. Nothing changes on the invoice: the studio is told, checks it has
+      // arrived and records it, which also sends the client a receipt.
+      if(owner||accessRole!=='Approver')fail(403,'Only the client approver can tell the studio about a payment.');
+      const paidOn=date(body.paidOn,'payment date'),method=body.method,reference=str(body.reference||'',160);
+      if(!paidOn||paidOn>now().slice(0,10))fail(400,'Choose the day you paid, no later than today.');
+      if(!PAID_NOTICE_METHODS.includes(method))fail(400,'Choose how you paid.');
+      transaction(db,()=>{
+       const current=invoiceDTO(db,invoice);
+       if(!['Issued','Partially paid'].includes(current.status)||current.balanceMinor<=0)fail(409,'This invoice has nothing left to pay.');
+       if(current.paidNotice)fail(409,'You have already told the studio about this payment.');
+       db.prepare('INSERT INTO invoice_paid_notices VALUES(?,?,?,?,?,?,?,?)').run(id(),studio.id,invoice.id,paidOn,method,reference,now(),user.name);
+       event(project,user,`${user.name} says they paid invoice ${invoice.number}`);saveProject(db,project);
+      });
+      queueProjectEvent(studio.id,project.id,user.id,project.activity?.[0]?.id);
+      return reply(200,{invoice:invoiceDTO(db,invoice)});
+     }
      if(req.method!=='POST')fail(405,'Method not allowed.');
      requireOwner();
      if(subaction==='late-fee'){
@@ -792,6 +811,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       if(!receivedAt||receivedAt>now().slice(0,10))fail(400,'Choose a payment date no later than today.');
       const reference=str(body.reference||'',160),note=str(body.note||'',1000),clientKey=body.clientPaymentId?str(body.clientPaymentId,120):null;
       if(clientKey&&!/^[a-zA-Z0-9_-]{8,120}$/.test(clientKey))fail(400,'Use a valid payment reference key.');
+      let receipt=null;
       const result=transaction(db,()=>{
        if(activeStripeCheckout(db,{studioId:studio.id,invoiceId:invoice.id}))fail(409,'Resolve the active Stripe Checkout before recording an external payment.');
        const current=invoiceDTO(db,invoice);
@@ -800,9 +820,11 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
        if(amountMinor>current.balanceMinor)fail(409,'The payment exceeds the invoice balance.');
        db.prepare(`INSERT INTO invoice_payments(id,studio_id,invoice_id,amount_minor,method,reference,received_at,note,recorded_at,recorded_by,source,client_key)
         VALUES(?,?,?,?,?,?,?,?,?,?,'owner_recorded',?)`).run(id(),studio.id,invoice.id,amountMinor,method,reference,receivedAt,note,now(),user.name,clientKey);
-       event(project,user,`Recorded an external payment for invoice ${invoice.number}`);saveProject(db,project);
+       // Worded as a receipt, because it is one: the client is told in Caleane, and by email once that is switched on.
+       event(project,user,`Payment of ${moneyText(amountMinor,invoice.currency)} received for invoice ${invoice.number} on ${dayText(receivedAt)}. Thank you.`);saveProject(db,project);receipt=project.activity[0].id;
        return invoice;
       });
+      if(receipt)queueProjectEvent(studio.id,project.id,user.id,receipt);
       automate(studio.id,project.id);
       return reply(200,{invoice:invoiceDTO(db,result)});
      }

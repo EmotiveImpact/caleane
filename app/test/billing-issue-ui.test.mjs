@@ -53,3 +53,17 @@ test('a quick invoice needs no estimate and a fixed fee in another currency is l
  assert.deepEqual(body.items,[{title:'Weekend delivery',quantity:1,unitAmount:15000}]);
  p.estimates=[estimate];
 });
+
+test('the client tells the studio they have paid and sees that it was passed on',async()=>{
+ const input=user(),open={...deposit,id:'i2',number:'INV-2026-0002',status:'Issued',paidMinor:0,balanceMinor:27000,discountLabel:'',paymentInstructions:'Bank transfer.'},calls=[];
+ const request=async(path,method,body)=>{if(method==='POST'){calls.push({path,body});return {invoice:{...open,paidNotice:{paidOn:body.paidOn,method:body.method,reference:body.reference,sentAt:'2026-10-09T10:00:00Z',sentBy:'Amelia Taylor'}}};}return path.includes('/invoices/plan')?{plan:null}:path.includes('/invoices')?{invoices:[open]}:{stripe:{}};};
+ render(h(ui.Billing,{p:{...p,accessRole:'Approver'},studio:{id:'s1',name:'Studio'},owner:false,request,run:fn=>fn(),mutate:async()=>({}),busy:false,onNavigate(){}}));
+ await input.click(await screen.findByRole('button',{name:'I’ve paid'}));
+ await input.type(screen.getByLabelText(/Payment reference/),'AMELIA');
+ await input.click(screen.getByRole('button',{name:'Tell the studio'}));
+ await waitFor(()=>assert.equal(calls.length,1));
+ assert.match(calls[0].path,/\/invoices\/i2\/paid-notice\?studio=s1$/);
+ assert.equal(calls[0].body.method,'bank_transfer');assert.equal(calls[0].body.reference,'AMELIA');
+ assert.ok(await screen.findByText(/You told the studio on 9 Oct 2026 that you paid by bank transfer/));
+ assert.equal(screen.queryByRole('button',{name:'I’ve paid'}),null);
+});
