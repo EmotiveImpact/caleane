@@ -1,7 +1,7 @@
 import {installForms,listForms,changeForm,publicForm,submitForm,listFormResponses,formResponseCSV,formAcceptsUploads,storeEnquiryUpload} from './forms.mjs';
 import {installDataGovernance,dataGovernance,changeGovernance,streamStudioExport} from './data-governance.mjs';
-import {handleCalendarSync,syncAllCalendars} from './calendar-sync.mjs';
-import {handleBookingIntegrations,safeCalendarBusy,completeBookingIntegrations,syncBookingIntegrations} from './booking-integrations.mjs';
+import {handleCalendarSync,syncAllCalendars,calendarConfigured} from './calendar-sync.mjs';
+import {handleBookingIntegrations,zoomConfigured,safeCalendarBusy,completeBookingIntegrations,syncBookingIntegrations} from './booking-integrations.mjs';
 import {operationalReadiness} from './operational-readiness.mjs';
 import {invoicePdf,pdfFileName} from './invoice-pdf.mjs';
 import {installDocuments,listDocuments,changeDocument,downloadDocument,syncProjectArchives} from './documents.mjs';
@@ -50,7 +50,7 @@ import {handleCustomFields} from './custom-fields.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus,manageBooking,bookingEmail,issueManageToken} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
-import {installXero,handleXero,syncAllXero} from './xero.mjs';
+import {installXero,handleXero,syncAllXero,xeroConfigured} from './xero.mjs';
 import {installFinances,handleFinances} from './finances.mjs';
 import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced,linkIssuedDeposits} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
@@ -310,7 +310,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     if(route==='/api/data-governance'){const args={studioId:studio.id,userId:user.id};if(req.method==='GET')return reply(200,dataGovernance(db,args));if(req.method==='POST')return reply(200,changeGovernance(db,args,body));fail(405,'Method not allowed.');}
     if(route==='/api/studio-export'&&req.method==='GET')return await streamStudioExport(db,{studioId:studio.id,userId:user.id},res,{includeFiles:url.searchParams.get('files')==='1'});
-    if(route==='/api/operations'&&req.method==='GET')return reply(200,await operationalReadiness(db,{studioId:studio.id,userId:user.id,backupReceiptPath:process.env.CALEANE_BACKUP_RECEIPT||'',emailConfigured:!!(process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1'),offsiteBackupsConfigured:false}));
+    if(route==='/api/operations'&&req.method==='GET')return reply(200,await operationalReadiness(db,{studioId:studio.id,userId:user.id,backupReceiptPath:process.env.CALEANE_BACKUP_RECEIPT||'',emailConfigured:!!(process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1'),offsiteBackupsConfigured:false,services:{ai:!!helper,calendar:!disableExternalServices&&(calendarConfigured('google')||calendarConfigured('outlook')),calendarConnected:!!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='calendar_connections'").get()&&!!db.prepare('SELECT 1 FROM calendar_connections WHERE studio_id=?').get(studio.id),zoom:!disableExternalServices&&zoomConfigured(),xero:!disableExternalServices&&xeroConfigured(),xeroConnected:!!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='xero_connections'").get()&&!!db.prepare('SELECT 1 FROM xero_connections WHERE studio_id=?').get(studio.id),stripe:stripeReady,stripeConnected:studioConnected(studio.id)}}));
     if(await handleCalendarSync({db,req,url,route,body,user,studio,owner,reply,origin}))return;
     if(route==='/api/notifications/preferences'){
      if(req.method==='POST'){if(typeof body.messageEmail!=='boolean')fail(400,'Choose whether to receive message emails.');setMessageEmail(db,user.id,studio.id,body.messageEmail);}
