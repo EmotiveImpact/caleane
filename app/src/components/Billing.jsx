@@ -98,7 +98,11 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  const [kind,setKind]=useState(hasPrior?'Balance':'Deposit');
  const [amount,setAmount]=useState('');
  const [quickLabel,setQuickLabel]=useState(''),[quickKind,setQuickKind]=useState('Full'),[quickLines,setQuickLines]=useState([{title:'',quantity:1,amount:''}]),[quickCurrency,setQuickCurrency]=useState(''),[quickTax,setQuickTax]=useState('');
- const [discountType,setDiscountType]=useState('none'),[discountValue,setDiscountValue]=useState(''),[discountReason,setDiscountReason]=useState('');
+ // A discount only covers the invoice it is on. A percentage taken off an earlier invoice for this estimate
+ // starts the next one too, so 10% off the deposit carries on to the balance unless the studio changes it.
+ const carried=useMemo(()=>{for(const item of [...active].sort((a,b)=>String(b.issuedAt).localeCompare(String(a.issuedAt)))){const match=/^(?:(.+) · )?([\d.]+)% off$/.exec(item.discountLabel||'');if(match)return {number:item.number,reason:match[1]||'',percent:match[2]};}return null;},[invoices]);
+ const startCarried=!!carried&&estimateReady;
+ const [discountType,setDiscountType]=useState(startCarried?'percent':'none'),[discountValue,setDiscountValue]=useState(startCarried?carried.percent:''),[discountReason,setDiscountReason]=useState(startCarried?carried.reason:'');
  const [lateFeeOn,setLateFeeOn]=useState(true),[tipsOn,setTipsOn]=useState(true);
  const [formError,setFormError]=useState(''),[saved,setSaved]=useState(null);
  useEffect(()=>{setKind(hasPrior?'Balance':'Deposit');setAmount('');setFormError('');},[estimateId,hasPrior]);
@@ -144,7 +148,7 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
   <div className="billing-form-heading"><div><h3>Issue an invoice</h3><p>This appears in the client’s private project. No email or payment request is sent elsewhere.</p></div><button type="button" className="billing-text-button" onClick={onCancel}>Close</button></div>
   <div className="billing-issue-shell"><div className="billing-issue-layout"><div className="billing-issue-main">
    <IssueSection title="Invoice" hint={quick?'List what you are billing for. It is kept apart from the estimate, so the deposit and balance still add up to the agreed total.':'Choose what this invoice asks for from the confirmed estimate.'}>
-    <div className="billing-form-grid billing-issue-choose"><label><span>Bill for</span><select value={basis} onChange={event=>{setBasis(event.target.value);setFormError('');}}><option value="estimate" disabled={!estimateReady}>The confirmed estimate</option><option value="quick">Something else, such as extra hours</option></select></label>
+    <div className="billing-form-grid billing-issue-choose"><label><span>Bill for</span><select value={basis} onChange={event=>{const next=event.target.value;setBasis(next);setFormError('');if(carried){const keep=next==='estimate'&&discountType==='none';setDiscountType(keep?'percent':'none');setDiscountValue(keep?carried.percent:'');setDiscountReason(keep?carried.reason:'');}}}><option value="estimate" disabled={!estimateReady}>The confirmed estimate</option><option value="quick">Something else, such as extra hours</option></select></label>
     {quick?<label><span>This is</span><select value={quickKind} onChange={event=>setQuickKind(event.target.value)}><option value="Full">A charge of its own</option><option value="Deposit">A deposit</option></select></label>
     :<label><span>Invoice type</span><select name="kind" value={kind} onChange={event=>setKind(event.target.value)}>{!hasPrior&&<><option value="Deposit">Deposit</option><option value="Full">Full amount</option></>}{hasPrior&&remaining>0&&<><option value="Balance">Remaining balance</option><option value="Deposit">Further deposit</option></>}</select></label>}</div>
     {quick&&!estimateReady&&<p className="billing-extras-note">{!confirmed.length?'There’s no confirmed estimate yet, so this invoice lists its own lines.':hasOlderInvoice?'Active invoices refer to an earlier estimate version. Settle or cancel those before invoicing the new estimate.':'The confirmed estimate is fully invoiced.'}</p>}
@@ -159,11 +163,13 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
      {kind==='Deposit'&&<label className="billing-amount-field"><span>Deposit amount ({currency})</span><input name="amount" type="number" min="0.01" max={Math.max(0,(remaining-1)/100).toFixed(2)} step="0.01" value={amount} onChange={event=>setAmount(event.target.value)} required placeholder="0.00"/></label>}
     </>}
    </IssueSection>
-   <IssueSection title="Discount" hint="Optional. It comes off the price before tax, so the tax goes down with it.">
+   <IssueSection title="Discount" hint="Optional, and it only covers this invoice. It comes off the price before tax, so the tax goes down with it.">
     <div className="billing-discount-row"><label><span>Type</span><select value={discountType} onChange={event=>{setDiscountType(event.target.value);setDiscountValue('');}}><option value="none">No discount</option><option value="percent">Percentage</option><option value="amount">Fixed amount</option></select></label>
     {discountType!=='none'&&<><label><span>{discountType==='percent'?'Percentage off':`Amount off before tax (${currency})`}</span><input type="number" min="0.01" step="0.01" max={discountType==='percent'?'99.99':undefined} value={discountValue} onChange={event=>setDiscountValue(event.target.value)} placeholder={discountType==='percent'?'10':'0.00'}/></label>
     <label><span>Shown as (optional)</span><input maxLength="60" value={discountReason} onChange={event=>setDiscountReason(event.target.value)} placeholder="For example, returning client"/></label></>}</div>
     {discountType!=='none'&&discountError&&<p className="billing-extras-note is-error" role="alert">{discountError}</p>}
+    {!quick&&carried&&discountType==='percent'&&Number(discountValue)===Number(carried.percent)?<p className="billing-extras-note">Carried over from {carried.number}, so the whole project gets {carried.percent}% off. Change or remove it if this invoice should be different.</p>
+    :!quick&&kind==='Deposit'&&discount&&<p className="billing-extras-note">{discountType==='percent'?`This covers the deposit only. The balance invoice will start with the same ${Number(discountValue)}% off, which you can change then.`:'This covers the deposit only. Add a discount to the balance invoice too if the whole project should be cheaper.'}</p>}
    </IssueSection>
    {(lateFeeRule||tipsAvailable)&&<IssueSection title="Late fee and tip" hint="Both are shown to the client on the invoice. No message or email is sent when a fee is added.">
     {lateFeeRule&&(feeFits?<WorkspaceSwitch label="Include your late fee terms" description={lateFeeTerms(lateFeeRule,currency)} checked={lateFeeOn} onCheckedChange={setLateFeeOn}/>
