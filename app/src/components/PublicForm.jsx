@@ -54,4 +54,14 @@ export function ClassicForm({studio,form,preview=false,startScreenId}){
  {!preview&&<div className="form-device"><label className="form-check"><input type="checkbox" checked={remember} onChange={e=>{setRemember(e.target.checked);if(!e.target.checked)try{sessionStorage.removeItem(storageKey);}catch{}}}/>Remember my answers in this tab</label>{remember&&<button className="text-button" type="button" onClick={clear}>Clear saved answers</button>}</div>}
  </form></>}</main></div></div>;
 }
-export function HostedForm({slug,formSlug='enquiry'}){const [data,setData]=useState(null),[error,setError]=useState('');useEffect(()=>{let alive=true;fetch(`/api/public/${slug}/forms/${formSlug}`).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error);if(alive)setData(d);}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[slug,formSlug]);if(error)return <main className="form-unavailable"><h1>This form is unavailable</h1><p role="alert">{error}</p></main>;if(!data)return <div className="loading">Opening the form…</div>;return <PublicForm studio={data.studio} form={data.form}/>;}
+// Shown when a form is paused or missing. A paused form still offers a way to reach the studio.
+export function FormUnavailable({message,contact}){
+ const site=(()=>{try{return contact?.website?new URL(contact.website):null;}catch{return null;}})();
+ return <main className="form-unavailable">{contact?.logoUrl&&<img className="form-unavailable-logo" src={contact.logoUrl} alt={contact.name||''}/>}<h1>This form is unavailable</h1><p role="alert">{message}</p>
+  {(contact?.email||site)&&<div className="form-unavailable-contact"><h2>Get in touch with {contact.name||'the studio'}</h2><ul>
+   {contact.email&&<li><a className="button" href={`mailto:${contact.email}?subject=${encodeURIComponent('Enquiry for '+(contact.name||'your studio'))}`}>Email {contact.email}</a></li>}
+   {site&&<li><a className="text-button" href={site.href} target="_blank" rel="noreferrer">Visit {site.host}</a></li>}
+  </ul></div>}
+ </main>;
+}
+export function HostedForm({slug,formSlug='enquiry'}){const [data,setData]=useState(null),[error,setError]=useState(null);useEffect(()=>{let alive=true;fetch(`/api/public/${slug}/forms/${formSlug}`).then(async r=>{const d=await r.json();if(!r.ok)throw Object.assign(new Error(d.error),{contact:d.contact});if(alive)setData(d);}).catch(e=>{if(alive)setError(e);});return()=>{alive=false;};},[slug,formSlug]);if(error)return <FormUnavailable message={error.message} contact={error.contact}/>;if(!data)return <div className="loading">Opening the form…</div>;return <PublicForm studio={data.studio} form={data.form}/>;}

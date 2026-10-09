@@ -70,6 +70,7 @@ test('published forms preserve versions, private drafts, tenant boundaries and c
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',body,'',headers)).status,200);
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,name:'Changed'},'',headers)).status,409);
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,formVersion:2},'',{'Idempotency-Key':'paused-new'})).status,410);
+  const paused=await call('/api/public/nay-decor/forms/wedding-enquiry','GET',null,'');assert.equal(paused.status,410);assert.equal(paused.data.contact.email,'studio@example.test','a paused form still says how to reach the studio');assert.ok(paused.data.contact.name);
   const csv=await call('/api/forms/'+form.id+'/export'+q);assert.equal(csv.status,200);assert.match(csv.data,/"'=QA Client"/);assert.match(csv.data,/How many guests/);assert.doesNotMatch(csv.data,/Guest count/);
   const [header,first]=csv.data.replace(/^\uFEFF/,'').split('\r\n').map(line=>line.match(/"(?:[^"]|"")*"/g).map(cell=>cell.slice(1,-1)));
   assert.ok(!header.includes('Answers'),'every question has its own column');assert.ok(!csv.data.includes('{'),'practice details are not raw code');assert.equal(first[header.indexOf('Approximate guest count')],'80');

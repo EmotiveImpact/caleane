@@ -11,7 +11,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const compiled=fileURLToPath(new URL(`.public-form-${process.pid}.mjs`,import.meta.url));
 const output=await build({entryPoints:[fileURLToPath(new URL('../src/components/PublicForm.jsx',import.meta.url))],bundle:true,packages:'external',format:'esm',platform:'node',write:false});
 await writeFile(compiled,output.outputFiles[0].text);
-const {PublicForm,usesBriefLook}=await import(pathToFileURL(compiled));
+const {PublicForm,FormUnavailable,usesBriefLook}=await import(pathToFileURL(compiled));
 const {render,screen,cleanup}=await import('@testing-library/react');
 const {default:userEvent}=await import('@testing-library/user-event');
 afterEach(cleanup);after(async()=>{await unlink(compiled);dom.window.close();});
@@ -92,4 +92,9 @@ test('forms show the Brand kit logo unless the form keeps its own',()=>{
   const own=render(h(PublicForm,{studio,form:{slug:'test',definition:{...definition,logoUrl:'https://example.test/own.png',theme:{look}}},preview:true}));
   assert.deepEqual([...new Set(screen.getAllByRole('img',{name:'Test studio'}).map(i=>i.getAttribute('src')))],['https://example.test/own.png'],look);own.unmount();
  }
+});
+test('a paused form offers the studio email and website',()=>{
+ render(h(FormUnavailable,{message:'This form is not taking enquiries at the moment. Please contact the studio.',contact:{name:'NAY DÉCOR',email:'hello@nay.test',website:'https://nay.test'}}));
+ assert.match(screen.getByRole('link',{name:'Email hello@nay.test'}).getAttribute('href'),/^mailto:hello@nay\.test\?subject=/);
+ assert.equal(screen.getByRole('link',{name:'Visit nay.test'}).getAttribute('href'),'https://nay.test/');
 });

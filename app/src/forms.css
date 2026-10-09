@@ -16,3 +16,4 @@
 .device-phone .screen-fields.columns-2{grid-template-columns:minmax(0,1fr)}
 .forms-preview-viewport{container-type:inline-size;container-name:form-preview}
 @container form-preview (min-width:540px){.public-questionnaire.is-preview.screen-layout-split{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}.is-preview.screen-layout-split .public-form-intro{border-right:1px solid #e3e6e3;border-bottom:0;padding:25px}.is-preview.screen-layout-split .public-form-body{padding:25px}}
+.form-unavailable-logo{display:block;max-width:180px;max-height:56px;object-fit:contain;object-position:left;margin-bottom:28px}.form-unavailable-contact{margin-top:32px;padding:22px 24px;border:1px solid #e3e6e3;border-radius:8px}.form-unavailable-contact h2{font-size:17px;font-weight:550;margin:0 0 14px}.form-unavailable-contact ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}.form-unavailable-contact a{overflow-wrap:anywhere}

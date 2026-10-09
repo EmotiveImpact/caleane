@@ -185,7 +185,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(route==='/api/health'&&req.method==='GET')return reply(200,{ok:true});
    if(route==='/api/info'&&req.method==='GET')return reply(200,{demo,signup:true});
    if(publicMatch&&req.method==='GET'){
-    const brand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(publicStudio.id)?.data||'{}'),form=publicForm(db,publicStudio.id,publicMatch[3]||'enquiry');
+    const brand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(publicStudio.id)?.data||'{}');let form;
+    // A paused form still tells the visitor how to reach the studio: the owner's email and the studio's own website.
+    try{form=publicForm(db,publicStudio.id,publicMatch[3]||'enquiry');}catch(e){if(e.status!==410)throw e;const owner=db.prepare("SELECT u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.studio_id=? AND m.role='owner' ORDER BY u.email LIMIT 1").get(publicStudio.id);
+     return reply(410,{error:e.message,contact:{name:brand.portalTitle||publicStudio.name,email:owner?.email||'',website:JSON.parse(publicStudio.origins||'[]')[0]||'',logoUrl:brand.logoUrl||''}});}
     if(publicMatch[3]&&!form)fail(404,'Form not found.');
     return reply(200,{enabled:true,studio:{name:publicStudio.name,slug:publicStudio.slug,accent:publicStudio.accent,branding:brand},form,plannerUrl:`${origin}/intake/${publicStudio.slug}${publicMatch[3]?'/'+publicMatch[3]:''}`});
    }
