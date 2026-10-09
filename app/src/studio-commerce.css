@@ -344,6 +344,16 @@
 .billing-quick-line { display: grid; grid-template-columns: minmax(0,1fr) 90px 130px 32px; gap: 0 12px; align-items: end; }
 .billing-quick-line > button { min-height: 40px; justify-content: center; margin-bottom: 14px; }
 @media (max-width: 760px) { .billing-quick-line { grid-template-columns: minmax(0,1fr) 64px 92px 28px; gap: 0 6px; } }
-/* A VAT-registered studio picks each line's rate in a fifth column, or on a row of its own on a phone. */
+/* A VAT-registered studio picks each line's rate in a fifth column, or on a row of its own when the form is narrow. */
 .billing-quick-line.has-vat { grid-template-columns: minmax(0,1fr) 72px 112px 136px 32px; }
-@media (max-width: 760px) { .billing-quick-line.has-vat { grid-template-columns: minmax(0,1fr) 64px 92px 28px; } .billing-quick-line.has-vat .billing-quick-vat { grid-column: 1/4; grid-row: 2; } }
+@container (max-width: 640px) {
+ .billing-quick-line.has-vat { grid-template-columns: minmax(0,1fr) 72px 104px 32px; padding-bottom: 6px; border-bottom: 1px solid var(--box-rule, #e2e2df); }
+ .billing-quick-line.has-vat .billing-quick-vat { grid-column: 1/4; grid-row: 2; }
+}
+@media (max-width: 760px) { .billing-quick-line.has-vat { grid-template-columns: minmax(0,1fr) 64px 92px 28px; } }
+/* In a narrow form each line's description takes a row of its own, so it stays readable on a phone. */
+@container (max-width: 460px) {
+ .billing-quick-line, .billing-quick-line.has-vat { grid-template-columns: 72px minmax(0,1fr) 32px; }
+ .billing-quick-line > label:first-child { grid-column: 1 / -1; }
+ .billing-quick-line.has-vat .billing-quick-vat { grid-column: 1 / 3; grid-row: 3; }
+}

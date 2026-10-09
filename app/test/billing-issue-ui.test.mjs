@@ -79,7 +79,7 @@ test('a quick invoice line can be zero-rated, and the summary shows VAT at each 
  await input.type(screen.getByLabelText('Line 2'),'Printed menus');
  await input.type(screen.getAllByLabelText(/Unit price/)[1],'50');
  const rates=screen.getAllByLabelText('VAT');
- assert.deepEqual([...rates[1].options].map(option=>option.textContent),['Usual rate','Reduced (5%)','Zero-rated (0%)','Exempt']);
+ assert.deepEqual([...rates[1].options].map(option=>option.textContent),['Usual rate','Reduced 5%','Zero-rated','Exempt']);
  await input.selectOptions(rates[1],'0');
  const summary=screen.getByRole('complementary',{name:'Invoice summary'});
  assert.match(summary.textContent,/VAT at 20% on £100\.00£20\.00/);

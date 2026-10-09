@@ -25,7 +25,7 @@ export function vatShare(invoice){
 // A line can carry its own rate, such as reduced (5%) or zero-rated, or be exempt from VAT.
 // A line with neither uses the document's rate. The choices offered on estimates, quick
 // invoices and the price list:
-export const LINE_VAT=[['','Usual rate'],['5','Reduced (5%)'],['0','Zero-rated (0%)'],['exempt','Exempt']];
+export const LINE_VAT=[['','Usual rate'],['5','Reduced 5%'],['0','Zero-rated'],['exempt','Exempt']];
 export const lineVatChoice=item=>item?.exempt?'exempt':typeof item?.taxRate==='number'?String(item.taxRate):'';
 export function withLineVat(item,choice){
  const {taxRate:_rate,exempt:_exempt,...rest}=item||{};
