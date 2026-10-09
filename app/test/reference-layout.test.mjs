@@ -12,7 +12,7 @@ test('phase summary uses active saved milestones, ordered phases and recorded co
 });
 
 test('reference arrangements persist, reject stale and foreign positions, and preserve reference discussion',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-board-')),origin='http://127.0.0.1:4320';
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-board-')),origin='http://127.0.0.1:4320';
  const {server,db}=await createWorkspace({dbFile:path.join(dir,'workspace.sqlite'),origin,demo:true});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const base=`http://127.0.0.1:${server.address().port}`,cookies={};
  async function call(route,method='GET',body,actor='owner'){

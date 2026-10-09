@@ -91,7 +91,6 @@ const loadBillingModule=()=>import('./components/Billing');
 const Billing=screen(loadBillingModule,'Billing');
 const StudioBilling=screen(loadBillingModule,'StudioBilling');
 const loadOperationsModule=()=>import('./components/Operations');
-const Pipeline=screen(loadOperationsModule,'Pipeline');
 const Calendar=screen(loadOperationsModule,'Calendar');
 const Library=screen(loadOperationsModule,'Library');
 const DesignReview=screen(()=>import('./components/DesignReview'),'DesignReview');

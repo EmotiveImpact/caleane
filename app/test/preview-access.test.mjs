@@ -9,7 +9,7 @@ const origin='http://127.0.0.1:4320';
 
 test('optional preview gate protects app and API while leaving GET health open',async()=>{
  const previousUser=process.env.PREVIEW_ACCESS_USER,previousPass=process.env.PREVIEW_ACCESS_PASS;
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-preview-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-preview-'));
  let workspace;
  let base;
  async function start(file){workspace=await createWorkspace({dbFile:path.join(dir,file),origin});await new Promise(resolve=>workspace.server.listen(0,'127.0.0.1',resolve));base=`http://127.0.0.1:${workspace.server.address().port}`;}

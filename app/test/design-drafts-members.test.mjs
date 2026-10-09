@@ -7,7 +7,7 @@ import {createWorkspace} from '../server.mjs';
 
 const origin='http://127.0.0.1:4320';
 test('private drafts become immutable shared versions, and studio viewers remain separate from clients',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-drafts-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-drafts-'));
  const {server,db}=await createWorkspace({dbFile:path.join(dir,'workspace.sqlite'),origin,demo:true});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const base=`http://127.0.0.1:${server.address().port}`,cookies={};

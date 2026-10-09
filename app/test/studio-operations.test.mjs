@@ -7,7 +7,7 @@ import {openStore,id,makeProject,insertProject,saveProject} from '../store.mjs';
 import {changeProjectOperations,getProjectOperations} from '../studio-operations.mjs';
 
 test('date release requires accepted current scope and recorded deposit; profession steps persist with owner authority',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-operations-')),file=path.join(dir,'operations.sqlite');
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-operations-')),file=path.join(dir,'operations.sqlite');
  let db=openStore(file);
  const studioId=id(),ownerId=id(),clientId=id(),otherStudio=id(),actor={name:'Studio Owner'};
  const edit=(projectId,action,body,userId=ownerId,tenant=studioId)=>changeProjectOperations(db,{studioId:tenant,projectId,userId,action,body,asOf:'2026-09-30'});
