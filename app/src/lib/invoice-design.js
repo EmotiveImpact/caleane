@@ -92,7 +92,7 @@ export function invoicePageHtml(invoice,options={}){
  const party=p=>`<div class="party"><span class="label">${escape(p.label)}</span><strong>${escape(p.name)}</strong><p>${lines(p.address)}</p>${p.small.map(line=>`<small>${escape(line)}</small>`).join('')}</div>`;
  const from=party(m.from),to=party(m.to),t=m.table;
  const table=t.head.length===4
-  ?`<table class="items"><thead><tr>${t.head.map((h,i)=>`<th${i?' class="num"':''}>${escape(h)}</th>`).join('')}</tr></thead><tbody>${t.rows.map(([title,detail,qty,unit,amount])=>`<tr><td>${escape(title)}${detail?`<small>${escape(detail)}</small>`:''}</td><td class="num">${escape(qty)}</td><td class="num">${escape(unit)}</td><td class="num">${escape(amount)}</td></tr>`).join('')}</tbody>${t.part?`<tfoot><tr><td colspan="3">${escape(t.part.total[0])}</td><td class="num">${escape(t.part.total[1])}</td></tr><tr class="this"><td colspan="3"><strong>${escape(t.part.line[0])}</strong><small>${escape(t.part.line[1])}</small></td><td class="num"><strong>${escape(t.part.line[2])}</strong></td></tr></tfoot>`:''}</table>`
+  ?`<table class="items"><thead><tr>${t.head.map((h,i)=>`<th${i?' class="num"':''}>${escape(h)}</th>`).join('')}</tr></thead><tbody>${t.rows.map(([title,detail,qty,unit,amount])=>`<tr><td>${escape(title)}${detail?`<small class="unit">${escape(detail)}</small>`:''}<small class="each">${escape(qty)} × ${escape(unit)}${detail?` ${escape(detail)}`:''}</small></td><td class="num">${escape(qty)}</td><td class="num">${escape(unit)}</td><td class="num">${escape(amount)}</td></tr>`).join('')}</tbody>${t.part?`<tfoot><tr><td colspan="3">${escape(t.part.total[0])}</td><td class="num">${escape(t.part.total[1])}</td></tr><tr class="this"><td colspan="3"><strong>${escape(t.part.line[0])}</strong><small>${escape(t.part.line[1])}</small></td><td class="num"><strong>${escape(t.part.line[2])}</strong></td></tr></tfoot>`:''}</table>`
   :`<table class="items"><thead><tr><th>Description</th><th class="num">Amount</th></tr></thead><tbody>${t.rows.map(([title,detail,amount])=>`<tr><td><strong>${escape(title)}</strong><small>${escape(detail)}</small></td><td class="num">${escape(amount)}</td></tr>`).join('')}</tbody></table>`;
  const totalsHtml=`<section class="totals">${m.totals.map(([k,v,c])=>`<div class="${c||''}"><span>${escape(k)}</span><span>${escape(v)}</span></div>`).join('')}<div class="due"><span>${due[0]}</span><strong>${due[1]}</strong></div></section>`;
  const pay=m.pay?`<div class="pay"><span class="label">How to pay</span><p>${lines(m.pay.text)}</p>${m.pay.by?`<p class="pay-by">${escape(m.pay.by)}</p>`:''}${m.pay.terms?`<p class="pay-by">${escape(m.pay.terms)}</p>`:''}</div>`:'';
@@ -121,7 +121,7 @@ h1,h2,h3,p,dl,dd{margin:0}h1,.wordmark,.thanks,.due strong,.kicker{font-family:$
 .parties{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-bottom:18px}.party strong{display:block;margin:6px 0 2px;font-size:14px}.party p,.party small{display:block;color:color-mix(in srgb,${ink} 75%,${paper})}
 .project{margin:0 0 12px;font-size:14px}.project .label{display:block;margin-bottom:4px}
 table{width:100%;border-collapse:collapse}th{text-align:left;padding:0 0 8px}td{padding:9px 0;vertical-align:top;border-bottom:1px solid color-mix(in srgb,${ink} 10%,${paper})}
-.num{text-align:right;white-space:nowrap;padding-left:16px}td small{display:block;color:color-mix(in srgb,${ink} 55%,${paper});margin-top:2px;font-size:11px}
+.num{text-align:right;white-space:nowrap;padding-left:16px}td small{display:block;color:color-mix(in srgb,${ink} 55%,${paper});margin-top:2px;font-size:11px}td small.each{display:none}
 tfoot td{border-bottom:0;padding:8px 0 3px;color:color-mix(in srgb,${ink} 70%,${paper})}tfoot tr:first-child td{padding-top:10px}
 tfoot tr.this td{color:${ink};padding:9px 14px;background:${secondary}}tfoot tr.this td:first-child{border-radius:4px 0 0 4px}tfoot tr.this td:last-child{border-radius:0 4px 4px 0}
 .totals{margin:16px 0 0 auto;width:310px}.totals div{display:flex;justify-content:space-between;padding:3px 0;color:color-mix(in srgb,${ink} 72%,${paper})}.totals .strong{color:${ink};font-weight:600}
@@ -158,6 +158,22 @@ footer{margin-top:auto;padding-top:16px;font-size:10px;color:color-mix(in srgb,$
 /* minimal */
 .minimal .title h1{color:${ink};font-weight:300;font-size:36px}.minimal .meta{border-top:1px solid color-mix(in srgb,${ink} 12%,${paper});border-bottom:1px solid color-mix(in srgb,${ink} 12%,${paper});padding:14px 0}
 .minimal .due{border-top:1px solid ${ink}}.minimal .due strong{color:${ink}}.minimal .pay{background:none;padding:0}.minimal .thanks{color:${ink}}.minimal tfoot tr.this td{background:none;padding-left:0;padding-right:0;border-top:1px solid ${ink}}
+/* On a screen narrower than the A4 page, such as a phone, the page reflows to fit instead of shrinking. Print keeps A4. */
+@media screen and (max-width:793px){.page{width:auto;min-height:0;padding:32px 28px 24px}.page.bold{padding-top:0}.band{margin:0 -28px;padding:28px 28px 20px}.studio{padding:0}.studio .main{padding:32px 28px 24px}.studio footer{left:278px;right:28px}}
+@media screen and (max-width:600px){
+body{font-size:13px}.page{padding:24px 18px 20px}.page.bold{padding-top:0}.logo{max-width:150px;max-height:52px}
+.meta{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.parties,.notes{grid-template-columns:minmax(0,1fr);gap:18px}.notes{margin-top:22px}
+.totals,.studio .main .totals{width:100%}
+.page>*{order:2}.page>:is(header,.rail){order:0}.page .stamp{position:static;order:1;align-self:flex-end;margin:14px 0 0;padding:4px 12px;font-size:15px;border-width:2px}
+.items,.items thead,.items tbody,.items tfoot{display:block}.items tr{display:flex}.items :is(th,td):first-child{flex:1;min-width:0}
+.items :is(th,td):is(:nth-child(2),:nth-child(3)):not(:last-child),.items td small.unit{display:none}.items td small.each{display:block}
+footer{flex-direction:column;gap:4px}footer span:first-child{max-width:none}footer span:last-child{white-space:normal}
+.editorial .display{align-items:flex-start}.editorial .display h1{font-size:46px}.editorial .due strong{font-size:26px}
+.band{margin:0 -18px;padding:24px 18px 18px;flex-direction:column;align-items:flex-start;gap:14px}.band-total{text-align:left}.band-total strong{font-size:30px}.bold th{padding:8px 10px}.bold td{padding:9px 10px}
+.title h1,.minimal .title h1{font-size:26px}.classic .top,.minimal .top{gap:14px}
+.studio{flex-direction:column}.rail{width:auto;padding:24px 18px;gap:16px}.rail h1{margin-top:-8px}.rail .meta{grid-template-columns:repeat(2,minmax(0,1fr))}.rail .pay{margin-top:0}
+.studio .main{padding:20px 18px 8px}.studio footer{position:static;padding:16px 18px 20px}.studio .stamp{margin:16px 18px -4px}
+}
 @media print{.page{margin:0;min-height:296.5mm}tr,.totals,.pay,.note,.parties{break-inside:avoid}}
 </style></head><body><main class="page ${d.layout}${m.kind==='credit'?' credit-note':''}">${stamp}${body}${footer}</main>${fontLink?`<link rel="stylesheet" href="${escape(fontLink)}">`:''}</body></html>`;
 }
