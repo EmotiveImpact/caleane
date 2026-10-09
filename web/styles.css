@@ -201,7 +201,7 @@ footer{padding:47px clamp(25px,5.5vw,88px) 25px;background:var(--cream)}
   .hero-note{display:none}
 }
 
-/* The page moves from a single problem into the Calenne solution. */
+/* The page moves from a single problem into the Caleane solution. */
 .site-header .sign-in,.plain-link,.hero-actions .plain-link,.preview-note a,footer a{border-bottom:0;padding-bottom:0;text-decoration:none}
 .site-header .sign-in:hover,.plain-link:hover,.preview-note a:hover,footer a:hover{opacity:.72}
 .problem{min-height:100svh;background:#050505;color:#f6f6f2;display:flex;align-items:center;padding:clamp(100px,13vw,190px) clamp(24px,5.5vw,88px)}

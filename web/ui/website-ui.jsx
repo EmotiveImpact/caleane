@@ -210,7 +210,7 @@ for (const details of document.querySelectorAll('details')) mount(details, <Disc
 const slider = document.querySelector('[data-reference-progress]');
 if (slider) mount(slider, <RevealSlider snapshot={capture(slider)} />);
 for (const [selector, triggerSelector, kind] of [
-  ['#calenne-film', '[data-film-open]', 'film'],
+  ['#caleane-film', '[data-film-open]', 'film'],
   ['[data-platform-dialog]', '[data-platform-enlarge]', 'platform'],
 ]) {
   const dialog = document.querySelector(selector);
