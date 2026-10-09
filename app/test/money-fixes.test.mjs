@@ -142,3 +142,42 @@ test('the client can say they have paid, and recording the payment sends them a 
  assert.ok(JSON.stringify(clientFeed).includes(`Payment of £270.00 received for invoice ${invoice.number}`),'the client gets a receipt');
  assert.equal((await call(notice,'POST',{paidOn:today(),method:'bank_transfer'},'client')).status,409,'nothing left to pay');
 });
+
+test('a plan payment can carry a discount, and a plan can issue its own payments when they fall due',async t=>{
+ const {ws,call,studio,q,project,issue,confirmedEstimate,invoices}=await workspace(t);
+ await confirmedEstimate();
+ const plan=`${invoices}/plan${q}`,client=ws.db.prepare('SELECT id FROM users WHERE email=?').get('amelia@example.test').id;
+ const [deposit,balance]=(await call(plan,'POST',{action:'create'})).data.plan.steps;
+ assert.equal((await call(plan,'POST',{action:'auto-issue',on:true},'client')).status,403);
+ // With nothing saved in Settings the deposit cannot go out on its own, so the studio gets a task and a notice instead.
+ let response=await call(plan,'POST',{action:'auto-issue',on:true});
+ assert.equal(response.status,200);assert.deepEqual(response.data.invoices,[]);assert.ok(response.data.plan.autoIssue.since);
+ assert.equal(response.data.plan.steps[0].autoBlocked.reason,'Automatic issuing needs your studio address, your studio contact, payment instructions and the client billing address.');
+ assert.equal((await call(plan,'GET',undefined,'client')).data.plan.steps[0].autoBlocked,undefined,'the client never sees why');
+ assert.match(ws.db.prepare("SELECT detail FROM crm_tasks WHERE studio_id=? AND title LIKE 'Issue the deposit invoice%'").get(studio).detail,/needs your studio address/);
+ assert.deepEqual(ws.db.prepare('SELECT user_id FROM notification_events WHERE source_key=?').all(`plan-auto:${deposit.id}`).map(row=>row.user_id).includes(client),false);
+ assert.equal(ws.db.prepare('SELECT COUNT(*) AS n FROM notification_events WHERE source_key=?').get(`plan-auto:${deposit.id}`).n,1);
+ // Issued by hand with 10% off. The plan still counts the full deposit towards the project.
+ response=await call(plan,'POST',{action:'issue',stepId:deposit.id,...issue,discount:{type:'percent',percent:10,reason:'Returning client'}});
+ assert.equal(response.status,201);
+ const first=response.data.invoice;
+ assert.deepEqual([first.discountLabel,first.amountMinor],['Returning client · 10% off',32400]);
+ assert.equal(response.data.plan.steps[0].autoBlocked,undefined);
+ const told=ws.db.prepare("SELECT title FROM notification_events WHERE user_id=? AND title=?").get(client,`Issued invoice ${first.number}`);
+ assert.ok(told,'the client is told a new invoice is waiting');
+ // With the studio details saved, the balance goes out on its own once it is within the payment terms.
+ const defaults=(await call('/api/billing-defaults'+q)).data.defaults;
+ await call('/api/billing-defaults'+q,'POST',{...defaults,sellerAddress:issue.sellerAddress,sellerContact:issue.sellerContact,paymentInstructions:issue.paymentInstructions,paymentTermsDays:14});
+ assert.equal(balance.dueDate,'2027-05-29');
+ assert.deepEqual(await ws.issueDuePlanSteps({today:'2027-05-14'}),[],'15 days before is outside 14 day terms');
+ const [auto]=await ws.issueDuePlanSteps({today:'2027-05-15'});
+ assert.deepEqual([auto.kind,auto.due_date,auto.discount_label,auto.amount_minor,auto.issued_by],['Balance','2027-05-29','Returning client · 10% off',75600,'NAY Studio']);
+ assert.equal(JSON.parse(auto.snapshot).customerAddress,issue.customerAddress);
+ const activity=JSON.parse(ws.db.prepare('SELECT data FROM projects WHERE id=?').get(project.id).data).activity[0];
+ assert.equal(activity.text,`Issued invoice ${auto.number} automatically from the payment plan`);
+ assert.deepEqual(ws.db.prepare('SELECT user_id FROM notification_events WHERE source_key=?').all(`event:${activity.id}`).length,2,'the owner and the client are both told');
+ const after=(await call(plan)).data.plan;
+ assert.deepEqual(after.steps.map(step=>step.invoice?.number),[first.number,auto.number]);
+ assert.deepEqual(await ws.issueDuePlanSteps({today:'2027-05-20'}),[],'nothing is issued twice');
+ assert.equal((await call(plan,'POST',{action:'auto-issue',on:false})).data.plan.autoIssue,null);
+});

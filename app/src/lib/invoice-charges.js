@@ -51,6 +51,14 @@ export function invoiceFigures({shareMinor,shareNetMinor,discount=null}){
  return {priceMinor:shareMinor,priceNetMinor:shareNetMinor,discountMinor,discountNetMinor,netMinor,taxMinor:amountMinor-netMinor,amountMinor};
 }
 
+// A discount only covers the invoice it is on. A percentage taken off an earlier invoice for the same estimate
+// starts the next one too, so 10% off the deposit carries on to the balance unless the studio changes it.
+// `invoices` are the active estimate invoices, each with number, issuedAt and discountLabel.
+export function carriedDiscount(invoices){
+ for(const item of [...invoices].sort((a,b)=>String(b.issuedAt).localeCompare(String(a.issuedAt)))){const match=/^(?:(.+) · )?([\d.]+)% off$/.exec(item.discountLabel||'');if(match)return {number:item.number,reason:match[1]||'',percent:match[2]};}
+ return null;
+}
+
 // Tip suggestions are a share of the invoice amount, rounded to whole units.
 export const tipPercents=[5,10,15];
 export const tipFor=(amountMinor,percent)=>Math.round(amountMinor*percent/10000)*100;

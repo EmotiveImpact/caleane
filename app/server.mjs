@@ -31,7 +31,7 @@ import {installStripeOnboarding,startStripeOnboarding,refreshStripeOnboarding,re
 import {installNotifications,createNotificationOutbox,createResendDelivery,messageEmailEnabled,setMessageEmail} from './notifications.mjs';
 import {installOnboarding,handleOnboarding} from './onboarding.mjs';
 import {installDocumentOpens,handleDocumentOpens,documentOpens} from './document-opens.mjs';
-import {installNotificationFeed,recordProjectEvent,recordMessage,recordEnquiry,handleNotificationFeed} from './notification-feed.mjs';
+import {installNotificationFeed,recordProjectEvent,recordMessage,recordEnquiry,recordStudioNotice,handleNotificationFeed} from './notification-feed.mjs';
 import {saveReferenceLayout} from './reference-layout.mjs';
 import {getProjectOperations,changeProjectOperations} from './studio-operations.mjs';
 import {MONEY_ACTIVITY} from './src/lib/notifications.js';
@@ -47,15 +47,15 @@ import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,openPaidNotice,PAID_NOTICE_METHODS,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {setTip,waiveLateFee} from './invoice-extras.mjs';
-import {discountFor,invoiceFigures,lateFeeFits} from './src/lib/invoice-charges.js';
-import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
+import {carriedDiscount,discountFor,invoiceFigures,lateFeeFits} from './src/lib/invoice-charges.js';
+import {installReminders,handleReminders,runAllReminders,planStepTask} from './reminders.mjs';
 import {handleCustomFields} from './custom-fields.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus,manageBooking,bookingEmail,issueManageToken} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
 import {installXero,handleXero,syncAllXero} from './xero.mjs';
 import {installFinances,handleFinances} from './finances.mjs';
-import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced,linkIssuedDeposits} from './payment-plans.mjs';
+import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced,linkIssuedDeposits,setAutoIssue,autoIssueStep,markAutoIssueBlocked} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function fail(status,message){throw Object.assign(new Error(message),{status});}
@@ -142,6 +142,104 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
   bindInvitedContact(db,studioId,client.email,client.id);
  }
  const vite=dev?await (await import('vite')).createServer({configFile:path.join(root,'vite.config.js'),server:{middlewareMode:true},appType:'spa'}):null;
+ // Issues one invoice for a project: from the confirmed estimate, or a quick invoice with lines of its own.
+ // The invoice route and the payment plan sweep both use it; `user` is who the invoice is issued by.
+ const issueProjectInvoice=(studio,user,project,body,afterInsert,{auto=false}={})=>{
+  // A quick invoice bills lines of its own, such as extra hours or a rush fee. It needs no estimate and
+  // leaves the estimate's share untouched, so the deposit and balance still add up to the agreed total.
+  const quick=body.quick===true,kind=body.kind,label=str(body.label||'',60);
+  let estimate=null,existing=[],remainingMinor=0,lines=null;
+  if(quick){
+   if(!['Full','Deposit'].includes(kind))fail(400,'Choose a charge or a deposit.');
+   if(!label)fail(400,'Say what this invoice is for.');
+   if(!isCurrency(body.currency))fail(400,'Choose a supported currency.');
+   if(!Array.isArray(body.items)||body.items.length<1||body.items.length>20)fail(400,'Add between one and twenty lines.');
+   const items=body.items.map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))fail(400,'Check each line.');const title=str(item.title,200);if(!title||!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>10000||!Number.isInteger(item.unitAmount)||item.unitAmount<0||item.unitAmount>100000000)fail(400,'Check line descriptions, quantities and amounts.');return {title,quantity:item.quantity,unitAmount:item.unitAmount,...(PRICE_UNITS.includes(item.unit)&&item.unit!=='each'?{unit:item.unit}:{})};});
+   const usual=billingDefaults(db,studio.id),taxRate=body.taxRate??defaultTaxRate(usual);if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
+   const subtotal=items.reduce((sum,item)=>sum+item.quantity*item.unitAmount,0),tax=Math.round(subtotal*taxRate/100);
+   if(subtotal<=0)fail(400,'Add an amount above zero.');if(subtotal>100000000)fail(400,'The invoice total is too large.');
+   lines={items,currency:body.currency,taxRate,vatRegistered:isVatRegistered(usual),subtotal,tax,total:subtotal+tax};remainingMinor=lines.total;
+  }else{
+   estimate=project.estimates?.find(item=>item.id===body.estimateId);
+   if(!estimate||estimate.id!==project.estimates.at(-1)?.id||estimate.status!=='Budget confirmed'||estimate.briefRevision!==project.briefRevision)fail(409,'Ask the client to confirm the latest estimate before issuing an invoice.');
+   // A discounted invoice still covers its full share of the estimate. Quick invoices are not part of it.
+   existing=db.prepare("SELECT estimate_id,amount_minor+discount_minor AS amount_minor,net_minor+discount_net_minor AS net_minor FROM invoices WHERE studio_id=? AND project_id=? AND cancelled_at IS NULL AND estimate_id<>''").all(studio.id,project.id);
+   if(existing.some(item=>item.estimate_id!==estimate.id))fail(409,'An earlier estimate has active invoices. Review those bills before invoicing a new version.');
+   const billedMinor=existing.reduce((sum,item)=>sum+item.amount_minor,0);remainingMinor=estimate.total-billedMinor;
+   if(!Number.isSafeInteger(remainingMinor)||remainingMinor<=0)fail(409,'This project has no uninvoiced estimate balance.');
+   if(!['Deposit','Balance','Full'].includes(kind))fail(400,'Choose a deposit, balance or full invoice.');
+   if(kind==='Full'&&existing.length)fail(409,'Issue a balance invoice for the remaining amount.');
+   if(kind==='Balance'&&!existing.length)fail(409,'Issue a full invoice or a deposit first.');
+  }
+  const basis=quick?lines:estimate;
+  let amountMinor=remainingMinor;
+  if(kind==='Deposit'&&!quick){amountMinor=body.amountMinor;if(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remainingMinor)fail(400,'Enter an amount smaller than the remaining estimate total.');}
+  const saved=billingDefaults(db,studio.id),dueDate=date(body.dueDate,'invoice due date'),supplyDate=date(body.supplyDate||project.brief?.date||'','service date'),paymentInstructions=str(body.paymentInstructions||saved.paymentInstructions||'',1000),note=str(body.note||'',3000);
+  const sellerAddress=str(body.sellerAddress||saved.sellerAddress||'',500),sellerContact=str(body.sellerContact||saved.sellerContact||'',300),customerAddress=str(body.customerAddress||'',500),taxRegistration=str(body.taxRegistration||saved.taxRegistration||'',100);
+  const missing=[[sellerAddress,'your studio address'],[customerAddress,'the client billing address'],[sellerContact,'your studio contact'],[supplyDate,'the service date'],[dueDate,'the due date'],[paymentInstructions,'payment instructions']].filter(([value])=>!value).map(([,label])=>label);
+  if(missing.length)fail(400,`Add ${missing.length>1?missing.slice(0,-1).join(', ')+' and '+missing.at(-1):missing[0]}.`);
+  if(dueDate<now().slice(0,10))fail(400,'Choose an invoice due date today or later.');
+  return transaction(db,()=>{
+   // Numbering follows Settings, Invoice details. A number already in use (after the studio moved the counter) is skipped.
+   const year=Number(now().slice(0,4)),slot=counterYear(saved,year);db.prepare('INSERT OR IGNORE INTO invoice_counters VALUES(?,?,1)').run(studio.id,slot);
+   let next=db.prepare('SELECT next_number FROM invoice_counters WHERE studio_id=? AND year=?').get(studio.id,slot).next_number,number=invoiceNumber(saved,year,next);
+   while(db.prepare('SELECT 1 FROM invoices WHERE studio_id=? AND number=?').get(studio.id,number))number=invoiceNumber(saved,year,++next);
+   db.prepare('UPDATE invoice_counters SET next_number=? WHERE studio_id=? AND year=?').run(next+1,studio.id,slot);
+   const shareMinor=amountMinor,shareNetMinor=quick?lines.subtotal:kind==='Balance'?estimate.subtotal-existing.reduce((sum,item)=>sum+item.net_minor,0):kind==='Full'?estimate.subtotal:Math.round(estimate.subtotal*amountMinor/estimate.total);
+   if(shareNetMinor<0||shareMinor-shareNetMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
+   const discount=discountFor(body.discount,{shareMinor,shareNetMinor});
+   const figures=invoiceFigures({shareMinor,shareNetMinor,discount});amountMinor=figures.amountMinor;
+   const {netMinor,taxMinor}=figures;
+   if(netMinor<0||taxMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
+   // Late fee terms and tips are fixed on the invoice when it is issued, so the client sees them from the start.
+   const lateFeeRule=saved.lateFee?.enabled&&body.lateFee!==false&&lateFeeFits(saved.lateFee,basis.currency)?JSON.stringify({type:saved.lateFee.type,amountMinor:saved.lateFee.amountMinor,currency:saved.lateFee.currency,percent:saved.lateFee.percent,afterDays:saved.lateFee.afterDays}):'';
+   const tipsAllowed=saved.tips?.enabled&&kind!=='Deposit'&&body.tips!==false?1:0;
+   const snapshot={sellerName:studio.name,sellerAddress,sellerContact,taxRegistration,vatRegistered:isVatDocument({vatRegistered:basis.vatRegistered,taxRegistration},basis.currency),billToName:project.brief?.name||'',billToEmail:project.clientEmail,customerAddress,supplyDate,projectTitle:project.title,...(quick?{lines}:{estimate:{id:estimate.id,version:estimate.version,title:estimate.title,note:estimate.note,items:structuredClone(estimate.items),currency:estimate.currency,taxRate:estimate.taxRate,vatRegistered:estimate.vatRegistered,subtotal:estimate.subtotal,tax:estimate.tax,total:estimate.total,briefRevision:estimate.briefRevision,decidedAt:estimate.decidedAt||'',decidedBy:estimate.decidedBy||''}})};
+   const invoiceId=id(),issuedAt=now();
+   db.prepare(`INSERT INTO invoices(id,studio_id,project_id,number,estimate_id,estimate_version,kind,currency,amount_minor,net_minor,tax_minor,tax_rate,due_date,note,payment_instructions,snapshot,issued_at,issued_by)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(invoiceId,studio.id,project.id,number,quick?'':estimate.id,quick?0:estimate.version,kind,basis.currency,amountMinor,netMinor,taxMinor,basis.taxRate,dueDate,note,paymentInstructions,JSON.stringify(snapshot),issuedAt,user.name);
+   event(project,user,auto?`Issued invoice ${number} automatically from the payment plan`:`Issued invoice ${number}`);saveProject(db,project);
+   if(label)db.prepare('UPDATE invoices SET label=? WHERE id=? AND studio_id=?').run(label,invoiceId,studio.id);
+   db.prepare('UPDATE invoices SET discount_minor=?,discount_net_minor=?,discount_label=?,late_fee_rule=?,tips_allowed=? WHERE id=? AND studio_id=?').run(discount?.grossMinor||0,discount?.netMinor||0,discount?.label||'',lateFeeRule,tipsAllowed,invoiceId,studio.id);
+   afterInsert?.(invoiceId);
+   return db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoiceId,studio.id);
+  });
+ };
+ // Payment plans set to issue themselves: each payment goes out once its due date is within the studio's
+ // payment terms, with the saved studio details, the client's last billing address and any percentage
+ // discount carried from the earlier invoices. When something is missing the studio gets a task and a
+ // notice instead, once per payment. `only` limits the run to one project.
+ const issueDuePlanSteps=async({today=now().slice(0,10),only=null}={})=>{
+  const issued=[];
+  const plans=only?[{studio_id:only.studioId,project_id:only.projectId}]:db.prepare("SELECT studio_id,project_id FROM payment_plans WHERE json_extract(data,'$.autoIssue') IS NOT NULL").all();
+  for(const row of plans){
+   const studio=db.prepare('SELECT * FROM studios WHERE id=?').get(row.studio_id),projectRow=db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(row.project_id,row.studio_id);
+   if(!studio||!projectRow)continue;
+   const project=JSON.parse(projectRow.data),saved=billingDefaults(db,studio.id),due=autoIssueStep(db,{studioId:studio.id,project,today,termsDays:saved.paymentTermsDays});
+   if(!due)continue;
+   const {plan,step}=due;
+   const owner=db.prepare("SELECT u.id,u.name FROM users u JOIN memberships m ON m.user_id=u.id WHERE m.studio_id=? AND m.role='owner' ORDER BY u.id=? DESC,u.rowid LIMIT 1").get(studio.id,plan.autoIssue.by);
+   if(!owner)continue;
+   const block=reason=>{
+    if(!markAutoIssueBlocked(db,{studioId:studio.id,projectId:project.id,stepId:step.id,reason}))return;
+    planStepTask(db,{studioId:studio.id,project,step,plan,detail:`${reason} Open Billing on the project to issue it.`});
+    recordStudioNotice(db,{studioId:studio.id,projectId:project.id,sourceKey:`plan-auto:${step.id}`,title:`${step.label} could not be issued automatically`,detail:`${reason} ${project.title}`});
+   };
+   const customerAddress=db.prepare('SELECT snapshot FROM invoices WHERE studio_id=? AND project_id=? ORDER BY issued_at DESC').all(studio.id,project.id).map(item=>JSON.parse(item.snapshot).customerAddress).find(Boolean)||'';
+   const missing=[[saved.sellerAddress,'your studio address'],[saved.sellerContact,'your studio contact'],[saved.paymentInstructions,'payment instructions'],[customerAddress,'the client billing address'],[project.brief?.date,'the service date']].filter(([value])=>!value).map(([,label])=>label);
+   if(missing.length){block(`Automatic issuing needs ${missing.length>1?missing.slice(0,-1).join(', ')+' and '+missing.at(-1):missing[0]}.`);continue;}
+   try{
+    const carried=carriedDiscount(db.prepare('SELECT number,issued_at AS issuedAt,discount_label AS discountLabel FROM invoices WHERE studio_id=? AND project_id=? AND estimate_id=? AND cancelled_at IS NULL').all(studio.id,project.id,plan.estimateId));
+    const invoice=transaction(db,()=>{const {body:planned}=stepInvoice(db,{studioId:studio.id,project,stepId:step.id,today});return issueProjectInvoice(studio,owner,project,{...planned,customerAddress,quick:false,...(carried?{discount:{type:'percent',percent:Number(carried.percent),reason:carried.reason}}:{})},invoiceId=>markStepInvoiced(db,{studioId:studio.id,projectId:project.id,stepId:step.id,invoiceId}),{auto:true});});
+    // The owner and the client are both told; the client's email waits in the outbox like any other.
+    const eventId=project.activity?.[0]?.id;recordProjectEvent(db,{studioId:studio.id,projectId:project.id,actorUserId:null,eventId});
+    if(outbox)try{outbox.enqueueProjectActivity({studioId:studio.id,projectId:project.id,actorUserId:owner.id,eventId});}catch(error){console.error('Invoice email could not be queued:',error.message);}
+    await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});automate(studio.id,project.id);
+    issued.push(invoice);
+   }catch(error){if(!error?.status)console.error('A payment plan invoice could not be issued:',error?.stack||error);block(`Automatic issuing stopped: ${error?.status?error.message:'something went wrong.'}`);}
+  }
+  return issued;
+ };
  const server=http.createServer(async(req,res)=>{
   let url,route,body={};
   const reply=(status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
@@ -643,70 +741,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(!accessRole)fail(404,'Project not found.');
      if(!owner&&!bookkeeper&&accessRole!=='Approver')fail(403,'Only the project approver can see billing.');
      const project=JSON.parse(projectRow.data),invoiceId=invoiceMatch[2],subaction=invoiceMatch[3];
-     const issueInvoice=(project,body,afterInsert)=>{
-      // A quick invoice bills lines of its own, such as extra hours or a rush fee. It needs no estimate and
-      // leaves the estimate's share untouched, so the deposit and balance still add up to the agreed total.
-      const quick=body.quick===true,kind=body.kind,label=str(body.label||'',60);
-      let estimate=null,existing=[],remainingMinor=0,lines=null;
-      if(quick){
-       if(!['Full','Deposit'].includes(kind))fail(400,'Choose a charge or a deposit.');
-       if(!label)fail(400,'Say what this invoice is for.');
-       if(!isCurrency(body.currency))fail(400,'Choose a supported currency.');
-       if(!Array.isArray(body.items)||body.items.length<1||body.items.length>20)fail(400,'Add between one and twenty lines.');
-       const items=body.items.map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))fail(400,'Check each line.');const title=str(item.title,200);if(!title||!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>10000||!Number.isInteger(item.unitAmount)||item.unitAmount<0||item.unitAmount>100000000)fail(400,'Check line descriptions, quantities and amounts.');return {title,quantity:item.quantity,unitAmount:item.unitAmount,...(PRICE_UNITS.includes(item.unit)&&item.unit!=='each'?{unit:item.unit}:{})};});
-       const usual=billingDefaults(db,studio.id),taxRate=body.taxRate??defaultTaxRate(usual);if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
-       const subtotal=items.reduce((sum,item)=>sum+item.quantity*item.unitAmount,0),tax=Math.round(subtotal*taxRate/100);
-       if(subtotal<=0)fail(400,'Add an amount above zero.');if(subtotal>100000000)fail(400,'The invoice total is too large.');
-       lines={items,currency:body.currency,taxRate,vatRegistered:isVatRegistered(usual),subtotal,tax,total:subtotal+tax};remainingMinor=lines.total;
-      }else{
-       estimate=project.estimates?.find(item=>item.id===body.estimateId);
-       if(!estimate||estimate.id!==project.estimates.at(-1)?.id||estimate.status!=='Budget confirmed'||estimate.briefRevision!==project.briefRevision)fail(409,'Ask the client to confirm the latest estimate before issuing an invoice.');
-       // A discounted invoice still covers its full share of the estimate. Quick invoices are not part of it.
-       existing=db.prepare("SELECT estimate_id,amount_minor+discount_minor AS amount_minor,net_minor+discount_net_minor AS net_minor FROM invoices WHERE studio_id=? AND project_id=? AND cancelled_at IS NULL AND estimate_id<>''").all(studio.id,project.id);
-       if(existing.some(item=>item.estimate_id!==estimate.id))fail(409,'An earlier estimate has active invoices. Review those bills before invoicing a new version.');
-       const billedMinor=existing.reduce((sum,item)=>sum+item.amount_minor,0);remainingMinor=estimate.total-billedMinor;
-       if(!Number.isSafeInteger(remainingMinor)||remainingMinor<=0)fail(409,'This project has no uninvoiced estimate balance.');
-       if(!['Deposit','Balance','Full'].includes(kind))fail(400,'Choose a deposit, balance or full invoice.');
-       if(kind==='Full'&&existing.length)fail(409,'Issue a balance invoice for the remaining amount.');
-       if(kind==='Balance'&&!existing.length)fail(409,'Issue a full invoice or a deposit first.');
-      }
-      const basis=quick?lines:estimate;
-      let amountMinor=remainingMinor;
-      if(kind==='Deposit'&&!quick){amountMinor=body.amountMinor;if(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remainingMinor)fail(400,'Enter an amount smaller than the remaining estimate total.');}
-      const saved=billingDefaults(db,studio.id),dueDate=date(body.dueDate,'invoice due date'),supplyDate=date(body.supplyDate||project.brief?.date||'','service date'),paymentInstructions=str(body.paymentInstructions||saved.paymentInstructions||'',1000),note=str(body.note||'',3000);
-      const sellerAddress=str(body.sellerAddress||saved.sellerAddress||'',500),sellerContact=str(body.sellerContact||saved.sellerContact||'',300),customerAddress=str(body.customerAddress||'',500),taxRegistration=str(body.taxRegistration||saved.taxRegistration||'',100);
-      const missing=[[sellerAddress,'your studio address'],[customerAddress,'the client billing address'],[sellerContact,'your studio contact'],[supplyDate,'the service date'],[dueDate,'the due date'],[paymentInstructions,'payment instructions']].filter(([value])=>!value).map(([,label])=>label);
-      if(missing.length)fail(400,`Add ${missing.length>1?missing.slice(0,-1).join(', ')+' and '+missing.at(-1):missing[0]}.`);
-      if(dueDate<now().slice(0,10))fail(400,'Choose an invoice due date today or later.');
-      return transaction(db,()=>{
-       // Numbering follows Settings, Invoice details. A number already in use (after the studio moved the counter) is skipped.
-       const year=Number(now().slice(0,4)),slot=counterYear(saved,year);db.prepare('INSERT OR IGNORE INTO invoice_counters VALUES(?,?,1)').run(studio.id,slot);
-       let next=db.prepare('SELECT next_number FROM invoice_counters WHERE studio_id=? AND year=?').get(studio.id,slot).next_number,number=invoiceNumber(saved,year,next);
-       while(db.prepare('SELECT 1 FROM invoices WHERE studio_id=? AND number=?').get(studio.id,number))number=invoiceNumber(saved,year,++next);
-       db.prepare('UPDATE invoice_counters SET next_number=? WHERE studio_id=? AND year=?').run(next+1,studio.id,slot);
-       const shareMinor=amountMinor,shareNetMinor=quick?lines.subtotal:kind==='Balance'?estimate.subtotal-existing.reduce((sum,item)=>sum+item.net_minor,0):kind==='Full'?estimate.subtotal:Math.round(estimate.subtotal*amountMinor/estimate.total);
-       if(shareNetMinor<0||shareMinor-shareNetMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
-       const discount=discountFor(body.discount,{shareMinor,shareNetMinor});
-       const figures=invoiceFigures({shareMinor,shareNetMinor,discount});amountMinor=figures.amountMinor;
-       const {netMinor,taxMinor}=figures;
-       if(netMinor<0||taxMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
-       // Late fee terms and tips are fixed on the invoice when it is issued, so the client sees them from the start.
-       const lateFeeRule=saved.lateFee?.enabled&&body.lateFee!==false&&lateFeeFits(saved.lateFee,basis.currency)?JSON.stringify({type:saved.lateFee.type,amountMinor:saved.lateFee.amountMinor,currency:saved.lateFee.currency,percent:saved.lateFee.percent,afterDays:saved.lateFee.afterDays}):'';
-       const tipsAllowed=saved.tips?.enabled&&kind!=='Deposit'&&body.tips!==false?1:0;
-       const snapshot={sellerName:studio.name,sellerAddress,sellerContact,taxRegistration,vatRegistered:isVatDocument({vatRegistered:basis.vatRegistered,taxRegistration},basis.currency),billToName:project.brief?.name||'',billToEmail:project.clientEmail,customerAddress,supplyDate,projectTitle:project.title,...(quick?{lines}:{estimate:{id:estimate.id,version:estimate.version,title:estimate.title,note:estimate.note,items:structuredClone(estimate.items),currency:estimate.currency,taxRate:estimate.taxRate,vatRegistered:estimate.vatRegistered,subtotal:estimate.subtotal,tax:estimate.tax,total:estimate.total,briefRevision:estimate.briefRevision,decidedAt:estimate.decidedAt||'',decidedBy:estimate.decidedBy||''}})};
-       const invoiceId=id(),issuedAt=now();
-       db.prepare(`INSERT INTO invoices(id,studio_id,project_id,number,estimate_id,estimate_version,kind,currency,amount_minor,net_minor,tax_minor,tax_rate,due_date,note,payment_instructions,snapshot,issued_at,issued_by)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(invoiceId,studio.id,project.id,number,quick?'':estimate.id,quick?0:estimate.version,kind,basis.currency,amountMinor,netMinor,taxMinor,basis.taxRate,dueDate,note,paymentInstructions,JSON.stringify(snapshot),issuedAt,user.name);
-       event(project,user,`Issued invoice ${number}`);saveProject(db,project);
-       if(label)db.prepare('UPDATE invoices SET label=? WHERE id=? AND studio_id=?').run(label,invoiceId,studio.id);
-       db.prepare('UPDATE invoices SET discount_minor=?,discount_net_minor=?,discount_label=?,late_fee_rule=?,tips_allowed=? WHERE id=? AND studio_id=?').run(discount?.grossMinor||0,discount?.netMinor||0,discount?.label||'',lateFeeRule,tipsAllowed,invoiceId,studio.id);
-       afterInsert?.(invoiceId);
-       return db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoiceId,studio.id);
-      });
-     };
+     const issueInvoice=(project,body,afterInsert)=>issueProjectInvoice(studio,user,project,body,afterInsert);
      if(invoiceId==='plan'){
       if(subaction)fail(404,'Not found.');
-      const view=()=>{const plan=planView(db,studio.id,project,invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row)));return plan&&{...plan,autopay:autopayView(db,studio.id,project.id,{offered:autopayOffered(studio.id)})};};
+      const view=()=>{const plan=planView(db,studio.id,project,invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row)));return plan&&{...plan,autoIssue:plan.autoIssue?{since:plan.autoIssue.since,byName:plan.autoIssue.byName}:null,steps:owner?plan.steps:plan.steps.map(({autoBlocked:_autoBlocked,...step})=>step),autopay:autopayView(db,studio.id,project.id,{offered:autopayOffered(studio.id)})};};
       if(req.method==='GET')return reply(200,{plan:view(),defaults:owner?billingDefaults(db,studio.id):undefined});
       if(req.method!=='POST')fail(405,'Method not allowed.');
       if(body.action==='autopay-setup'){if(!cardPaymentsReady)fail(503,'Card payments are not available.');return reply(200,await startAutopaySetup(db,stripe,{studioId:studio.id,project,accessRole,user,appOrigin:origin}));}
@@ -715,8 +753,15 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       if(body.action==='create')transaction(db,()=>createPlan(db,{studioId:studio.id,project,body}));
       else if(body.action==='update')transaction(db,()=>updatePlan(db,{studioId:studio.id,project,body}));
       else if(body.action==='delete')transaction(db,()=>deletePlan(db,{studioId:studio.id,project}));
+      else if(body.action==='auto-issue'){
+       transaction(db,()=>setAutoIssue(db,{studioId:studio.id,project,on:body.on,user}));
+       // A payment already within its terms goes out straight away rather than at the next hourly run.
+       const issued=body.on?await issueDuePlanSteps({only:{studioId:studio.id,projectId:project.id}}):[];
+       return reply(200,{plan:view(),invoices:issued.map(row=>invoiceDTO(db,row))});
+      }
       else if(body.action==='issue'){
        const issued=transaction(db,()=>{const {step,body:planned}=stepInvoice(db,{studioId:studio.id,project,stepId:body.stepId});return issueInvoice(project,{...body,...planned,quick:false},invoiceId=>markStepInvoiced(db,{studioId:studio.id,projectId:project.id,stepId:step.id,invoiceId}));});
+       queueProjectEvent(studio.id,project.id,user.id,project.activity?.[0]?.id);
        await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});automate(studio.id,project.id);
        return reply(201,{plan:view(),invoice:invoiceDTO(db,issued)});
       }else fail(400,'Choose a payment plan action.');
@@ -778,6 +823,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      }
      if(!invoiceId){
       const issued=issueInvoice(project,body,()=>linkIssuedDeposits(db,{studioId:studio.id,projectId:project.id}));
+      // The client is told a new invoice is waiting, in the app and by email once email is on.
+      queueProjectEvent(studio.id,project.id,user.id,project.activity?.[0]?.id);
       await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});automate(studio.id,project.id);return reply(201,{invoice:invoiceDTO(db,issued)});
      }
      if(subaction==='credit-notes'||subaction==='refunds'){
@@ -978,7 +1025,9 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  async function sendQueuedEmail(){if(emailRunning||!deliver)return;emailRunning=true;try{for(let count=0;count<20;count++){const result=await accountSecurity.dispatchOne(deliver)||(outbox&&await outbox.dispatchOne(deliver));if(!result)break;}}catch(error){console.error('Email delivery run failed:',error.message);}finally{emailRunning=false;}}
  const emailTimer=deliver&&emailIntervalMs>0?setInterval(sendQueuedEmail,emailIntervalMs):null;emailTimer?.unref();
  const scheduledTimer=scheduledIntervalMs>0?setInterval(()=>{try{sendDueScheduled(db,{afterSend:queueMessage});}catch(error){console.error('Scheduled messages could not be sent:',error.message);}},scheduledIntervalMs):null;scheduledTimer?.unref();
- const reminderTimer=reminderIntervalMs>0?setInterval(()=>{runAllReminders(db,{outbox});syncAllPipelines(db,{outbox});collectAutopay();},reminderIntervalMs):null;reminderTimer?.unref();
+ // Plans issue their due payments first, so a reminder never asks the studio to issue one that has just gone out.
+ const hourly=async()=>{try{await issueDuePlanSteps();}catch(error){console.error('Payment plan run failed:',error?.stack||error);}runAllReminders(db,{outbox});syncAllPipelines(db,{outbox});collectAutopay();};
+ const reminderTimer=reminderIntervalMs>0?setInterval(hourly,reminderIntervalMs):null;reminderTimer?.unref();
  // Uploads never attached to a message or task are removed at start-up and then hourly.
  const cleanUploads=()=>{try{cleanupUnattachedUploads(db);}catch(error){console.error('Upload cleanup failed:',error?.stack||error);}};cleanUploads();
  const uploadTimer=uploadCleanupIntervalMs>0?setInterval(cleanUploads,uploadCleanupIntervalMs):null;uploadTimer?.unref();
@@ -990,7 +1039,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const calendarTimer=calendarIntervalMs>0?setInterval(tickCalendars,calendarIntervalMs):null;calendarTimer?.unref();
   server.on('close',()=>{vite?.close();if(emailTimer)clearInterval(emailTimer);if(scheduledTimer)clearInterval(scheduledTimer);if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);if(webhookTimer)clearInterval(webhookTimer);if(calendarTimer)clearInterval(calendarTimer);});
   if(freshDemo&&showcase)await seedShowcase({server,db,origin});
-  return {server,db,sendQueuedEmail,collectAutopay};
+  return {server,db,sendQueuedEmail,collectAutopay,issueDuePlanSteps};
 }
 // The demo seeds accounts with a published password, so a production process needs an explicit opt-in to run it.
 export function assertSafeStartup(env=process.env){if(env.WORKSPACE_DEMO==='1'&&env.NODE_ENV==='production'&&env.ALLOW_PUBLIC_DEMO!=='1')throw new Error('WORKSPACE_DEMO=1 seeds accounts with a known password. Set ALLOW_PUBLIC_DEMO=1 to run the demo with NODE_ENV=production.');}

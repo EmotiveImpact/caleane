@@ -3,7 +3,7 @@ import {billingDefaults} from './studio-commerce.mjs';
 
 // A payment plan splits a client-confirmed estimate into scheduled invoices.
 // The plan only proposes amounts and dates; each payment still becomes a normal
-// issued invoice when the owner chooses to issue it.
+// issued invoice, when the owner issues it or, with automatic issuing on, when it falls due.
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const text=(value,max,label)=>{if(value==null)value='';if(typeof value!=='string'||value.length>max)fail(400,`Check ${label}.`);return value.trim();};
 const isDay=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;
@@ -97,8 +97,33 @@ export function stepInvoice(db,{studioId,project,stepId,today=now().slice(0,10)}
  return {plan,step,body:{estimateId:estimate.id,kind,label:step.label,amountMinor:step.amountMinor,...(due?{dueDate:due>today?due:today}:{}),note:`${step.label} · payment ${index+1} of ${plan.steps.length}`}};
 }
 export function markStepInvoiced(db,{studioId,projectId,stepId,invoiceId}){
- const plan=getPlan(db,studioId,projectId);const step=plan.steps.find(item=>item.id===stepId);step.invoiceId=invoiceId;plan.revision++;plan.updatedAt=now();return save(db,studioId,projectId,plan);
+ const plan=getPlan(db,studioId,projectId);const step=plan.steps.find(item=>item.id===stepId);step.invoiceId=invoiceId;delete step.autoBlocked;plan.revision++;plan.updatedAt=now();return save(db,studioId,projectId,plan);
 }
+// With automatic issuing on, each payment is issued without the studio stepping in, once its due date is
+// within the studio's payment terms, so the client gets the usual time to pay. Only the next payment in
+// order is considered, and only while every earlier one has an invoice that is still active.
+export function setAutoIssue(db,{studioId,project,on,user}){
+ const plan=getPlan(db,studioId,project.id);if(!plan)fail(404,'Create a payment plan first.');
+ if(typeof on!=='boolean')fail(400,'Choose whether to issue payments automatically.');
+ if(on&&!(confirmedEstimate(project)?.id===plan.estimateId))fail(409,'The confirmed estimate changed. Create a new plan before invoicing.');
+ if(on)plan.autoIssue={by:user.id,byName:user.name,since:now()};else delete plan.autoIssue;
+ plan.revision++;plan.updatedAt=now();return save(db,studioId,project.id,plan);
+}
+export function autoIssueStep(db,{studioId,project,today,termsDays}){
+ const plan=getPlan(db,studioId,project.id);if(!plan?.autoIssue)return null;
+ if(confirmedEstimate(project)?.id!==plan.estimateId)return null;
+ const index=plan.steps.findIndex(step=>!step.invoiceId),step=plan.steps[index];if(!step)return null;
+ const active=id=>!!db.prepare('SELECT 1 FROM invoices WHERE id=? AND studio_id=? AND cancelled_at IS NULL').get(id,studioId);
+ if(!plan.steps.slice(0,index).every(item=>active(item.invoiceId)))return null;
+ const dueDate=stepDueDate(step,project);if(!dueDate||addDays(dueDate,-(termsDays||0))>today)return null;
+ return {plan,step,index,dueDate};
+}
+// The plan remembers that automatic issuing could not go ahead for a payment, so the studio is told once.
+export function markAutoIssueBlocked(db,{studioId,projectId,stepId,reason}){
+ const plan=getPlan(db,studioId,projectId);const step=plan?.steps.find(item=>item.id===stepId);if(!step||step.autoBlocked)return false;
+ step.autoBlocked={reason,at:now()};plan.revision++;plan.updatedAt=now();save(db,studioId,projectId,plan);return true;
+}
+
 // A deposit issued from the main invoice form takes its place in the plan, so
 // the plan does not offer the same payment again. A different amount moves the
 // difference onto the last open payment, keeping the plan total.

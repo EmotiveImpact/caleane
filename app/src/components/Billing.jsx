@@ -1,7 +1,7 @@
 import {CollectionFilter} from './CollectionFilter';
 import {InvoicePreview,printInvoice} from './InvoiceDocument';
 import {invoicePageHtml} from '../lib/invoice-design';
-import {discountFor,invoiceFigures,lateFeeFits,lateFeeShort,lateFeeTerms,tipFor,tipPercents} from '../lib/invoice-charges';
+import {carriedDiscount,discountFor,invoiceFigures,lateFeeFits,lateFeeShort,lateFeeTerms,tipFor,tipPercents} from '../lib/invoice-charges';
 import {WorkspaceSwitch} from './workspace/WorkspaceUI';
 import React,{useEffect,useMemo,useState} from 'react';
 import {Check,Copy,Download,FileText,Plus,Printer,Trash2} from 'lucide-react';
@@ -100,9 +100,8 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  const [kind,setKind]=useState(hasPrior?'Balance':'Deposit');
  const [amount,setAmount]=useState('');
  const [quickLabel,setQuickLabel]=useState(''),[quickKind,setQuickKind]=useState('Full'),[quickLines,setQuickLines]=useState([{title:'',quantity:1,amount:''}]),[quickCurrency,setQuickCurrency]=useState(''),[quickTax,setQuickTax]=useState('');
- // A discount only covers the invoice it is on. A percentage taken off an earlier invoice for this estimate
- // starts the next one too, so 10% off the deposit carries on to the balance unless the studio changes it.
- const carried=useMemo(()=>{for(const item of [...active].sort((a,b)=>String(b.issuedAt).localeCompare(String(a.issuedAt)))){const match=/^(?:(.+) · )?([\d.]+)% off$/.exec(item.discountLabel||'');if(match)return {number:item.number,reason:match[1]||'',percent:match[2]};}return null;},[invoices]);
+ // A percentage off an earlier invoice for this estimate starts this one too.
+ const carried=useMemo(()=>carriedDiscount(active),[invoices]);
  const startCarried=!!carried&&estimateReady;
  const [discountType,setDiscountType]=useState(startCarried?'percent':'none'),[discountValue,setDiscountValue]=useState(startCarried?carried.percent:''),[discountReason,setDiscountReason]=useState(startCarried?carried.reason:'');
  const [lateFeeOn,setLateFeeOn]=useState(true),[tipsOn,setTipsOn]=useState(true);

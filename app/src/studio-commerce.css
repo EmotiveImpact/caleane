@@ -78,7 +78,12 @@
 .billing-plan-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .billing-plan-issue { margin-top: 14px; padding: 16px; background: var(--studio-surface, #f4f1ea); border-radius: 4px; display: grid; gap: 12px; }
 .billing-plan-issue label { display: grid; gap: 6px; font-size: 13px; }
-.billing-plan-issue textarea,.billing-plan-issue input { width: 100%; padding: 8px 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
+.billing-plan-issue textarea,.billing-plan-issue input,.billing-plan-issue select { width: 100%; padding: 8px 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
+.billing-plan-discount { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.billing-plan-issue .billing-clarifier { margin: 0; }
+.billing-plan-steps small.billing-plan-blocked { color: #8a5a12; }
+.billing-plan-auto { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--studio-rule, #e4e0d8); }
+@media(max-width:640px){ .billing-plan-discount { grid-template-columns: minmax(0,1fr); } }
 .billing-refund-form { margin-top: 18px; padding: 18px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 6px; display: grid; gap: 14px; }
 .billing-refund-form h4 { margin: 0; font-size: 16px; }
 .billing-refund-form p { margin: 0; font-size: 13px; color: var(--studio-muted, #6b6b6b); line-height: 1.6; }
