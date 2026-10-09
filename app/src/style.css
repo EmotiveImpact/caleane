@@ -25,3 +25,5 @@
 .auth-story>.auth-visual{position:absolute;inset:0;z-index:0;overflow:hidden}
 .auth-visual img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1s ease}
 .auth-visual img.is-active{opacity:.66}
+.form-error-slot{flex-basis:100%;grid-column:1/-1;min-width:0}.alert.form-error{margin:4px 0 14px;padding:10px 14px}
+.field [aria-invalid=true],label [aria-invalid=true]{border-color:#c47a5a!important;box-shadow:0 0 0 1px #c47a5a}.field+.form-error-slot .form-error,label+.form-error-slot .form-error{margin:-14px 0 20px}
