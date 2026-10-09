@@ -52,3 +52,22 @@ test('CSV export neutralises spreadsheet formulas',()=>{
  assert.match(csv.split('\r\n')[1],/"Yes"/);
  assert.deepEqual(ui.ledgerTotals([invoices[3]]),[{currency:'GBP',invoiced:0,paid:0,outstanding:0}]);
 });
+
+test('the ledger counts partly refunded invoices as paid and shows what is due after credits and fees',async()=>{
+ const input=user();
+ const adjusted=[
+  {id:'r1',number:'INV-101',projectId:'p2',kind:'Full',currency:'GBP',amountMinor:100000,dueMinor:90000,paidMinor:90000,balanceMinor:0,status:'Partly refunded',issuedAt:'2026-06-01T10:00:00Z',dueDate:'2026-06-15'},
+  {id:'r2',number:'INV-102',projectId:'p2',kind:'Balance',currency:'GBP',amountMinor:50000,dueMinor:52500,paidMinor:0,balanceMinor:52500,status:'Issued',issuedAt:'2026-06-02T10:00:00Z',dueDate:'2999-01-01'},
+  invoices[1]
+ ];
+ render(h(ui.StudioBilling,{projects,studio:{id:'s1'},request:async()=>({invoices:adjusted}),run(){},openProject(){}}));
+ await screen.findByText('INV-101');
+ const overview=Object.fromEntries([...document.querySelectorAll('.studio-billing-overview>div')].map(d=>[d.querySelector('span').textContent,d.querySelector('strong').textContent]));
+ assert.equal(overview.Paid,'2');
+ const row=number=>[...document.querySelectorAll('.studio-billing-ledger>button')].find(b=>b.textContent.includes(number)).querySelector('.studio-billing-amount').textContent;
+ assert.equal(row('INV-101'),'£900.00Issued at £1,000.00');
+ assert.equal(row('INV-102'),'£525.00Issued at £500.00');
+ assert.equal(row('INV-002'),'£800.00');
+ await input.click(within(screen.getByRole('group',{name:'Filter invoices'})).getByRole('button',{name:'Paid'}));
+ assert.deepEqual(numbers(),['INV-101','INV-002']);
+});
