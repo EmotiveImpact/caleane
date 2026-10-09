@@ -21,7 +21,8 @@ export function laterChoices(from=new Date()){
  const at=(days,hour)=>{const d=new Date(from);d.setDate(d.getDate()+days);d.setHours(hour,0,0,0);return d;};
  const choices=[];
  if(from.getHours()<13)choices.push({label:'This afternoon',at:at(0,14)});
- choices.push({label:'Tomorrow morning',at:at(1,9)});
+ // Weekends are skipped, so on a Friday the next morning offered is Monday's.
+ if(![0,6].includes(at(1,9).getDay()))choices.push({label:'Tomorrow morning',at:at(1,9)});
  const monday=((8-from.getDay())%7)||7;if(monday>1)choices.push({label:'Monday morning',at:at(monday,9)});
  return choices;
 }
