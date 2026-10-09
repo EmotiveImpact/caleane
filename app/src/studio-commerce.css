@@ -88,6 +88,11 @@
 .billing-adjustment-history h4 { margin: 0 0 8px; font-size: 14px; }
 .billing-adjustment-history > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--studio-rule, #e4e0d8); font-size: 13px; }
 .billing-adjustment-history small { display: block; color: var(--studio-muted, #6b6b6b); }
+.billing-credit-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; }
+.billing-credit-actions .billing-text-button, .billing-file-actions .billing-text-button { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.billing-file-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 16px; }
+.billing-credit-document { padding: 4px 0 14px; }
+.billing-credit-document .invoice-preview { margin: 8px 0 10px; }
 .billing-status-refunded,.billing-status-credited,.billing-status-partly-refunded { background: #ece9f5; color: #45367a; }
 .billing-status-refund-due { background: #fbe9e5; color: #8b2e22; }
 

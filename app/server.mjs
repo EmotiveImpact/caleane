@@ -3,6 +3,7 @@ import {installDataGovernance,dataGovernance,changeGovernance,streamStudioExport
 import {handleCalendarSync,syncAllCalendars} from './calendar-sync.mjs';
 import {handleBookingIntegrations,safeCalendarBusy,completeBookingIntegrations,syncBookingIntegrations} from './booking-integrations.mjs';
 import {operationalReadiness} from './operational-readiness.mjs';
+import {invoicePdf,pdfFileName} from './invoice-pdf.mjs';
 import {installDocuments,listDocuments,changeDocument,downloadDocument,syncProjectArchives} from './documents.mjs';
 import {installTaskCollaboration,handleTaskCollaboration} from './task-collaboration.mjs';
 import {assertQuota,cleanupUnattachedUploads} from './uploads.mjs';
@@ -284,7 +285,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     const studio=memberships.find(s=>s.id===url.searchParams.get('studio'));if(!studio)fail(403,'You do not have access to this studio.');const owner=studio.role==='owner',staffViewer=studio.role==='staff_viewer',bookkeeper=studio.role==='staff_bookkeeper';
     // Bookkeepers read the money and nothing else: no project content, messages, files, settings or changes of any kind.
-    if(bookkeeper&&!(req.method==='GET'&&(['/api/invoices','/api/projects',`/api/studios/${studio.id}/stripe-status`,'/api/expenses','/api/finance-report'].includes(route)||/^\/api\/projects\/[a-f0-9-]+\/invoices(?:\/(?:plan|[a-f0-9-]+))?$/.test(route)||/^\/api\/expenses\/[a-f0-9-]{36}\/receipt$/.test(route))))fail(403,'Bookkeeper access is read-only and limited to finances.');const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
+    if(bookkeeper&&!(req.method==='GET'&&(['/api/invoices','/api/projects',`/api/studios/${studio.id}/stripe-status`,'/api/expenses','/api/finance-report'].includes(route)||/^\/api\/projects\/[a-f0-9-]+\/invoices(?:\/(?:plan|[a-f0-9-]+(?:\/pdf|\/credit-notes\/[a-f0-9-]{36}\/pdf)?))?$/.test(route)||/^\/api\/expenses\/[a-f0-9-]{36}\/receipt$/.test(route))))fail(403,'Bookkeeper access is read-only and limited to finances.');const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
     if(req.method==='POST'&&((route.startsWith('/api/conversations/')&&route.endsWith('/files'))||(route.startsWith('/api/task-workspace/')&&body.action==='file')||(route==='/api/expenses'&&body.receipt)))rate(req,'upload',40);
     const formRoute=route.match(/^\/api\/forms(?:\/([a-f0-9-]+)(?:\/(responses|export))?)?$/);
     if(formRoute){requireOwner();const formId=formRoute[1],action=formRoute[2];
@@ -630,7 +631,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(req.method==='POST'&&operationsMatch[2]){transaction(db,()=>{const changed=changeProjectOperations(db,{...args,action:operationsMatch[2],body});queueProjectEvent(studio.id,changed.project.id,user.id,changed.project.activity?.[0]?.id);return changed;});automate(studio.id,args.projectId);return reply(200,{project:decorate(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(args.projectId).data)),operations:getProjectOperations(db,args)});}
      fail(405,'Method not allowed.');
     }
-    const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/(plan|[a-f0-9-]+)(?:\/(payments|cancel|credit-notes|refunds|tip|late-fee|checkout(?:\/expire)?|attempts))?)?$/);
+    const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/(plan|[a-f0-9-]+)(?:\/(payments|cancel|credit-notes(?:\/[a-f0-9-]{36}\/pdf)?|refunds|tip|late-fee|checkout(?:\/expire)?|attempts|pdf))?)?$/);
     if(invoiceMatch){
      const projectRow=db.prepare('SELECT * FROM projects WHERE id=? AND studio_id=?').get(invoiceMatch[1],studio.id);
      const accessRole=projectRow&&(owner?'Owner':bookkeeper?'Bookkeeper':projectAccess(db,studio.id,projectRow.id,user.id));
@@ -702,6 +703,14 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(invoiceId&&!invoice)fail(404,'Invoice not found.');
      if(req.method==='GET'&&!invoiceId)return reply(200,{invoices:invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row)),design:invoiceDesign(db,studio.id),brandKit:brandKit(db,studio.id)});
      if(req.method==='GET'&&invoiceId&&!subaction)return reply(200,{invoice:invoiceDTO(db,invoice)});
+     // A real PDF file of the invoice or one of its credit notes, for the studio, its bookkeeper and the project approver.
+     if(req.method==='GET'&&(subaction==='pdf'||subaction?.startsWith('credit-notes/'))){
+      const current=invoiceDTO(db,invoice),creditId=subaction==='pdf'?'':subaction.split('/')[1],credit=creditId?current.credits.find(item=>item.id===creditId):null;
+      if(creditId&&!credit)fail(404,'Credit note not found.');
+      const file=await invoicePdf(current,{db,studio,design:invoiceDesign(db,studio.id),brandKit:brandKit(db,studio.id),estimate:project.estimates?.find(item=>item.id===invoice.estimate_id)||current.snapshot.estimate,creditNote:credit});
+      res.writeHead(200,{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="${pdfFileName(credit?'Credit note':'Invoice',credit?credit.number:invoice.number)}"`,'Content-Length':file.length,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"});
+      return res.end(file);
+     }
      if(req.method==='GET'&&subaction==='attempts'){requireOwner();return reply(200,{attempts:listStripeCheckoutAttempts(db,{studioId:studio.id,invoiceId})});}
      if(req.method==='POST'&&subaction==='checkout'){
       if(!stripeReady)fail(503,'Stripe Checkout and its signed webhook must be configured together.');
