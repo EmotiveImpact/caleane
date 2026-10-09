@@ -101,3 +101,11 @@
 .doc-gaps{display:grid;gap:6px;margin:12px 0;padding:14px 16px;border:1px solid #e3c98d;border-radius:4px;background:#fff8e8;color:#5a4317;font-size:13px;line-height:1.55}.doc-gaps p{margin:0}.doc-gaps .doc-quiet{justify-self:start}
 .doc-merge-hint{margin:0;padding:10px 22px;font-size:12px;line-height:1.6;color:#6a7365;overflow-wrap:anywhere}
 .contract-signatures{display:grid;gap:4px}.contract-signatures p{margin:0}
+/* The studio's brand kit on client documents. Each part only applies when the studio has set it. */
+.doc-brand-masthead{display:flex;align-items:center;min-height:36px;margin:0 0 22px}.doc-brand-masthead img{display:block;max-width:200px;max-height:56px;object-fit:contain}.doc-brand-masthead span{font-size:19px;font-weight:600;letter-spacing:.01em;color:#202326}
+.doc-brand-masthead.is-pages{margin:0;padding:16px 22px;background:#fffefa;border-bottom:1px solid #eceae2}
+.doc-branded.doc-brand-fonts .doc-brand-masthead span,.estimate-document.doc-brand-fonts :is(h2,h3),.agreement-preview.doc-brand-fonts :is(.pagedly-ce-content,.doc-reflow) :is(h1,h2,h3,h4){font-family:var(--brand-heading)}
+.estimate-document.doc-brand-fonts,.agreement-preview.doc-brand-fonts .doc-reflow{font-family:var(--brand-body)}.agreement-preview.doc-brand-fonts{--pagedly-font-family:var(--brand-body)}
+.doc-branded.doc-brand-colour .doc-brand-masthead span,.estimate-document.doc-brand-colour :is(h2,h3),.agreement-preview.doc-brand-colour :is(.pagedly-ce-content,.doc-reflow) :is(h1,h2,h3,h4){color:var(--brand-primary)}
+.estimate-document.doc-brand-colour>header{border-bottom-color:var(--brand-primary)}.estimate-document.doc-brand-colour .estimate-totals>div:last-child{border-top-color:var(--brand-primary)}
+.estimate-document.doc-brand-ink{color:var(--brand-ink)}.estimate-document.doc-brand-paper{background:var(--brand-paper)}
