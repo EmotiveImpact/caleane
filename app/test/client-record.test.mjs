@@ -10,8 +10,8 @@ async function workspace(){
  const {server,db}=await createWorkspace({dbFile:path.join(dir,'test.sqlite'),origin,demo:true});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const base='http://127.0.0.1:'+server.address().port;let cookie='';
- async function call(route,method='GET',body){
-  const response=await fetch(base+route,{method,headers:{Origin:origin,...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});
+ async function call(route,method='GET',body,extra={}){
+  const response=await fetch(base+route,{method,headers:{Origin:origin,...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{}),...extra},body:body?JSON.stringify(body):undefined});
   const set=response.headers.get('set-cookie');if(set)cookie=set.split(';')[0];return {status:response.status,data:await response.json()};
  }
  assert.equal((await call('/api/login','POST',{email:'studio@example.test',password:'StudioDemo2026!'})).status,200);
@@ -98,5 +98,32 @@ test('a file nobody attached is cleared after a day, and one still on a record i
   assert.equal(cleanupFieldFiles(w.db,{clock:()=>Date.now()+2*86400000}),1);
   assert.deepEqual(w.db.prepare('SELECT id FROM custom_field_files').all().map(r=>r.id),[kept.id]);
   void stray;
+ }finally{await w.close();}
+});
+
+test('search finds tags, field values, notes, logged calls, forms and form answers',async()=>{
+ const w=await workspace();
+ try{
+  const search=async(term,scope='all')=>(await w.call(`/api/search${w.q}&scope=${scope}&q=${encodeURIComponent(term)}`)).data;
+  const item=(result,type)=>result.groups.flatMap(g=>g.items).find(i=>i.type===type);
+  const field=(await w.call('/api/custom-fields'+w.q,'PUT',{client:[{label:'Referred by',type:'text'}],project:[{label:'Venue',type:'text'}]})).data.fields;
+  const client=(await w.call('/api/clients'+w.q,'POST',{name:'Search Person',email:'search@example.test'})).data.client;
+  await w.call(`/api/clients/${client.id}/fields${w.q}`,'PATCH',{tags:['Brand refresh'],fields:{[field.client[0].id]:'Hannah at the Grange'}});
+  await w.call(`/api/clients/${client.id}/notes${w.q}`,'POST',{text:'Prefers calls after four, never on Mondays.'});
+  await w.call(`/api/clients/${client.id}/activities${w.q}`,'POST',{kind:'Call',title:'Discovery call',detail:'Wants a paper-led identity.'});
+  let hit=item(await search('brand refresh'),'client');
+  assert.equal(hit.id,client.id);assert.equal(hit.subtitle,'Tag: Brand refresh');
+  hit=item(await search('grange'),'client');assert.equal(hit.subtitle,'Referred by: Hannah at the Grange');
+  hit=item(await search('mondays','clients'),'note');assert.equal(hit.clientId,client.id);assert.match(hit.subtitle,/Private note/);
+  hit=item(await search('paper-led'),'note');assert.equal(hit.subtitle,'Search Person · Call');
+  const project=(await w.call('/api/projects'+w.q)).data.projects[0];
+  await w.call(`/api/projects/${project.id}/fields${w.q}`,'PATCH',{fields:{[field.project[0].id]:'Orangery at Kew'}});
+  hit=item(await search('orangery'),'project');assert.equal(hit.id,project.id);assert.equal(hit.subtitle,'Venue: Orangery at Kew');
+  // Opening Forms sets up the studio's enquiry form; a public enquiry then leaves a response.
+  await w.call('/api/forms'+w.q);
+  const enquiry=await w.call('/api/public/nay-decor/enquiries','POST',{name:'Rowan Vale',email:'rowan@example.test',occasion:'A lantern-lit garden supper for forty'},{'Idempotency-Key':'search-enquiry'});assert.equal(enquiry.status,201,JSON.stringify(enquiry.data));
+  const form=w.db.prepare('SELECT id,name FROM enquiry_forms WHERE studio_id=?').get(w.studio),response=w.db.prepare('SELECT project_id FROM enquiry_form_responses WHERE studio_id=?').get(w.studio);
+  hit=item(await search(form.name),'form');assert.equal(hit.id,form.id);
+  hit=item(await search('lantern-lit'),'response');assert.equal(hit.projectId,response.project_id);assert.match(hit.subtitle,/Rowan Vale/);
  }finally{await w.close();}
 });
