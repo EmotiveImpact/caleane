@@ -1,5 +1,5 @@
 import {createCipheriv,createDecipheriv,randomBytes,randomUUID,createHash} from 'node:crypto';
-import {projectAccess,conversationAccess} from './relationships.mjs';
+import {projectAccess,conversationAccess,joinStatus} from './relationships.mjs';
 import {transaction,conversationUnreadCount} from './store.mjs';
 import {conversationRecipients} from './notification-feed.mjs';
 
@@ -142,9 +142,33 @@ export function createNotificationOutbox(db,{encryptionKey,origin,clock=Date.now
    :db.prepare(`SELECT u.id,u.email FROM users u JOIN memberships m ON m.user_id=u.id
      WHERE m.studio_id=? AND m.role='owner'`).all(studioId);
   const link=new URL('/',site);link.searchParams.set('view','projects');link.searchParams.set('project',projectId);link.searchParams.set('tab','Activity');
-  return transaction(db,()=>recipients.filter(recipient=>recipient.id!==actorUserId).map(recipient=>insert({studioId,kind:'project_activity',
+  const studioName=db.prepare('SELECT name FROM studios WHERE id=?').get(studioId).name.replace(/\s+/g,' ').trim(),title=String(project.title||'your project').replace(/\s+/g,' ').trim();
+  return transaction(db,()=>[...recipients.filter(recipient=>recipient.id!==actorUserId).map(recipient=>insert({studioId,kind:'project_activity',
    dedupeKey:`project:${projectId}:event:${eventId}:user:${recipient.id}`,to:cleanEmail(recipient.email),recipientUserId:recipient.id,projectId,
-   payload:{subject:'A project update in Caleane',text:`There is a new update in your Caleane project.\n\nView the project: ${link.href}\n\nSign in to see the details.`}})));
+   payload:{subject:'A project update in Caleane',text:`There is a new update in your Caleane project.\n\nView the project: ${link.href}\n\nSign in to see the details.`}})),
+   ...(actor.role==='owner'?queueLeads({studioId,scope:{projectId},kind:'project_activity',key:`project:${projectId}:event:${eventId}`,projectId,
+    payload:href=>({subject:`An update from ${studioName}`,text:`${studioName} has shared an update on “${title}” in their Caleane workspace.\n\nJoin to see it and reply: ${href}\n\nThis link is just for you. It expires in seven days and can be used once.`})}):[])]);
+ }
+
+ // Someone from a form or booking has no login yet, so a sign-in link would reach nothing.
+ // Their email goes to the address they enquired from and carries their own invitation link.
+ function leadInvitation(studioId,email){
+  const token=randomBytes(32).toString('hex'),invitationDigest=digest(token),link=new URL('/join',site);link.hash=token;
+  db.prepare('INSERT INTO invitations VALUES(?,?,?,?,0)').run(invitationDigest,studioId,email,stamp()+7*86400000);
+  return {invitationDigest,href:link.href};
+ }
+ function queueLeads({studioId,scope,kind,key,projectId=null,conversationId=null,delayMs=0,payload}){
+  const waiting=db.prepare(`SELECT 1 FROM notification_outbox WHERE studio_id=? AND kind IN ('message','project_activity') AND recipient_user_id IS NULL AND recipient_email=? AND state IN ('pending','sending')`);
+  const queued=[];
+  for(const person of joinStatus(db,studioId,scope).waiting){
+   let to;try{to=cleanEmail(person.email);}catch{continue;}
+   // One email until they act on it: later messages and updates ride on the one already waiting.
+   if(waiting.get(studioId,to))continue;
+   const invite=leadInvitation(studioId,to);
+   insert({studioId,kind,dedupeKey:`${key}:lead:${to}`,to,projectId,invitationDigest:invite.invitationDigest,conversationId,delayMs,payload:payload(invite.href)});
+   queued.push(to);
+  }
+  return queued;
  }
 
  // One email per conversation until the recipient catches up: later messages ride on the one already waiting.
@@ -169,12 +193,22 @@ export function createNotificationOutbox(db,{encryptionKey,origin,clock=Date.now
      payload:{subject:`${author} sent you a message`,text:`${author} wrote to you about “${topic}” in ${studioName}'s Caleane workspace.\n\nRead and reply: ${link.href}\n\nSign in to see the message. To stop these emails, open the bell in Caleane and turn off message emails.`}});
     queued.push(userId);
    }
+   // Leads are only written to by the studio; a client's own message never invites anyone.
+   if(owners.has(actorUserId))queued.push(...queueLeads({studioId,scope:c.project_id?{projectId:c.project_id}:{clientId:c.client_id},kind:'message',key:`message:${message.id}`,projectId:c.project_id,conversationId:c.id,delayMs,
+    payload:href=>({subject:`${author} sent you a message`,text:`${author} wrote to you about “${topic}” in ${studioName}'s Caleane workspace.\n\nJoin to read and reply: ${href}\n\nThis link is just for you. It expires in seven days and can be used once.`})}));
    return queued;
   });
  }
 
  function stillAuthorized(job){
   const user=db.prepare('SELECT email FROM users WHERE id=?').get(job.recipient_user_id);
+  if(job.kind!=='invitation'&&!job.recipient_user_id){
+   // A lead's email stays valid while their invitation does, they still have not joined, and what it points to still exists.
+   const invite=db.prepare('SELECT email,expires,used FROM invitations WHERE token=? AND studio_id=?').get(job.invitation_digest,job.studio_id);
+   if(!invite||invite.email!==job.recipient_email||invite.used||invite.expires<=stamp())return false;
+   if(db.prepare(`SELECT 1 FROM crm_contacts ct JOIN memberships m ON m.user_id=ct.user_id AND m.studio_id=ct.studio_id AND m.role='client' WHERE ct.studio_id=? AND ct.email=?`).get(job.studio_id,job.recipient_email))return false;
+   return job.kind==='message'?!!db.prepare('SELECT 1 FROM conversations WHERE id=? AND studio_id=?').get(job.conversation_id,job.studio_id):!!db.prepare('SELECT 1 FROM projects WHERE id=? AND studio_id=?').get(job.project_id,job.studio_id);
+  }
   if(job.kind==='invitation'){
    const invite=db.prepare('SELECT email,expires,used FROM invitations WHERE token=? AND studio_id=?').get(job.invitation_digest,job.studio_id);
    return !!invite&&invite.email===job.recipient_email&&!invite.used&&invite.expires>stamp();

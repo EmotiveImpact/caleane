@@ -4,6 +4,7 @@ import {installConsultations} from './consultations.mjs';
 import {getProjectOperations,changeProjectOperations} from './studio-operations.mjs';
 import {createPlan,getPlan,installPaymentPlans} from './payment-plans.mjs';
 import {firstOpenedAt,documentOpens} from './document-opens.mjs';
+import {hasJoinedClient,joinStatus} from './relationships.mjs';
 
 // The pipeline reads what already happened on the linked project (quotes,
 // proposals, date holds, deposits, client replies) and keeps each enquiry in
@@ -91,7 +92,6 @@ function nudgeOpened(db,{studioId,opp,owner,p,item,kind,asOf,days}){
  });
  return true;
 }
-function hasPortalClient(db,studioId,projectId){return !!db.prepare('SELECT 1 FROM crm_project_stakeholders WHERE studio_id=? AND project_id=? AND portal_access=1').get(studioId,projectId);}
 
 // Move forward only, once per trigger. Returns true when the stage changed.
 function advance(db,{studioId,opp,owner,to,key,reason}){
@@ -137,7 +137,7 @@ export function followUpAction(db,studioId,{opportunityId,action,outbox=null}){
  if(action==='pause'){if(!fired(db,studioId,'pause:'+proposal.id))transaction(db,()=>{mark(db,studioId,'pause:'+proposal.id,opp.id);activity(db,studioId,opp,owner,'Follow-ups paused');});return;}
  if(action==='resume'){transaction(db,()=>{db.prepare('DELETE FROM crm_pipeline_triggers WHERE studio_id=? AND key=?').run(studioId,'pause:'+proposal.id);activity(db,studioId,opp,owner,'Follow-ups resumed');});return;}
  if(action!=='send')fail(400,'Choose a follow-up action.');
- if(!hasPortalClient(db,studioId,p.id))fail(409,'Invite the client to their project space before sending follow-ups.');
+ if(!hasJoinedClient(db,studioId,p.id))fail(409,'Invite the client to their project space before sending follow-ups.');
  const index=nextFollowUpIndex(db,studioId,proposal,settings);if(index<0)fail(409,'Every follow-up for this proposal has been sent.');
  sendFollowUp(db,{studioId,opp,p,proposal,owner,studio,settings,index,outbox,reason:'Sent early by the studio.'});
 }
@@ -216,7 +216,7 @@ export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}
     else if(b.scopeAccepted&&b.deposit?.status==='Paid'&&transaction(db,()=>advance(db,{studioId,opp,owner,to:'Won',key:'deposit:'+b.deposit.invoiceId,reason:'the deposit was paid'})))log.push({opportunityId:opp.id,action:'Won'});
    }
    // Follow-ups stop the moment the client writes back, the proposal is answered or the owner pauses them.
-   if(settings.followUps&&proposal?.status==='Awaiting response'&&proposal.expiresOn>=asOf&&hasPortalClient(db,studioId,p.id)&&!fired(db,studioId,'pause:'+proposal.id)){
+   if(settings.followUps&&proposal?.status==='Awaiting response'&&proposal.expiresOn>=asOf&&hasJoinedClient(db,studioId,p.id)&&!fired(db,studioId,'pause:'+proposal.id)){
     const replied=lastClientMessage(db,p.id);
     if(!replied||replied<proposal.createdAt){
      const index=nextFollowUpIndex(db,studioId,proposal,settings);
@@ -314,10 +314,12 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
     const out=dayNumber(asOf)-dayNumber(proposal.createdAt),silent=!replied||replied<proposal.createdAt,left=dayNumber(proposal.expiresOn)-dayNumber(asOf),opened=firstOpenedAt(db,studioId,'proposal',proposal.id);
     if(left<0)flags.push({kind:'proposal-expired',tone:'bad',label:'Proposal expired',rank:1});
     else if(left<=3)flags.push({kind:'proposal-ending',tone:'warn',label:`Proposal closes ${shortDay(proposal.expiresOn)}`,rank:2});
-    if(silent&&out>=settings.silentDays)flags.push({kind:'silent',tone:'warn',label:`No reply for ${out} days`,rank:3});
+    // A lead who has not joined cannot see the proposal, so it is not out with them yet.
+    if(!hasJoinedClient(db,studioId,p.id))flags.push({kind:'not-joined',tone:'warn',label:'Not joined yet',rank:2});
+    else if(silent&&out>=settings.silentDays)flags.push({kind:'silent',tone:'warn',label:`No reply for ${out} days`,rank:3});
     else flags.push({kind:'waiting',tone:'info',label:out?`Proposal out ${out} day${out===1?'':'s'}`:'Proposal sent today',rank:6});
     if(opened)flags.push({kind:'opened',tone:'info',label:`Opened ${shortDay(opened)}`,rank:5});
-    else if(out>=2&&hasPortalClient(db,studioId,p.id))flags.push({kind:'unopened',tone:'warn',label:'Not opened yet',rank:3});
+    else if(out>=2&&hasJoinedClient(db,studioId,p.id))flags.push({kind:'unopened',tone:'warn',label:'Not opened yet',rank:3});
    }else if(proposal.status==='Changes requested')flags.push({kind:'changes',tone:'warn',label:'Changes requested',rank:1});
    else if(proposal.status==='Scope accepted'&&booking?.deposit?.status!=='Paid')flags.push({kind:'deposit',tone:'good',label:'Accepted · deposit due',rank:2});
   }else if(open&&estimate?.status==='Changes requested')flags.push({kind:'changes',tone:'warn',label:'Quote changes requested',rank:1});
@@ -334,7 +336,7 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
    proposal:proposal?{id:proposal.id,version:proposal.version,title:proposal.title,status:proposal.status,expiresOn:proposal.expiresOn,sharedAt:proposal.createdAt,openedAt:firstOpenedAt(db,studioId,'proposal',proposal.id)}:null,
    hold:hold?{id:hold.id,status:hold.status,startDate:hold.startDate,holdUntil:hold.holdUntil}:null,
    deposit:booking?.deposit&&!['No deposit invoice','Private'].includes(booking.deposit.status)?booking.deposit:null,
-   productionStatus:booking?.productionStatus||null,portalClient:p?hasPortalClient(db,studioId,p.id):false,
+   productionStatus:booking?.productionStatus||null,portalClient:p?hasJoinedClient(db,studioId,p.id):false,waitingToJoin:p?joinStatus(db,studioId,{projectId:p.id}).waiting:[],
    lastClientMessageAt:replied,opened,followUpsSent:followed,nextFollowUp:paused?null:nextFollow,followUpsPaused:paused,alternatives,fit,flags:flags.sort((a,b)=>a.rank-b.rank)};
  }
  return {settings,asOf,dates,signals,planTemplate:billingDefaults(db,studioId).plan,insights:insights(db,studioId,opps,projects,asOf),handled:handledFor(db,studioId,asOf),replySpeed:replySpeed(db,studioId,opps,asOf)};

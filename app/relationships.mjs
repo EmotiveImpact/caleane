@@ -104,6 +104,22 @@ export function listStakeholders(db,studioId,projectId){return db.prepare(`SELEC
  WHERE ps.studio_id=? AND ps.project_id=? ORDER BY ps.primary_contact DESC,ct.name`).all(studioId,projectId)
  .map(row=>({...row,isPrimary:!!row.isPrimary,portalLinked:!!row.portalLinked}));}
 
+// Joined means the person accepted an invitation: their contact has a login that is a client of this studio.
+// A lead from a public form or booking has portal access on paper but no login, so nothing reaches them yet.
+const JOINED=`ct.user_id IS NOT NULL AND EXISTS(SELECT 1 FROM memberships m WHERE m.user_id=ct.user_id AND m.studio_id=ct.studio_id AND m.role='client')`;
+function audience(db,studioId,{projectId=null,clientId=null}){return projectId?db.prepare(`SELECT ct.id AS contactId,ct.name,ct.email,${JOINED} AS joined FROM crm_project_stakeholders ps
+ JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE ps.studio_id=? AND ps.project_id=? AND ps.portal_access=1 ORDER BY ps.primary_contact DESC,ct.name`).all(studioId,projectId)
+ :db.prepare(`SELECT ct.id AS contactId,ct.name,ct.email,${JOINED} AS joined FROM crm_client_contacts cc
+ JOIN crm_contacts ct ON ct.id=cc.contact_id AND ct.studio_id=cc.studio_id WHERE cc.studio_id=? AND cc.client_id=? AND cc.account_access=1 ORDER BY cc.primary_contact DESC,ct.name`).all(studioId,clientId);}
+/** Who would see a project or client conversation, and who of them has not joined yet (with whether an invitation is waiting). */
+export function joinStatus(db,studioId,scope){
+ const people=audience(db,studioId,scope);
+ if(!people.length){const client=db.prepare('SELECT name,email FROM clients WHERE id=? AND studio_id=?').get(scope.projectId?projectClientId(db,studioId,scope.projectId):scope.clientId,studioId);if(client)people.push({contactId:null,name:client.name,email:client.email,joined:0});}
+ const invited=db.prepare('SELECT 1 FROM invitations WHERE studio_id=? AND email=? AND used=0 AND expires>?');
+ return {joined:people.some(p=>p.joined),waiting:people.filter(p=>!p.joined).map(p=>({contactId:p.contactId,name:p.name,email:p.email,invited:!!invited.get(studioId,p.email,Date.now())}))};
+}
+export function hasJoinedClient(db,studioId,projectId){return !!db.prepare(`SELECT 1 FROM crm_project_stakeholders ps JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE ps.studio_id=? AND ps.project_id=? AND ps.portal_access=1 AND ${JOINED}`).get(studioId,projectId);}
+
 export function bindInvitedContact(db,studioId,email,userId){
  for(const contact of db.prepare('SELECT id,user_id FROM crm_contacts WHERE studio_id=? AND email=?').all(studioId,email)){
   if(contact.user_id&&contact.user_id!==userId)fail(409,'This contact is already linked to another portal account.');

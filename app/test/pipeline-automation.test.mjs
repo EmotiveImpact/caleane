@@ -125,6 +125,17 @@ test('the owner can send a follow-up early or pause them, and optional rules add
   const opp=opportunity(project.id);
   const signal=pipelineOverview(db,studioId,{asOf:'2099-05-01'}).signals[opp.id];
   assert.deepEqual(signal.alternatives,['2099-05-29','2099-06-05','2099-06-19'],'a full date suggests the nearest free dates a week either side');
+  // A lead from a form has portal access on paper but no login, so nothing is posted or marked as sent.
+  assert.equal(signal.portalClient,false,'a lead who has not joined does not count as able to see their space');
+  assert.deepEqual(signal.waitingToJoin.map(p=>p.email),['bea@example.test']);
+  assert.ok(signal.flags.some(f=>f.kind==='not-joined')&&!signal.flags.some(f=>f.kind==='waiting'),'the proposal is not described as out with them');
+  assert.throws(()=>followUpAction(db,studioId,{opportunityId:opp.id,action:'send'}),e=>e.status===409);
+  assert.equal(messages(project.id).length,0,'nothing is sent to someone who cannot see it');
+  const beaId=id();db.prepare('INSERT INTO users VALUES(?,?,?,?)').run(beaId,'bea@example.test','Bea Lowe','unused');
+  db.prepare('UPDATE crm_contacts SET user_id=? WHERE studio_id=? AND email=?').run(beaId,studioId,'bea@example.test');
+  assert.equal(pipelineOverview(db,studioId,{asOf:'2099-05-01'}).signals[opp.id].portalClient,false,'a login alone is not joining: the invitation must be accepted');
+  db.prepare('INSERT INTO memberships VALUES(?,?,?)').run(beaId,studioId,'client');
+  assert.equal(pipelineOverview(db,studioId,{asOf:'2099-05-01'}).signals[opp.id].portalClient,true);
   followUpAction(db,studioId,{opportunityId:opp.id,action:'send'});
   assert.equal(messages(project.id).length,1,'send now posts the first follow-up straight away');
   followUpAction(db,studioId,{opportunityId:opp.id,action:'pause'});
