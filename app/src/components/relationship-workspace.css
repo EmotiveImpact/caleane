@@ -88,3 +88,4 @@
  .ws-inbox.conversation-open>.ws-heading{display:none}
  .ws-inbox.conversation-open .project-chat .project-talk-composer footer{margin-top:4px}
 }
+.ws-asks li{display:flex;align-items:flex-start;gap:8px}.ws-asks li label{flex:1;min-width:0}.ws-asks .ws-ask-open{flex:none;margin-top:8px;border:1px solid var(--studio-rule);background:transparent;border-radius:6px;padding:3px 8px;font:inherit;font-size:11.5px;color:var(--studio-ink);cursor:pointer}.ws-asks .ws-ask-open:hover{background:var(--studio-paper,#fff)}
