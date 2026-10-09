@@ -40,3 +40,44 @@
  .task-workspace .task-group>header{padding:14px 14px 10px}
  .task-workspace .task-ledger-row{padding-left:12px;padding-right:12px}
 }
+
+/* Projects: the side lists match the boxed cards */
+.studio-split>.studio-attention{border-left:0}
+.studio-attention .studio-attention-item{box-sizing:border-box;margin-bottom:8px;padding:12px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule);border-radius:var(--box-radius);transition:border-color .15s,box-shadow .15s}
+.studio-attention .studio-attention-item:hover{border-color:var(--box-hover);box-shadow:0 2px 8px #0000000a}
+.studio-attention .studio-waiting{border-top:0}
+
+/* Forms */
+.forms-workspace .forms-list{display:grid;gap:12px;border-top:0}
+.forms-workspace .forms-list-row{box-sizing:border-box;padding:16px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule);border-radius:var(--box-radius);transition:border-color .15s,box-shadow .15s}
+.forms-workspace .forms-list-row:hover{border-color:var(--box-hover);box-shadow:0 2px 8px #0000000a}
+
+/* Library */
+.folio-library-grid>article{box-sizing:border-box;padding:12px;background:var(--studio-paper,#fff);border:1px solid var(--box-rule);border-radius:var(--box-radius);transition:border-color .15s,box-shadow .15s}
+.folio-library-grid>article:hover{border-color:var(--box-hover);box-shadow:0 2px 8px #0000000a}
+.folio-library-grid>article .folio-library-preview,.folio-library-grid>article .folio-library-preview img{border-radius:calc(var(--box-radius) - 3px)}
+.folio-library-search{flex:1;min-width:0}
+.folio-library-search input{width:100%;min-width:180px}
+
+/* Narrow screens: what needs you comes before the record of past decisions */
+@media(max-width:1020px){
+ .studio-projects>.studio-split>div:first-child{display:contents}
+ .studio-projects>.studio-split>div:first-child>.studio-decisions{order:2}
+ .studio-projects>.studio-split>.studio-attention{order:1}
+}
+@media(max-width:700px){
+ .studio-attention .studio-attention-item{padding:12px}
+ .folio-library-toolbar{min-width:0}
+ .folio-library-filters{max-width:100%;overflow-x:auto;scrollbar-width:none;gap:20px!important}
+ .folio-library-filters::-webkit-scrollbar{display:none}
+ .folio-library-filters>button{flex:0 0 auto}
+ .folio-library-tools{flex-direction:column;align-items:stretch;gap:10px}
+ .folio-library-search input{min-width:0}
+ .folio-library-tools select{max-width:none;width:100%}
+}
+
+/* Team: the invite panel drops the old beige for the boxed look */
+.member-invite-panel{background:var(--studio-paper,#fff);border:1px solid var(--box-rule);border-radius:var(--box-radius)}
+.member-invite-panel>p:not(.eyebrow){color:var(--studio-muted,#666b75)}
+/* Sidebar counts read on the dark rail without the old beige */
+.folio-nav-badge{background:#fff;color:#181925}

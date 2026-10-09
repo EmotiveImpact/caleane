@@ -84,7 +84,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
   const saveAction=(pane,label)=><footer className="settings-save-row"><WorkspaceButton type="submit" disabled={busy}>{busy?'Saving…':label}</WorkspaceButton>{saved===pane&&<span role="status">Saved.</span>}</footer>;
 
   return <div className={'folio-settings-page settings-tabbed '+(listOpen?'is-list-open':'is-section-open')}>
-    <WorkspaceHeading className="page-heading" title="Workspace settings" description="Your studio identity, client experience and connected services." action={<WorkspaceButton variant="secondary" onClick={()=>navigate('members')}>Members and access</WorkspaceButton>}/>
+    <WorkspaceHeading className="page-heading" title="Workspace settings" description="Your studio identity, client experience and connected services." action={<WorkspaceButton variant="secondary" onClick={()=>navigate('members')}>Team and access</WorkspaceButton>}/>
     {leaving&&dirty&&<div className="settings-unsaved" role="alert"><p>You have unsaved changes in {unsaved.map(([,label])=>label).join(' and ')}. Save them, or discard them before leaving settings.</p><div><WorkspaceButton variant="secondary" size="small" onClick={()=>{choose(unsaved[0][0]);setLeaving(false);}}>Review changes</WorkspaceButton><WorkspaceButton variant="danger" size="small" onClick={discard}>Discard changes</WorkspaceButton></div></div>}
     <div className="settings-shell">
     <nav className="settings-nav" aria-label="Workspace settings sections">
