@@ -5,6 +5,9 @@ import {runMigrations} from './migrations.mjs';
 import {installRelationships,clientForProject,ensurePrimaryContact,ensureProjectRelationship,projectClientId,joinStatus} from './relationships.mjs';
 export const id=()=>randomUUID();
 export const now=()=>new Date().toISOString();
+// A reply-by date stays open until that day has ended everywhere (the last time zone is UTC-12),
+// so a client west of the studio never sees a proposal or contract close a day early.
+export const earliestOpenDay=(at=Date.now())=>new Date(at-12*3600000).toISOString().slice(0,10);
 export const hash=value=>createHash('sha256').update(value).digest('hex');
 export function passwordHash(password){const salt=randomBytes(16).toString('hex');return salt+':'+scryptSync(password,salt,64).toString('hex');}
 let dummyHash;
