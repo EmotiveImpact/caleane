@@ -15,7 +15,7 @@
 /* Dialogs */
 .modal-backdrop,.ws-dialog-scrim{background:var(--ds-backdrop)!important}
 .modal,.ws-dialog,.workspace-search-dialog,.form-settings-dialog{border-radius:var(--ds-radius-dialog)!important}
-body .modal:not(.studio-project-setup)>h2,body .modal:not(.studio-project-setup) .modal-heading h2,body .ws-dialog h2{color:var(--studio-ink,#202326);font-size:var(--ds-title-size);font-weight:560;letter-spacing:-.025em;line-height:1.2}
+body .modal:not(.studio-project-setup)>h2,body .ws-dialog h2{color:var(--studio-ink,#202326);font-size:var(--ds-title-size);font-weight:560;letter-spacing:-.025em;line-height:1.2}
 body .modal :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=color]):not([type=range]),select),
 body .modal .ws-select{min-height:var(--ds-control-height);border-radius:var(--ds-radius-control)!important;background-color:var(--ds-field-surface);font-size:14px}
 body .modal textarea{border-radius:var(--ds-radius-control)!important;background-color:var(--ds-field-surface);font-size:14px}

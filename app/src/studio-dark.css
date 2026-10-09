@@ -9,7 +9,7 @@ body:has(.folio-workspace) .folio-rail nav button.active:before{background:#fff}
 .folio-workspace>.topbar{height:64px;min-height:64px;border-bottom:1px solid var(--studio-rule);background:var(--studio-paper)}
 .folio-workspace>.workspace-body{padding-top:26px}
 .folio-workspace :is(.studio-page-heading,.page-heading,.project-title,.ws-heading) h1{font-size:32px!important;line-height:1.15!important;font-weight:600!important}
-.folio-workspace .project-heading{padding-top:20px;padding-bottom:16px}.folio-workspace .back-link{margin-bottom:12px}.folio-workspace .project-title h1{margin-bottom:6px}.folio-workspace .project-tabs{border-color:var(--studio-rule);gap:24px}.folio-workspace .project-tabs button{padding-top:14px;padding-bottom:14px;color:var(--studio-muted)}.folio-workspace .project-tabs button[data-state=active]{color:var(--studio-accent);border-color:var(--studio-accent)}
+.folio-workspace .project-heading{padding-top:20px;padding-bottom:16px}.folio-workspace .project-title h1{margin-bottom:6px}.folio-workspace .project-tabs{border-color:var(--studio-rule);gap:24px}.folio-workspace .project-tabs button{padding-top:14px;padding-bottom:14px;color:var(--studio-muted)}.folio-workspace .project-tabs button[data-state=active]{color:var(--studio-accent);border-color:var(--studio-accent)}
 body:has(.folio-workspace) :is(.modal,.search-dialog,.notification-popover,.folio-account-menu){background:var(--studio-paper);color:var(--studio-ink);border-color:var(--studio-rule);color-scheme:light}
 body:has(.folio-workspace) :is(input,textarea,select){color:var(--studio-ink);background:var(--studio-surface);border-color:transparent;color-scheme:light;caret-color:var(--studio-accent)}
 body:has(.folio-workspace) :is(input,textarea)::placeholder{color:#797a73;opacity:1}
@@ -52,7 +52,6 @@ body:has(.folio-workspace) .folio-workspace>.topbar .topbar-current{color:var(--
 body:has(.folio-workspace) .folio-workspace>.topbar .demo-tag{background:#eceeed;color:var(--studio-muted)}
 .folio-workspace .project-title>div>p:last-child{color:var(--studio-muted)}
 .studio-day-project-grid{align-items:start}.studio-day-project-grid>button{display:block;align-self:start}
-body:has(.folio-workspace) .folio-workspace>.topbar .topbar-create .button{color:#fff}
 body:has(.folio-workspace) :is(.modal-dialog,.folio-modal) .button:not(.secondary){background:var(--studio-accent);color:#fff}
 body:has(.folio-workspace) :is(.modal-dialog,.folio-modal) .button:not(.secondary):hover{background:var(--studio-accent-hover)}
 body:has(.folio-workspace) .studio-setup-actions .button{background:var(--studio-accent);color:#fff}
@@ -69,7 +68,6 @@ body:has(.folio-workspace) .studio-setup-actions .button{background:var(--studio
 .folio-workspace .folio-settings-page :is(.connection h2,.connection h3,.connection a,.stripe-connect-settings h2){color:var(--studio-ink)}
 .folio-workspace .folio-settings-page :is(.field input,.field textarea,.field select,.connection pre,.connection code){background:var(--studio-paper);color:var(--studio-ink)}
 .folio-workspace .folio-settings-page .connection .button{background:var(--studio-paper);color:var(--studio-ink)}
-.folio-workspace .folio-settings-page .settings-layout>form>.button{background:var(--studio-accent);color:#fff}
 body:has(.folio-workspace) .task-create{--task-muted:var(--studio-muted)}
 body:has(.folio-workspace) .task-create :is(input,textarea,select){background:var(--studio-surface);color:var(--studio-ink)}
 body:has(.folio-workspace) .task-create label{color:var(--studio-muted)}
@@ -81,7 +79,6 @@ body:has(.folio-workspace) .task-create label{color:var(--studio-muted)}
 .folio-workspace .crm-stage-summary.selected{color:var(--studio-accent);border-bottom-color:var(--studio-accent);background:var(--studio-accent-soft)}
 .folio-workspace .crm-stage-summary:focus-visible{outline-color:var(--studio-accent)}
 .folio-workspace :is(.crm-search,.crm-view-switch,.crm-stage-summary,.crm-table-head){background:var(--studio-surface)}
-.folio-workspace .relationship-filters button.active{color:var(--studio-accent);border-color:var(--studio-accent)}
 .folio-workspace :is(.relationship-thread.active,.studio-client-directory .studio-client-row.is-selected){background:var(--studio-accent-soft)}
 .folio-workspace .project-chat .project-talk-composer footer button{background:var(--studio-accent);color:#fff}
 .folio-workspace .project-chat .project-talk-composer footer button:hover{background:var(--studio-accent-hover)}

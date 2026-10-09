@@ -19,7 +19,7 @@ globalThis.ResizeObserver=dom.window.ResizeObserver=class{observe(){}unobserve()
 for(const name of ['hasPointerCapture','setPointerCapture','releasePointerCapture','scrollIntoView'])dom.window.Element.prototype[name]=name==='hasPointerCapture'?()=>false:()=>{};
 
 const compiled=fileURLToPath(new URL(`.workspace-ui-${process.pid}.mjs`,import.meta.url));
-const output=await build({stdin:{contents:"export * from './src/components/workspace/WorkspaceUI.jsx'; export {AdminSidebar} from './src/components/aetheria/AdminSidebar.jsx';",resolveDir:fileURLToPath(new URL('..',import.meta.url)),loader:'jsx'},bundle:true,packages:'external',format:'esm',platform:'node',write:false});
+const output=await build({stdin:{contents:"export * from './src/components/workspace/WorkspaceUI.jsx'; export {AdminSidebar} from './src/components/workspace/AdminSidebar.jsx';",resolveDir:fileURLToPath(new URL('..',import.meta.url)),loader:'jsx'},bundle:true,packages:'external',format:'esm',platform:'node',write:false});
 await writeFile(compiled,output.outputFiles[0].text);
 const ui=await import(pathToFileURL(compiled));
 const {render,screen,cleanup,waitFor}=await import('@testing-library/react');
