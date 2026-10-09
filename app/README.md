@@ -119,7 +119,7 @@ The new People screen was checked in a browser against an isolated demo database
 The public website shows fictional sample data. The product workspace is local. Public workspace launch still needs:
 
 1. A Vercel-compatible runtime, durable shared database and private file storage with backups, monitoring and restoration checks. This SQLite version is a single-server implementation; Vercel Functions cannot persist or share its local WAL file.
-2. Verified outbound email, invitation delivery, account recovery and email verification for studio sign-ups. There is currently no password reset or MFA.
+2. Verified outbound email, invitation delivery, account recovery and email verification for studio sign-ups. Password reset and two-step sign-in with an authenticator app are built; reset links need email delivery switched on.
 3. Shared abuse controls, upload scanning/quotas, an operational security review and session management for a public environment. Current request limits are in memory per process.
 4. A finished privacy notice, retention/export/deletion workflow and business terms.
 5. Product decisions on pricing, team roles, domains and support.
