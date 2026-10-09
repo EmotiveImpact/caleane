@@ -6,7 +6,7 @@ import path from 'node:path';
 import {createWorkspace} from '../server.mjs';
 const origin='http://127.0.0.1:4320';
 test('reference details and discussion persist without changing a design decision',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-references-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-references-'));
  const {server,db}=await createWorkspace({dbFile:path.join(dir,'workspace.sqlite'),origin,demo:true});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
  const sessions={owner:'',client:''};
@@ -36,7 +36,7 @@ test('reference details and discussion persist without changing a design decisio
   assert.equal(result.inspiration.find(i=>i.id===reference.id).comments[0].text,'Can we use a warmer finish?');
   assert.deepEqual(result.designs,originalDesigns);assert.equal(result.briefRevision,revision);
   assert.equal((await call('/api/projects/00000000-0000-4000-8000-000000000000/reference-comments'+query,'POST',{referenceId:reference.id,text:'Outside'},'client')).status,404);
-  const image=await call('/assets/identity/calenne-symbol-ivory.svg');assert.equal(image.status,200);assert.equal(image.response.headers.get('content-type'),'image/svg+xml');
-  const favicon=await call('/assets/identity/calenne-favicon-32.png');assert.equal(favicon.status,200);assert.equal(favicon.response.headers.get('content-type'),'image/png');
+  const image=await call('/assets/identity/caleane-symbol-ivory.svg');assert.equal(image.status,200);assert.equal(image.response.headers.get('content-type'),'image/svg+xml');
+  const favicon=await call('/assets/identity/caleane-favicon-32.png');assert.equal(favicon.status,200);assert.equal(favicon.response.headers.get('content-type'),'image/png');
  }finally{await new Promise(resolve=>server.close(resolve));db.close();await rm(dir,{recursive:true,force:true});}
 });

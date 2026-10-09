@@ -1,13 +1,14 @@
 import {CollectionFilter} from './CollectionFilter';
+import {shortDay} from '../lib/dates';
 import {WorkspaceCheckbox,WorkspaceConfirm,WorkspaceFilters,WorkspaceSelect} from './workspace/WorkspaceUI';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import {Plus,Search,X,Check,FolderClosed,MessageSquare,UserRound} from 'lucide-react';
+import {Plus,X,Check,UserRound} from 'lucide-react';
 import {ProjectImage} from './StudioViews';
 import './task-workspace.css';
 import {TaskCollaboration} from './TaskCollaboration';
 const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-const date=v=>v?new Date(v+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'No date';
+const date=v=>v?shortDay(v):'No date';
 const initials=n=>(n||'Studio').split(' ').map(s=>s[0]).slice(0,2).join('');
 export function TaskWorkspace({studio,projects,request,openProject,openClient,openOpportunity,onProjectUpdate,taskId,navigationKey}){
  const [assignments,setAssignments]=useState({});

@@ -79,7 +79,7 @@ test('contracts can be opened by any invited client once issued, never as a draf
 });
 
 test('the pipeline shows opens and adds one check-in task when an opened proposal goes unanswered',async()=>{
- const {dir,db,studioId,client,project,proposalId,read}=await setup();
+ const {dir,db,studioId,client,project,proposalId}=await setup();
  try{
   const oppId=db.prepare('SELECT id FROM crm_opportunities WHERE project_id=?').get(project.id).id;
   let signal=pipelineOverview(db,studioId,{asOf:'2099-05-03'}).signals[oppId];

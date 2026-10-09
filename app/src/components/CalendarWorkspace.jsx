@@ -1,6 +1,6 @@
 import React,{useState,useEffect,useRef} from 'react';
 import {ChevronLeft,ChevronRight,CalendarDays,CheckSquare} from 'lucide-react';
-import {WorkspaceDialog,WorkspaceButton,WorkspaceDate} from './workspace/WorkspaceUI';
+import {WorkspaceDialog,WorkspaceButton,WorkspaceDate,WorkspaceField} from './workspace/WorkspaceUI';
 import '../folio-operations.css';
 import './calendar-workspace.css';
 
@@ -8,10 +8,11 @@ const localDay=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-
 const dayDate=day=>new Date(day+'T12:00:00');
 const dateLabel=day=>dayDate(day).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-export function Calendar({projects,openProject,studio,request,openTasks}){
+export function Calendar({projects,openProject,studio,request,openTasks,onProjectUpdate}){
  const today=localDay(new Date()),detailsButton=useRef(null);
  const [month,setMonth]=useState(()=>new Date(new Date().getFullYear(),new Date().getMonth(),1));
  const [selected,setSelected]=useState(today),[open,setOpen]=useState(false),[filter,setFilter]=useState('All');
+ const [adding,setAdding]=useState(false),[addError,setAddError]=useState(''),[saving,setSaving]=useState(false);
  const [crmTasks,setCrmTasks]=useState([]),[bookings,setBookings]=useState([]),[followUps,setFollowUps]=useState([]),[loading,setLoading]=useState(false),[error,setError]=useState(''),[retry,setRetry]=useState(0);
  useEffect(()=>{
   let active=true;setCrmTasks([]);setError('');
@@ -31,10 +32,13 @@ export function Calendar({projects,openProject,studio,request,openTasks}){
  .filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date)&&(filter==='All'||e.kind===filter));
  const chosen=events.filter(e=>e.date===selected),monthCount=events.filter(e=>e.date.slice(0,7)===localDay(month).slice(0,7)).length;
  const upcoming=events.filter(e=>e.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
- const showDay=day=>{const d=dayDate(day);setMonth(new Date(d.getFullYear(),d.getMonth(),1));setSelected(day);setOpen(true);};
+ const showDay=day=>{setAdding(false);setAddError('');const d=dayDate(day);setMonth(new Date(d.getFullYear(),d.getMonth(),1));setSelected(day);setOpen(true);};
  const changeMonth=n=>{const next=new Date(month.getFullYear(),month.getMonth()+n,1);setMonth(next);setSelected(localDay(next));};
  const changeDay=n=>{const d=dayDate(selected);d.setDate(d.getDate()+n);showDay(localDay(d));};
  const openEvent=e=>{setOpen(false);if(e.kind==='Task'&&openTasks)openTasks(e.id);else if(e.project)openProject(e.project,e.kind==='Task'?'Plan':'Brief');};
+ const active=projects.filter(p=>!['Archived','Complete'].includes(p.status));
+ // A task added here belongs to a project, so it shows on that project's Plan and in Tasks too.
+ async function addTask(event){event.preventDefault();const form=event.currentTarget,values=Object.fromEntries(new FormData(form));setSaving(true);setAddError('');try{const d=await request(`/api/projects/${values.project}/tasks?studio=${studio.id}`,'POST',{title:values.title,assignee:'studio',due:selected});onProjectUpdate(d.project);form.reset();setAdding(false);}catch(e){setAddError(e.message);}finally{setSaving(false);}}
  const fetchStatus=<>{loading&&<p className="calendar-load-note" role="status">Loading follow-ups…</p>}{error&&<div className="calendar-load-error" role="alert"><p>{error}</p><WorkspaceButton variant="secondary" onClick={()=>setRetry(n=>n+1)}>Retry follow-ups</WorkspaceButton></div>}</>;
  return <section className="folio-calendar calendar-workspace">
   <header className="folio-screen-heading workspace-page-heading"><div><h1>Calendar</h1><p>Project dates, consultations, deadlines and follow-ups. Select a day to see the details.</p></div><button className="button secondary" onClick={()=>showDay(today)}>Today</button></header>
@@ -57,8 +61,9 @@ export function Calendar({projects,openProject,studio,request,openTasks}){
     <span className="calendar-event-icon">{kind==='Project'?<CalendarDays size={18}/>:<CheckSquare size={18}/>}</span><span className="calendar-event-copy"><strong>{e.title}</strong><small>{e.crm?e.clientName||'Studio follow-up':e.project.brief.name}</small>{kind==='Project'&&<span className="calendar-event-state">{e.project.status==='Enquiry'?'Tentative · Enquiry':e.project.status}</span>}<span className="calendar-event-action">{kind==='Project'?'Open project brief':'Open task'}</span></span>
    </button>)}</section>})}
    {!chosen.length&&<div className="calendar-clear-day"><CalendarDays size={28} strokeWidth={1.3}/><h3>{loading?'Your project dates are clear.':error?'No project dates on this day.':'A clear day.'}</h3><p>{error?'Retry to check the studio follow-ups.':`No ${filter==='Task'?'tasks or follow-ups':filter==='Project'?'project dates':filter==='Booking'?'consultations':'project dates, consultations, tasks or follow-ups'} scheduled.`}</p></div>}
+   {onProjectUpdate&&active.length>0&&(adding?<form className="calendar-add-task" onSubmit={addTask}><h3>Add a task for this day</h3><WorkspaceField label="Task"><input name="title" required maxLength={200} autoFocus placeholder="What needs doing?"/></WorkspaceField><WorkspaceField label="Project"><select name="project" required defaultValue={active[0].id}>{active.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}</select></WorkspaceField>{addError&&<p className="alert" role="alert">{addError}</p>}<div className="calendar-add-actions"><WorkspaceButton type="submit" disabled={saving}>{saving?'Adding…':'Add task'}</WorkspaceButton><WorkspaceButton type="button" variant="ghost" onClick={()=>{setAdding(false);setAddError('');}}>Cancel</WorkspaceButton></div></form>:<WorkspaceButton variant="secondary" className="calendar-add-open" onClick={()=>setAdding(true)}><CheckSquare size={16}/>Add a task for this day</WorkspaceButton>)}
    <details className="calendar-upcoming"><summary>Next on the calendar</summary>{upcoming.map(e=><button key={e.id} onClick={()=>showDay(e.date)}><WorkspaceDate date={e.date}/><span><strong>{e.title}</strong><small>{e.kind==='Project'?'Project date':e.kind==='Booking'?'Consultation':'Task or follow-up'}</small></span></button>)}{!upcoming.length&&<p>No upcoming dates in this view.</p>}</details>
-   <p className="calendar-context-note">Dates stay connected to their project or task. Open the item to change its schedule. An enquiry date is tentative until the booking is confirmed.</p>
+   <p className="calendar-context-note">Dates stay connected to their project or task. Open the item to change its schedule, or add a task for this day above. An enquiry date is tentative until the booking is confirmed.</p>
   </WorkspaceDialog>
  </section>;
 }

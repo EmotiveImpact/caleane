@@ -55,6 +55,11 @@ test('price list, templates and billing defaults are owner-only studio libraries
  assert.equal((await call('/api/billing-defaults'+suffix,'POST',{plan:[{label:'Deposit',percent:40,due:{type:'on_issue',days:0}}]},'owner')).status,400);
  response=await call('/api/billing-defaults'+suffix,'POST',{sellerAddress:'1 Studio Lane, London',sellerContact:'hello@studio.test',taxRegistration:'',paymentInstructions:'Bank transfer, reference the invoice number.',paymentTermsDays:14,plan:[{label:'Deposit',percent:25,due:{type:'on_issue',days:0}},{label:'Second payment',percent:25,due:{type:'days_after_confirm',days:30}},{label:'Balance',percent:50,due:{type:'days_before_event',days:14}}]},'owner');
  assert.equal(response.status,200);assert.equal(response.data.defaults.plan.length,3);
+ assert.equal(response.data.defaults.currency,'GBP');assert.equal(response.data.defaults.taxRate,0);
+ response=await call('/api/billing-defaults'+suffix,'POST',{...response.data.defaults,currency:'EUR',taxRate:21},'owner');
+ assert.equal(response.status,200);assert.equal(response.data.defaults.currency,'EUR');assert.equal(response.data.defaults.taxRate,21);
+ assert.equal((await call('/api/billing-defaults'+suffix,'POST',{...response.data.defaults,currency:'JPY'},'owner')).status,400);
+ assert.equal((await call('/api/billing-defaults'+suffix,'POST',{...response.data.defaults,taxRate:150},'owner')).status,400);
 });
 
 test('payment plans issue scheduled invoices, and refunds with credit notes settle them',async t=>{
@@ -196,7 +201,7 @@ test('a credit note is not kept when its project event cannot be saved',async t=
 });
 
 test('invoice design is saved by the owner, readable by the client and rendered safely',async t=>{
- const {call,studio,suffix,project}=await workspace(t);
+ const {call,suffix,project}=await workspace(t);
  const {invoicePageHtml,normaliseInvoiceDesign}=await import('../src/lib/invoice-design.js');
  let r=await call('/api/invoice-design'+suffix,'GET',undefined,'owner');assert.equal(r.status,200);assert.equal(r.data.design.layout,'atelier');
  r=await call('/api/invoice-design'+suffix,'POST',{layout:'bold',font:'serif',accent:'#2b4a3a',showLogo:true,thankYou:'With thanks',footer:'Company 0123456'},'client');assert.equal(r.status,403);
@@ -221,6 +226,11 @@ test('brand kit accepts real logos and fonts only, serves them inertly and feeds
  r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{logos:{primary:font.id}}},'owner');assert.equal(r.status,400);
  r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{logos:{primary:logo.id},colours:{primary:'#5a2d4c',secondary:'#f3e9ee'},fonts:{heading:{type:'upload',assetId:font.id,family:'Brand Serif'},body:{type:'preset',preset:'dm-sans'}}}},'owner');assert.equal(r.status,200);
  assert.equal(r.data.kit.logos.primary,logo.id);assert.equal(r.data.kit.fonts.heading.family,'Brand Serif');
+ // The primary logo becomes the studio logo clients see, as a full address for embedded forms.
+ let me=await call('/api/me','GET',undefined,'owner');assert.match(me.data.studios[0].branding.logoUrl,new RegExp(logo.url+'$'));assert.match(me.data.studios[0].branding.logoUrl,/^http/);
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{...r.data.kit,logos:{primary:''}}},'owner');assert.equal(r.status,200);
+ me=await call('/api/me','GET',undefined,'owner');assert.equal(me.data.studios[0].branding.logoUrl,'');
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{...r.data.kit,logos:{primary:logo.id}}},'owner');assert.equal(r.status,200);
  const base=`http://127.0.0.1:${ws.server.address().port}`,file=await fetch(base+logo.url);assert.equal(file.status,200);assert.equal(file.headers.get('content-type'),'image/png');assert.match(file.headers.get('content-security-policy'),/sandbox/);assert.equal(file.headers.get('x-content-type-options'),'nosniff');
  r=await call(`/api/projects/${project.id}/invoices${suffix}`,'GET',undefined,'client');assert.equal(r.data.brandKit.colours.primary,'#5a2d4c');assert.equal(r.data.brandKit.logos.primary,logo.id);
  const {invoicePageHtml}=await import('../src/lib/invoice-design.js');

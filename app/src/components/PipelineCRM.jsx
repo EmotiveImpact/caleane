@@ -4,7 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import {Check,FileText,Pencil,Plus,Search,X,Clock,CalendarDays,MessageSquare} from 'lucide-react';
 import {WorkspaceFilters,WorkspaceSelect} from './workspace/WorkspaceUI';
 import {DEFAULT_WORKFLOW,workflowOptionsFor,briefFieldsFor,workflowFor} from '../lib/workflows';
-import {PIPELINE_STAGES as stages,ACTIVE_PIPELINE_STAGES as activeStages,stageLabelsFor,isOpenEnquiry,nextStepFor,attentionFor,sortByAttention,opportunityTotals} from '../lib/pipeline.mjs';
+import {PIPELINE_STAGES as stages,ACTIVE_PIPELINE_STAGES as activeStages,stageLabelsFor,isOpenEnquiry,nextStepFor,attentionFor,sortByAttention} from '../lib/pipeline.mjs';
 import {DealOverview,DealQuote,DealFollowUps,SignalChips,Chip,whyFor,primaryFor} from './PipelineDeal';
 import {StageStrip,DatesView,InsightsView,AutomationsView,SummaryTiles,TodaySide} from './PipelineViews';
 import {QuietHelper} from './QuietHelper';
@@ -49,7 +49,7 @@ export function PipelineCRM({studio,request,run,busy,openClient,openProject,open
  useEffect(()=>setPage(1),[query,stageFilter,layout,initialClientId,studio.id,pageSize]);
  useEffect(()=>{if(page>pageCount)setPage(pageCount);},[page,pageCount]);
  function changePage(value){setPage(value);listRef.current?.focus();listRef.current?.scrollIntoView({block:'start'});}
- const totals=opportunityTotals(scoped),stageOptions=stages.map(value=>({value,label:labels[value]}));
+ const stageOptions=stages.map(value=>({value,label:labels[value]}));
  const taskOwner=t=>assignments['crm:'+t?.id]||studio.name;
  const currentBoardStage=stageChoices.includes(boardStage)?boardStage:stageChoices[0];
  function focusStage(stage){setBoardStage(stage);const column=boardRef.current?.querySelector(`[data-stage="${stage}"]`);if(column&&boardRef.current)boardRef.current.scrollTo?.({left:column.offsetLeft-boardRef.current.offsetLeft,behavior:'smooth'});}

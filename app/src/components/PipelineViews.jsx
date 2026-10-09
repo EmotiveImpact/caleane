@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import {shortDay} from '../lib/dates';
 import {ChevronLeft,ChevronRight} from 'lucide-react';
 import {Chip} from './PipelineDeal';
 
@@ -49,7 +50,7 @@ export function DatesView({dates,capacity,onOpen}){
    <div className="pl-cap"><Chip tone={d.state==='full'?'bad':d.state==='held'?'warn':'good'}>{d.state==='full'?'Full':d.state==='held'?'Last place held':`${free} free`}</Chip><small><b>{d.booked.length}</b> booked · {d.held.length} held · {d.asking.length} asking</small></div></article>;})}</div>;
 }
 function Slot({kind,item,onOpen}){
- const label=item.title+(kind==='held'&&item.holdUntil?` · held to ${new Date(item.holdUntil+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`:'');
+ const label=item.title+(kind==='held'&&item.holdUntil?` · held to ${shortDay(item.holdUntil)}`:'');
  return item.opportunityId?<button type="button" className={'pl-slot is-'+kind} onClick={e=>onOpen(item.opportunityId,e.currentTarget)}>{label}</button>:<span className={'pl-slot is-'+kind}>{label}</span>;
 }
 

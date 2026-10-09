@@ -2,9 +2,9 @@ import {messagePreview} from '../lib/message-preview';
 import {ProjectChat} from './ProjectChat';
 import {watchConversations} from '../lib/conversationFeed';
 import React,{useEffect,useState,useRef} from 'react';
-import {Mail,Plus,Send} from 'lucide-react';
+import {Mail} from 'lucide-react';
 export function PortalCorrespondence({studio,request,run,busy,projects,projectId,openProject,user,onThreadSelect,projectOnly=false,owner=false}){
- const [threads,setThreads]=useState([]),[selected,setSelected]=useState(null),[drafts,setDrafts]=useState({}),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);const revision=useRef(0),heldUnread=useRef(null);
+ const [threads,setThreads]=useState([]),[selected,setSelected]=useState(null),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);const revision=useRef(0),heldUnread=useRef(null);
  useEffect(()=>{return watchConversations(studio.id,request,{start:()=>revision.current,data:(list,version)=>{if(version===revision.current)setThreads(list);},error:e=>setError(e.message),done:()=>setLoaded(true)});},[studio.id]);
  const visibleThreads=projectOnly?threads.filter(t=>t.projectId===projectId):threads;
  const thread=visibleThreads.find(t=>t.id===selected)||visibleThreads.find(t=>t.projectId===projectId)||visibleThreads[0],project=projects.find(p=>p.id===thread?.projectId);

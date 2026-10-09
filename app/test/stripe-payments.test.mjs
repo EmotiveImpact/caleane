@@ -12,7 +12,7 @@ const secret='whsec_test_secret';
 const verifier=new Stripe('sk_test_only_for_local_signature_tests');
 
 async function fixture(){
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-stripe-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-stripe-'));
  const db=openStore(path.join(dir,'db.sqlite'));
  const studioId='studio-one',projectId='project-one',invoiceId='invoice-one';
  db.prepare('INSERT INTO studios VALUES(?,?,?,?,?)').run(studioId,'studio-one','Studio One','#000000','[]');

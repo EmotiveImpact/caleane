@@ -1,8 +1,9 @@
 import React,{useState} from 'react';
+import {shortDay} from '../lib/dates';
 import {FileText,FolderClosed} from 'lucide-react';
 import {WorkspaceAvatar,WorkspaceButton,WorkspaceStatus} from './workspace/WorkspaceUI';
 import {fileUrl,plainText} from './ProjectChat';
-const shortDate=at=>new Date(at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const shortDate=at=>shortDay(at);
 
 // What a conversation still needs, what was shared and who can see it.
 export function ConversationPanel({thread,project,studio,request,owner,onConversation,openProject,onLeave,fileHref}){
