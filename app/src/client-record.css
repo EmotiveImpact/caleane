@@ -1,0 +1,16 @@
+/* Client record header: Edit profile, message and New project sit as one row of equal-height buttons.
+   The workspace clears text-button borders with !important, so these two restate theirs. */
+.folio-client-layout .folio-client-header .folio-client-actions{gap:8px;align-items:center}
+.folio-client-layout .folio-client-actions>:is(.folio-text-button,.folio-icon-button){box-sizing:border-box;height:var(--ds-control-height);border:1px solid var(--studio-rule,#dfe0e5);border-color:var(--studio-rule,#dfe0e5)!important;border-radius:var(--ds-radius-control);background:#fff;color:var(--studio-ink,#181925);font-size:13px;font-weight:500}
+.folio-client-layout .folio-client-actions>.folio-text-button{padding:0 16px}
+.folio-client-layout .folio-client-actions>.folio-icon-button{width:var(--ds-control-height);padding:0}
+.folio-client-layout .folio-client-actions>:is(.folio-text-button,.folio-icon-button):hover{background:var(--ae-soft,#f4f2ee)}
+.folio-client-layout .folio-client-actions .button{box-sizing:border-box;min-height:var(--ds-control-height);height:var(--ds-control-height);padding:0 18px;font-size:13px}
+@media(max-width:760px){
+ .folio-client-layout .folio-client-header{flex-direction:column;align-items:stretch}
+ .folio-client-layout .folio-client-header .folio-client-actions{width:100%;margin-left:0;display:grid;grid-template-columns:1fr auto 1fr}
+ .folio-client-layout .folio-client-actions :is(.button,.folio-text-button){width:100%;justify-content:center}
+}
+/* Keyboard focus on a record tab shows as a soft tint, not an outline clipped by the scrolling tab row. */
+.folio-client-layout .folio-tabs>button{padding-inline:6px;margin-inline:-6px;border-radius:6px 6px 0 0}
+body .folio-client-layout .folio-tabs>button:focus-visible{outline:none!important;background:rgba(24,25,37,.06);color:#15161e}

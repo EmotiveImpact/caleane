@@ -14,6 +14,7 @@ import {watchConversations} from '../lib/conversationFeed';
 import {demoCoverFor} from '../lib/workflows';
 import {WorkspaceConfirm} from './workspace/WorkspaceUI';
 import './record-actions.css';
+import '../client-record.css';
 import {StudioDetails,TagChips,useFieldDefinitions,useMediaQuery} from './CustomFields';
 import {collectTags} from '../lib/custom-fields';
 const date=v=>v?new Date(v.length===10?v+'T12:00:00':v).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'Not scheduled';
