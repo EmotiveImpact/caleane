@@ -78,3 +78,9 @@ test('Delivery sees a paid deposit on a project that has no estimate',async t=>{
  await call(`${invoices}/${invoice.id}/payments${q}`,'POST',{amountMinor:50000,method:'bank_transfer',reference:'DEP',receivedAt:today()});
  assert.deepEqual([deposit().status,deposit().invoiceId,deposit().paidMinor],['Paid',invoice.id,50000]);
 });
+
+test('estimate lines keep how a price list item is charged',async t=>{
+ const {call,q,project}=await workspace(t);
+ const saved=(await call(`/api/projects/${project.id}/estimates${q}`,'POST',{title:'Scope',currency:'EUR',taxRate:0,items:[{title:'Styling hours',quantity:3,unitAmount:8000,unit:'hour'},{title:'Arch',quantity:1,unitAmount:50000,unit:'each'},{title:'Odd',quantity:1,unitAmount:100,unit:'fortnight'}]})).data.project.estimates.at(-1);
+ assert.deepEqual(saved.items.map(item=>item.unit),['hour',undefined,undefined]);
+});

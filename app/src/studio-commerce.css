@@ -99,6 +99,7 @@
 /* Estimate: add from price list */
 .estimate-price-picker { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 4px 0 12px; font-size: 13px; }
 .estimate-price-picker select { min-height: 38px; max-width: 100%; padding: 0 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
+.estimate-price-picker small { flex-basis: 100%; color: var(--studio-muted, #80858d); font-size: 12px; }
 
 /* Conversation: insert a template */
 .template-picker { position: relative; }
