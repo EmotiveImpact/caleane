@@ -30,6 +30,16 @@ test('credit notes have their own document in every design, naming the original 
  }
 });
 
+test('payment details only show while the client still owes money',()=>{
+ const {invoice}=sampleInvoice({name:'Studio'});
+ for(const [layout] of invoiceLayouts){
+  assert.match(invoicePageHtml(invoice,{design:{layout}}),/How to pay/,layout);
+  assert.match(invoicePageHtml({...invoice,status:'Partially paid',paidMinor:10000,balanceMinor:invoice.amountMinor-10000},{design:{layout}}),/How to pay/,layout);
+  for(const settled of [{status:'Paid',paidMinor:invoice.amountMinor,balanceMinor:0},{status:'Partially refunded',paidMinor:invoice.amountMinor,refundedMinor:5000,balanceMinor:0},{status:'Credited',creditedMinor:invoice.amountMinor,balanceMinor:0},{status:'Issued',paidMinor:invoice.amountMinor+5000,balanceMinor:0,refundDueMinor:5000}])
+   assert.doesNotMatch(invoicePageHtml({...invoice,...settled},{design:{layout}}),/How to pay/,`${layout} ${settled.status}`);
+ }
+});
+
 test('invoice and credit note PDFs are real one-page files',async()=>{
  const {invoice,estimate}=sampleInvoice({name:'NAY DÉCOR'},{vatRegistered:true,taxRate:20,taxRegistration:'GB1'});
  const file=await invoicePdf({...invoice,note:'Deposit − thank you'},{studio:{name:'NAY DÉCOR',accent:'#7a3b2e'},estimate});

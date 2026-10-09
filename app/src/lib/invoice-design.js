@@ -71,7 +71,8 @@ export function invoiceModel(invoice,{studio={},design,brandKit,estimate,creditN
   ...charges.map(item=>[item.kind==='tip'?'Tip, thank you':`${item.label}, added ${date(item.addedAt)}`,'+ '+money(item.amountMinor)]),
   ...(credited?[['Credit notes','− '+money(credited)]]:[]),...(paid?[['Paid','− '+money(paid)]]:[]),...(refunded?[['Refunded','+ '+money(refunded)]]:[])];
  const terms=invoice.lateFeeRule&&!cancelled&&balance>0&&!charges.some(item=>item.kind==='late_fee')?lateFeeTerms(invoice.lateFeeRule,currency):'';
- const pay=cancelled?null:{text:invoice.paymentInstructions||'Contact the studio for payment instructions.',by:invoice.dueDate&&balance>0?`Please pay by ${date(invoice.dueDate)}, quoting ${invoice.number}.`:'',terms};
+ // Payment details only appear while the client still owes something; a paid, credited or refunded invoice has nothing to pay.
+ const pay=cancelled||balance<=0||refundDue?null:{text:invoice.paymentInstructions||'Contact the studio for payment instructions.',by:invoice.dueDate&&balance>0?`Please pay by ${date(invoice.dueDate)}, quoting ${invoice.number}.`:'',terms};
  return {...base,kind:'invoice',label:'Invoice',number:invoice.number,stamp:['Paid','Cancelled','Refunded','Credited'].includes(invoice.status)?invoice.status:'',due,dueBy:invoice.dueDate&&!cancelled&&balance>0?`Due ${date(invoice.dueDate)}`:'',
   meta:[['Issued',date(invoice.issuedAt)],['Due',date(invoice.dueDate)],['Service date',date(s.supplyDate)]].filter(([,v])=>v),table,totals,pay,note:invoice.note||''};
 }
