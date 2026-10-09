@@ -1,6 +1,6 @@
 import {id,now,hash,transaction,makeProject,insertProject} from './store.mjs';
 import {validateIntakeQuestions,captureIntakeAnswers} from './intake-questions.mjs';
-import {DEFAULT_WORKFLOW,isWorkflowId,projectTypesFor} from './src/lib/workflows.js';
+import {DEFAULT_WORKFLOW,isWorkflowId,projectTypesFor,briefFieldsFor} from './src/lib/workflows.js';
 import {accentContrast} from './src/lib/accent-theme.js';
 import {validateScreens,validateFormTheme} from './form-screens.mjs';
 import {formPath,formFields} from './src/lib/form-flow.js';
@@ -77,4 +77,20 @@ export function submitForm(db,{studio,slug,body,key,buildBrief,legacy=false,onCr
  return transaction(db,()=>{insertProject(db,p);const clientId=db.prepare('SELECT client_id FROM crm_project_relationships WHERE studio_id=? AND project_id=?').get(studio.id,p.id).client_id;db.prepare('UPDATE crm_opportunities SET source=? WHERE studio_id=? AND project_id=?').run('Form: '+definition.name,studio.id,p.id);const snapshot={definition,brief,consent:!!body.consent,submittedAt:at};db.prepare('INSERT INTO enquiry_form_responses VALUES(?,?,?,?,?,?,?,?,?,?)').run(responseId,studio.id,form.id,form.version,p.id,clientId,key,digest,JSON.stringify(snapshot),at);onCreated?.(p.id);return {status:201,data:{ok:true,reference:p.id.slice(0,8).toUpperCase()}};});
 }
 export function listFormResponses(db,studioId,formId,offset=0){find(db,studioId,formId);if(!Number.isInteger(offset)||offset<0)fail(400,'Check the response page.');const rows=db.prepare('SELECT * FROM enquiry_form_responses WHERE studio_id=? AND form_id=? ORDER BY created_at DESC,id DESC LIMIT 51 OFFSET ?').all(studioId,formId,offset);return {total:db.prepare('SELECT COUNT(*) AS n FROM enquiry_form_responses WHERE studio_id=? AND form_id=?').get(studioId,formId).n,responses:rows.slice(0,50).map(row=>({id:row.id,projectId:row.project_id,clientId:row.client_id,version:row.version,createdAt:row.created_at,snapshot:JSON.parse(row.snapshot)})),nextOffset:rows.length>50?offset+50:null};}
-export function formResponseCSV(db,studioId,formId){find(db,studioId,formId);const rows=db.prepare('SELECT * FROM enquiry_form_responses WHERE studio_id=? AND form_id=? ORDER BY created_at,id').all(studioId,formId),cells=v=>'"'+String(v??'').replace(/^[\s]*[=+@-]/,"'$&").replaceAll('"','""')+'"',out=[['Submitted','Version','Name','Email','Project type','Project ID','Date','Location','Budget','Idea','Colours','Inspiration','Practice details','Answers','Acknowledgement']];for(const row of rows){const {brief,consent}=JSON.parse(row.snapshot);out.push([row.created_at,row.version,brief.name,brief.email,brief.occasion,row.project_id,brief.date,brief.venue,brief.budget,brief.vision,(brief.colours||[]).join(', '),brief.pinterest,JSON.stringify(brief.details||{}),brief.intakeAnswers.filter(a=>a.applicable).map(a=>`${a.label}: ${Array.isArray(a.value)?a.value.join(', '):a.value}`).join('\n'),consent?'Yes':'']);}return '\uFEFF'+out.map(row=>row.map(cells).join(',')).join('\r\n');}
+// One column per question and per practice detail, so a spreadsheet can sort and filter by any answer.
+// Questions are matched by id across form versions and headed with their latest wording.
+export function formResponseCSV(db,studioId,formId){find(db,studioId,formId);
+ const rows=db.prepare('SELECT * FROM enquiry_form_responses WHERE studio_id=? AND form_id=? ORDER BY created_at,id').all(studioId,formId).map(row=>({row,...JSON.parse(row.snapshot)}));
+ const cells=v=>'"'+String(v??'').replace(/^[\s]*[=+@-]/,"'$&").replaceAll('"','""')+'"',value=v=>Array.isArray(v)?v.join(', '):v;
+ const questions=new Map(),details=new Map();
+ for(const {brief,definition} of rows){
+  for(const answer of brief.intakeAnswers||[])questions.set(answer.id,answer.label);
+  const labels=new Map(briefFieldsFor(definition?.profession||brief.workflowType).map(f=>[f.key,f.label]));
+  for(const key of Object.keys(brief.details||{}))details.set(key,labels.get(key)||details.get(key)||key);
+ }
+ const out=[['Submitted','Version','Name','Email','Project type','Project ID','Date','Location','Budget','Idea','Colours','Inspiration',...details.values(),...questions.values(),'Acknowledgement']];
+ for(const {row,brief,consent} of rows){
+  const answers=new Map((brief.intakeAnswers||[]).filter(a=>a.applicable).map(a=>[a.id,value(a.value)]));
+  out.push([row.created_at,row.version,brief.name,brief.email,brief.occasion,row.project_id,brief.date,brief.venue,brief.budget,brief.vision,(brief.colours||[]).join(', '),brief.pinterest,...[...details.keys()].map(key=>brief.details?.[key]),...[...questions.keys()].map(id=>answers.get(id)),consent?'Yes':'']);
+ }
+ return '﻿'+out.map(row=>row.map(cells).join(',')).join('\r\n');}
