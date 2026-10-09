@@ -1,5 +1,6 @@
 import {QuestionInput,intakeFormValues,answerText} from './QuestionInput';
 import {ProjectChat} from './ProjectChat';
+import {formatDay} from '../lib/dates';
 import React,{useEffect,useState} from 'react';
 import {TaskCollaboration} from './TaskCollaboration';
 import './task-workspace.css';
@@ -8,7 +9,7 @@ import {briefFieldsFor,workflowFor} from '../lib/workflows.js';
 import {DesignDrafts} from './DesignDrafts.jsx';
 import {questionIsVisible} from '../lib/intake-visibility.js';
 
-const date=value=>value?new Date(value).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'To be decided';
+const date=value=>formatDay(value,'To be decided');
 const views=['Brief','Plan','References','Directions','Messages'];
 export function StaffProjectWorkspace({studio,summary,tab,onTabChange,request,onBack,onUpdate}){
  const [discussion,setDiscussion]=useState(null),[currentUser,setCurrentUser]=useState(null),[attempt,setAttempt]=useState(0);
