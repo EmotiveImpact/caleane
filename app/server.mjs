@@ -44,7 +44,7 @@ import {setTip,waiveLateFee} from './invoice-extras.mjs';
 import {discountFor,invoiceFigures} from './src/lib/invoice-charges.js';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {handleCustomFields} from './custom-fields.mjs';
-import {handlePipeline,syncAllPipelines,syncPipeline} from './pipeline-automation.mjs';
+import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
 import {installXero,handleXero,syncAllXero} from './xero.mjs';
@@ -97,11 +97,13 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const projectNote=(studioId,projectId,text)=>{const row=db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(projectId,studioId);if(row){const p=JSON.parse(row.data);event(p,{name:'Stripe'},text);saveProject(db,p);}};
  const money=(minor,currency)=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(minor/100);}catch{return `${(minor/100).toFixed(2)} ${currency}`;}};
  const autopayHooks={
-  onPaid:(charge,invoice)=>projectNote(charge.studio_id,charge.project_id,`Autopay collected ${money(charge.amount_minor,charge.currency)} for invoice ${invoice.number}`),
+  onPaid:(charge,invoice)=>{projectNote(charge.studio_id,charge.project_id,`Autopay collected ${money(charge.amount_minor,charge.currency)} for invoice ${invoice.number}`);automate(charge.studio_id,charge.project_id);},
   onFailed:charge=>{const invoice=db.prepare('SELECT number FROM invoices WHERE id=?').get(charge.invoice_id);projectNote(charge.studio_id,charge.project_id,`Autopay could not take ${money(charge.amount_minor,charge.currency)} for invoice ${invoice?.number||''}. The invoice is still open`);},
   onSaved:(row,label)=>projectNote(row.studio_id,row.project_id,`Autopay switched on with ${label}`)};
  const collectAutopay=async()=>{if(!cardPaymentsReady)return [];try{return await runAutopay(db,stripe,autopayHooks);}catch(error){console.error('Autopay run failed:',error?.stack||error);return [];}};
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
+ // Pipeline rules run for a project as soon as something happens on it, not only when Pipeline opens.
+ const automate=(studioId,projectId)=>syncProjectPipeline(db,studioId,projectId,{outbox});
  // Account mail has its own key when CALEANE_ACCOUNT_MAIL_KEY is set; the shared notification key still opens older queued mail.
  const accountSecurity=createAccountSecurity(db,{origin,encryptionKey:accountMailKey||notificationKey,previousKeys:[notificationKey]});
  const queueProjectEvent=(studioId,projectId,actorUserId,eventId)=>{if(!eventId)return;recordProjectEvent(db,{studioId,projectId,actorUserId,eventId});if(outbox)outbox.enqueueProjectActivity({studioId,projectId,actorUserId,eventId});};
@@ -152,6 +154,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      }
      return outcome;
     });
+    if(result.result==='paid'&&!result.duplicate){const paid=db.prepare('SELECT studio_id,project_id FROM invoices WHERE id=?').get(result.invoiceId);if(paid)automate(paid.studio_id,paid.project_id);}
     return reply(200,{ok:true,...result});
    }
    if(previewEnabled&&!(route==='/api/health'&&req.method==='GET')&&!previewAuthorized(req.headers.authorization,previewUserDigest,previewPassDigest)){
@@ -608,7 +611,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      return reply(200,{stripe:{configured:stripeReady,connected:!!connected,chargesEnabled}});
     }
     const engagementMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/engagements(?:\/([a-z-]+))?$/);
-    if(engagementMatch){const args={studioId:studio.id,projectId:engagementMatch[1],userId:user.id};if(req.method==='GET'&&!engagementMatch[2])return reply(200,getEngagements(db,args));if(req.method==='POST'&&engagementMatch[2]){const result=changeEngagements(db,{...args,action:engagementMatch[2],body});await syncProjectArchives(db,args);return reply(200,result);}fail(405,'Method not allowed.');}
+    if(engagementMatch){const args={studioId:studio.id,projectId:engagementMatch[1],userId:user.id};if(req.method==='GET'&&!engagementMatch[2])return reply(200,getEngagements(db,args));if(req.method==='POST'&&engagementMatch[2]){const result=changeEngagements(db,{...args,action:engagementMatch[2],body});await syncProjectArchives(db,args);automate(studio.id,args.projectId);return reply(200,result);}fail(405,'Method not allowed.');}
     const calendarMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/calendar\.ics$/);
     if(calendarMatch&&req.method==='GET'){const calendar=projectCalendar(db,{studioId:studio.id,projectId:calendarMatch[1],userId:user.id});res.writeHead(200,{'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'attachment; filename="caleane-project.ics"','Cache-Control':'private, no-store'});return res.end(calendar);}
     const documentMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/documents(?:\/([a-f0-9-]+)\/pdf)?$/);
@@ -617,7 +620,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(operationsMatch){
      const args={studioId:studio.id,projectId:operationsMatch[1],userId:user.id};
      if(req.method==='GET'&&!operationsMatch[2])return reply(200,{operations:getProjectOperations(db,args)});
-     if(req.method==='POST'&&operationsMatch[2]){const result=transaction(db,()=>{const changed=changeProjectOperations(db,{...args,action:operationsMatch[2],body});queueProjectEvent(studio.id,changed.project.id,user.id,changed.project.activity?.[0]?.id);return changed;});return reply(200,{project:decorate(result.project),operations:result.operations});}
+     if(req.method==='POST'&&operationsMatch[2]){transaction(db,()=>{const changed=changeProjectOperations(db,{...args,action:operationsMatch[2],body});queueProjectEvent(studio.id,changed.project.id,user.id,changed.project.activity?.[0]?.id);return changed;});automate(studio.id,args.projectId);return reply(200,{project:decorate(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(args.projectId).data)),operations:getProjectOperations(db,args)});}
      fail(405,'Method not allowed.');
     }
     const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/(plan|[a-f0-9-]+)(?:\/(payments|cancel|credit-notes|refunds|tip|late-fee|checkout(?:\/expire)?|attempts))?)?$/);
@@ -683,7 +686,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       else if(body.action==='delete')transaction(db,()=>deletePlan(db,{studioId:studio.id,project}));
       else if(body.action==='issue'){
        const issued=transaction(db,()=>{const {step,body:planned}=stepInvoice(db,{studioId:studio.id,project,stepId:body.stepId});return issueInvoice(project,{...body,...planned},invoiceId=>markStepInvoiced(db,{studioId:studio.id,projectId:project.id,stepId:step.id,invoiceId}));});
-       await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});
+       await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});automate(studio.id,project.id);
        return reply(201,{plan:view(),invoice:invoiceDTO(db,issued)});
       }else fail(400,'Choose a payment plan action.');
       return reply(200,{plan:view()});
@@ -719,7 +722,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      }
      if(!invoiceId){
       const issued=issueInvoice(project,body,()=>linkIssuedDeposits(db,{studioId:studio.id,projectId:project.id}));
-      await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});return reply(201,{invoice:invoiceDTO(db,issued)});
+      await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});automate(studio.id,project.id);return reply(201,{invoice:invoiceDTO(db,issued)});
      }
      if(subaction==='credit-notes'||subaction==='refunds'){
       // The adjustment and its project event commit together, or neither does.
@@ -763,6 +766,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
        event(project,user,`Recorded an external payment for invoice ${invoice.number}`);saveProject(db,project);
        return invoice;
       });
+      automate(studio.id,project.id);
       return reply(200,{invoice:invoiceDTO(db,result)});
      }
      fail(404,'Not found.');
@@ -885,7 +889,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }else if(action==='status'){requireOwner();if(!['Enquiry','Planning','Design','Complete','Archived'].includes(body.status))fail(400,'Choose a valid stage.');p.status=body.status;event(p,user,`Moved project to ${p.status.toLowerCase()}`);
     }else if(action==='invite'){const primary=db.prepare(`SELECT ct.email FROM crm_project_stakeholders ps JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE ps.project_id=? AND ps.studio_id=? AND ps.primary_contact=1`).get(p.id,studio.id);return reply(201,createInvitation(primary?.email||p.clientEmail));
     }else fail(404,'Not found.');
-    transaction(db,()=>{saveProject(db,p);for(const fid of removedFileIds)db.prepare('DELETE FROM files WHERE id=? AND project_id=?').run(fid,p.id);queueProjectEvent(studio.id,p.id,user.id,p.activity?.[0]?.id);});if(action==='proposals')await syncProjectArchives(db,{studioId:studio.id,projectId:p.id});return reply(200,{project:decorate(p)});
+    transaction(db,()=>{saveProject(db,p);for(const fid of removedFileIds)db.prepare('DELETE FROM files WHERE id=? AND project_id=?').run(fid,p.id);queueProjectEvent(studio.id,p.id,user.id,p.activity?.[0]?.id);});if(action==='proposals')await syncProjectArchives(db,{studioId:studio.id,projectId:p.id});
+    // Answering a quote or proposal, or setting the date, moves the enquiry on at once; the reply carries what the automation changed.
+    if(['estimates','estimate-decision','proposals','proposal-response','proposal-withdraw','brief','changes'].includes(action)){automate(studio.id,p.id);return reply(200,{project:decorate(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(p.id).data))});}
+    return reply(200,{project:decorate(p)});
    }
    if(req.method!=='GET'&&req.method!=='HEAD')fail(405,'Method not allowed.');
    if(route==='/embed.js'){res.setHeader('Content-Type','text/javascript');res.setHeader('Cache-Control','no-cache');return res.end(await readFile(path.join(root,'public/embed.js')));}

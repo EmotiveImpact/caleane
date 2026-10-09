@@ -165,12 +165,12 @@ export function followUpAction(db,studioId,{opportunityId,action,outbox=null}){
  sendFollowUp(db,{studioId,opp,p,proposal,owner,studio,settings,index,outbox,reason:'Sent early by the studio.'});
 }
 
-export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}){
+export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null,projectId=null}={}){
  installPipeline(db);
  const settings=pipelineSettings(db,studioId),owner=ownerOf(db,studioId),log=[];
  if(!owner)return log;
  const studio=db.prepare('SELECT name FROM studios WHERE id=?').get(studioId);
- const opps=db.prepare("SELECT * FROM crm_opportunities WHERE studio_id=? AND stage<>'Lost' ORDER BY created_at").all(studioId);
+ const opps=projectId?db.prepare("SELECT * FROM crm_opportunities WHERE studio_id=? AND project_id=? AND stage<>'Lost' ORDER BY created_at").all(studioId,projectId):db.prepare("SELECT * FROM crm_opportunities WHERE studio_id=? AND stage<>'Lost' ORDER BY created_at").all(studioId);
  for(const opp of opps){
   try{
    // A won enquiry only catches up with its deposit.
@@ -272,6 +272,14 @@ export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}
   }catch(error){console.error('Pipeline sync failed for an enquiry:',error.message);}
  }
  return log;
+}
+
+// The same rules for one project, straight after something happens on it (a
+// quote or proposal shared or answered, a contract signed, an invoice issued or
+// paid, a date confirmed), so nobody waits for Pipeline to open. The hourly
+// sweep stays as a safety net. It never fails the action that triggered it.
+export function syncProjectPipeline(db,studioId,projectId,{outbox=null,asOf}={}){
+ try{return projectId?syncPipeline(db,studioId,{outbox,asOf,projectId}):[];}catch(error){console.error('Pipeline sync failed for a project:',error.message);return [];}
 }
 
 export function syncAllPipelines(db,{outbox=null,asOf}={}){
