@@ -49,7 +49,7 @@ import {installConsultations,handleConsultations,publicBooking,bookConsultation,
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
 import {installXero,handleXero,syncAllXero} from './xero.mjs';
 import {installFinances,handleFinances} from './finances.mjs';
-import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced} from './payment-plans.mjs';
+import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced,linkIssuedDeposits} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function fail(status,message){throw Object.assign(new Error(message),{status});}
@@ -642,7 +642,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       if(kind==='Deposit'){amountMinor=body.amountMinor;if(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remainingMinor)fail(400,'Enter an amount smaller than the remaining estimate total.');}
       const saved=billingDefaults(db,studio.id),dueDate=date(body.dueDate,'invoice due date'),supplyDate=date(body.supplyDate||project.brief?.date||'','service date'),paymentInstructions=str(body.paymentInstructions||saved.paymentInstructions||'',1000),note=str(body.note||'',3000);
       const sellerAddress=str(body.sellerAddress||saved.sellerAddress||'',500),sellerContact=str(body.sellerContact||saved.sellerContact||'',300),customerAddress=str(body.customerAddress||'',500),taxRegistration=str(body.taxRegistration||saved.taxRegistration||'',100);
-      if(!dueDate||!supplyDate||!sellerAddress||!sellerContact||!customerAddress||!paymentInstructions)fail(400,'Add the billing addresses, contact, service date, due date and payment instructions.');
+      const missing=[[sellerAddress,'your studio address'],[customerAddress,'the client billing address'],[sellerContact,'your studio contact'],[supplyDate,'the service date'],[dueDate,'the due date'],[paymentInstructions,'payment instructions']].filter(([value])=>!value).map(([,label])=>label);
+      if(missing.length)fail(400,`Add ${missing.length>1?missing.slice(0,-1).join(', ')+' and '+missing.at(-1):missing[0]}.`);
       if(dueDate<now().slice(0,10))fail(400,'Choose an invoice due date today or later.');
       return transaction(db,()=>{
        const year=Number(now().slice(0,4));db.prepare('INSERT OR IGNORE INTO invoice_counters VALUES(?,?,1)').run(studio.id,year);
@@ -717,7 +718,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       return reply(200,{invoice:invoiceDTO(db,db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoice.id,studio.id))});
      }
      if(!invoiceId){
-      const issued=issueInvoice(project,body);
+      const issued=issueInvoice(project,body,()=>linkIssuedDeposits(db,{studioId:studio.id,projectId:project.id}));
       await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});return reply(201,{invoice:invoiceDTO(db,issued)});
      }
      if(subaction==='credit-notes'||subaction==='refunds'){

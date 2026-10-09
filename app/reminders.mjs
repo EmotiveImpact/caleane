@@ -1,6 +1,6 @@
 import {id,now,transaction,materializeProjectConversation,appendConversationMessage} from './store.mjs';
 import {readSetting,writeSetting} from './studio-commerce.mjs';
-import {getPlan} from './payment-plans.mjs';
+import {getPlan,stepDueDate} from './payment-plans.mjs';
 import {projectClientId} from './relationships.mjs';
 import {recordFollowUp,conversationRecipients} from './notification-feed.mjs';
 import {ensureInvoiceExtras,invoiceCharges} from './invoice-adjustments.mjs';
@@ -64,7 +64,7 @@ export function dueReminders(db,studioId,today,settings=reminderSettings(db,stud
   if(design&&design.briefRevision===p.briefRevision&&settings.approvalAfterDays>0&&t-dayNumber(design.sharedAt||design.at)>=settings.approvalAfterDays)items.push({key:`approval:${design.id}`,kind:'Review waiting',audience:'client',project:p,summary:`${design.title} awaiting review`,
    text:`“${design.title}” (version ${String(design.version).padStart(2,'0')}) is ready for your review whenever you have a moment. Your approval or comments help us keep things moving.`});
   const plan=settings.planStepTasks?getPlan(db,studioId,p.id):null;
-  for(const step of plan?.steps||[])if(!step.invoiceId&&dayNumber(step.dueDate)<=t)items.push({key:`plan-step:${step.id}`,kind:'Payment to invoice',audience:'studio',project:p,summary:`Issue the ${step.label.toLowerCase()} invoice (${money(step.amountMinor,plan.currency)})`,step,plan});
+  for(const step of plan?.steps||[])if(!step.invoiceId&&stepDueDate(step,p)&&dayNumber(stepDueDate(step,p))<=t)items.push({key:`plan-step:${step.id}`,kind:'Payment to invoice',audience:'studio',project:p,summary:`Issue the ${step.label.toLowerCase()} invoice (${money(step.amountMinor,plan.currency)})`,step,plan});
  }
  return items;
 }
