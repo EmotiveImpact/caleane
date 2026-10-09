@@ -10,7 +10,7 @@ import {passwordHash} from '../store.mjs';
 const origin='http://127.0.0.1:4320';
 
 test('confirmed estimates produce tenant-safe invoices and owner-recorded external payments',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-invoices-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-invoices-'));
  const dbFile=path.join(dir,'workspace.sqlite');
  let workspace=await createWorkspace({dbFile,origin,demo:true});
  await new Promise(resolve=>workspace.server.listen(0,'127.0.0.1',resolve));

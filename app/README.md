@@ -77,7 +77,7 @@ Idempotency-Key: <unique request identifier>
 
 Required fields: `name`, `email`, `occasion`. Optional fields: `date`, `venue`, `vision`, `colours` (array), `customColours`, `pinterest` (http/https URL), `budget`, and an empty `website` honeypot. The successful response contains `ok` and a reference. General contact messages retain the existing website email endpoint.
 
-After `calenne.co` is registered and the service is deployed, set `APP_ORIGIN` to the verified HTTPS origin, update `NAY_CONFIG.workspace.url` and add the NAY website origin to the studio’s connected origins. The studio slug remains `nay-decor`; changing the product name does not change client or project identifiers.
+When the service is deployed to its own server, set `APP_ORIGIN` to the verified HTTPS origin, update `NAY_CONFIG.workspace.url` and add the NAY website origin to the studio’s connected origins. The studio slug remains `nay-decor`; changing the product name does not change client or project identifiers.
 
 ## Connect another website
 
@@ -133,4 +133,4 @@ The supplied Aetheria source remains in the NAY DÉCOR repository under `referen
 
 The owner selected concept 3, Studio Folio. The dark navigation rail and restrained editorial treatment now carry through Home, Work, Calendar, Library, Settings, the project workflow, and the Clients/Mail record. The record has a client directory, relationship tabs, document-style correspondence and linked project context; the client portal has a matching correspondence view. The Amelia demo portrait is generated fictional imagery, used only for the sample record. Copying a template or reference repository does not make the app production-ready.
 
-Conversations are now canonical relational records linked to a client, optionally a project. Existing project messages and read positions migrate without losing history. General conversations, per-user unread state, retry-safe replies and owner-controlled Open/Waiting/Resolved status are implemented. Project Conversation links lead to the corresponding CRM thread; the dashboard counts both general and project messages. Owners can invite a client before creating a project. Legacy project endpoints remain compatible. Email delivery is not connected. See `design-qa.md` for visual and workflow verification.
+Conversations are now canonical relational records linked to a client, optionally a project. Existing project messages and read positions migrate without losing history. General conversations, per-user unread state, retry-safe replies and owner-controlled Open/Waiting/Resolved status are implemented. Project Conversation links lead to the corresponding CRM thread; the dashboard counts both general and project messages. Owners can invite a client before creating a project. Legacy project endpoints remain compatible. Email delivery is not connected.

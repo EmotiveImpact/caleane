@@ -74,7 +74,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
   function updateIdentity(key,value){edited('studio');setIdentity(previous=>({...previous,[key]:value}));}
   async function save(pane,patch){
     const revision=revisions.current[pane]||0;
-    const payload={...savedSettings(studio),...patch},snapshot=pane==='studio'?JSON.stringify(identity):pane==='website'?origins:patch.accent;
+    const {logoUrl,...current}=savedSettings(studio),payload={...current,...patch};delete payload.logoUrl;const snapshot=pane==='studio'?JSON.stringify(identity):pane==='website'?origins:patch.accent;
     const result=await run(async()=>{await request('/api/settings?studio='+studio.id,'PATCH',payload);await reload();return true;});
     if(result){setBaseline(previous=>({...previous,[pane]:snapshot}));if(pane==='appearance')setAccentDraft(current=>revision===(revisions.current[pane]||0)?snapshot:current);}
     if(result&&revision===(revisions.current[pane]||0))setSaved(pane);
@@ -103,7 +103,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
             <WorkspaceField label="Studio name" name="name" value={identity.name} onChange={event=>updateIdentity('name',event.target.value)} required maxLength={120}/>
             <WorkspaceField label="Client portal title" name="portalTitle" value={identity.portalTitle} onChange={event=>updateIdentity('portalTitle',event.target.value)} required maxLength={120}/>
             <WorkspaceField className="settings-field-wide" label="Client welcome message" name="welcome" value={identity.welcome} onChange={event=>updateIdentity('welcome',event.target.value)} maxLength={300}/>
-            <WorkspaceField className="settings-field-wide" label="Logo URL (optional)" type="url" name="logoUrl" value={identity.logoUrl} onChange={event=>updateIdentity('logoUrl',event.target.value)}/>
+            <div className="settings-field-wide settings-logo-note"><span>Logo</span><p>{identity.logoUrl?'Your Brand kit logo appears on the client portal, forms and booking pages.':'Upload your logo in Brand kit and clients will see it on the portal, forms and booking pages.'} <button type="button" className="text-button" onClick={()=>choose('brand')}>Open Brand kit</button></p></div>
             <WorkspaceField className="settings-field-wide" label="Kind of work"><WorkspaceSelect label="Kind of work" value={identity.profession} onValueChange={value=>updateIdentity('profession',value)} options={workflowOptionsFor(savedSettings(studio).profession).map(option=>({value:option.id,label:option.label}))}/></WorkspaceField>
           </div>
           {saveAction('studio','Save studio details')}

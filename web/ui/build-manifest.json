@@ -1791,7 +1791,7 @@
       "format": "esm"
     },
     "ui/website-ui.jsx": {
-      "bytes": 12001,
+      "bytes": 12097,
       "imports": [
         {
           "path": "node_modules/react/index.js",
@@ -1890,7 +1890,7 @@
           "bytesInOutput": 253
         },
         "ui/website-ui.jsx": {
-          "bytesInOutput": 7367
+          "bytesInOutput": 7520
         },
         "node_modules/@radix-ui/react-tabs/dist/index.mjs": {
           "bytesInOutput": 2347
@@ -2076,7 +2076,7 @@
           "bytesInOutput": 1457
         }
       },
-      "bytes": 330910
+      "bytes": 331063
     }
   }
 }

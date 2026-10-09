@@ -22,7 +22,7 @@ const compiled=fileURLToPath(new URL(`.task-create-${process.pid}.mjs`,import.me
 const output=await build({entryPoints:[fileURLToPath(new URL('../src/components/TaskWorkspace.jsx',import.meta.url))],bundle:true,packages:'external',format:'esm',platform:'node',write:false,plugins:[{name:'omit-css',setup(builder){builder.onLoad({filter:/\.css$/},()=>({contents:'',loader:'js'}));}}]});
 await writeFile(compiled,output.outputFiles[0].text);
 const {TaskWorkspace}=await import(pathToFileURL(compiled));
-const {render,screen,cleanup,waitFor,act}=await import('@testing-library/react');
+const {render,screen,cleanup,waitFor}=await import('@testing-library/react');
 const {default:userEvent}=await import('@testing-library/user-event');
 const h=React.createElement;
 const user=()=>userEvent.setup({document:dom.window.document,pointerEventsCheck:0});
@@ -54,7 +54,7 @@ test('new project task is created from a filtered view and shown in All tasks',a
  const input=user(),writes=fixture();await screen.findByText('Nothing in this view');
  await input.click(screen.getByRole('radio',{name:'Completed',exact:true}));
  await input.click(screen.getByRole('button',{name:'New task',exact:true}));
- const dialog=screen.getByRole('dialog',{name:'New task'});
+ screen.getByRole('dialog',{name:'New task'});
  await input.type(screen.getByRole('textbox',{name:'Task',exact:true}),'Confirm the venue');
  await input.selectOptions(screen.getByRole('combobox',{name:'Responsible'}),'client');
  await input.click(screen.getByRole('button',{name:'Create task'}));

@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useRef,useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,Check,X} from 'lucide-react';
 import {formFields,screensFor} from '../lib/form-flow.js';
 import {briefSteps,chaptersOf,inspectSteps,IMAGE_LAYOUTS} from '../lib/brief-steps.js';

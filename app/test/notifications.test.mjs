@@ -27,7 +27,7 @@ function invitation(db,studioId,email,token=randomBytes(32).toString('hex'),expi
 }
 
 test('invitation outbox survives restart, hides the link at rest and sends only a current invitation once',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-notifications-')),file=path.join(dir,'mail.sqlite');
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-notifications-')),file=path.join(dir,'mail.sqlite');
  let db=openStore(file);
  try{
   const {studioId,client}=seed(db),first=invitation(db,studioId,client.email);

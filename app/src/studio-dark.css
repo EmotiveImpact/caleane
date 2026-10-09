@@ -119,7 +119,7 @@ body:has(.folio-workspace) .task-create label{color:var(--studio-muted)}
 /* One shared header rhythm across the rail and workspace. */
 :root{--folio-topbar-height:72px}
 .folio-rail-brand{height:72px;flex-basis:72px;margin-top:0;margin-bottom:8px;gap:11px;padding-inline:18px}
-.folio-rail-brand .calenne-symbol{width:23px;height:23px}
+.folio-rail-brand .caleane-symbol{width:23px;height:23px}
 .folio-rail-brand .folio-brand-name{font-size:24px;font-weight:550;letter-spacing:-.025em}
 .folio-workspace>.topbar{height:72px;min-height:72px;padding-inline:var(--folio-page-gutter)}
 .folio-workspace>.workspace-body{padding-top:24px;padding-inline:var(--folio-page-gutter)}

@@ -6,7 +6,7 @@ import path from 'node:path';
 import {createWorkspace} from '../server.mjs';
 
 test('project task edits persist fields and preserve client completion permissions',async()=>{
- const dir=await mkdtemp(path.join(os.tmpdir(),'calenne-proposals-')),origin='http://127.0.0.1:4320';
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-proposals-')),origin='http://127.0.0.1:4320';
  const {server,db}=await createWorkspace({dbFile:path.join(dir,'test.sqlite'),origin,demo:true});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,cookies={};
  async function call(route,body,who='owner'){
