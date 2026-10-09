@@ -29,6 +29,25 @@ function widenStaffAccess(db){
  }
  db.exec('CREATE INDEX IF NOT EXISTS staff_invitations_studio_email ON staff_invitations(studio_id,email);');
 }
+// Older databases only allowed GBP, EUR or USD on invoices and costs. Rebuild those tables once,
+// keeping every row and index, so any currency in src/lib/currencies.js can be stored. Foreign keys
+// are paused for the swap because payments, credit notes and receipts point at these rows.
+const NARROW_CURRENCY="CHECK(currency IN ('GBP','EUR','USD'))";
+export function widenCurrencyChecks(db){
+ const schema=table=>db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").get(table)?.sql||'';
+ const tables=['invoices','expenses'].filter(table=>schema(table).includes(NARROW_CURRENCY));
+ if(!tables.length)return;
+ db.exec('PRAGMA foreign_keys=OFF');
+ try{
+  for(const table of tables)transaction(db,()=>{
+   const temp=`${table}_currency_migration`,indexes=db.prepare("SELECT sql FROM sqlite_master WHERE type IN ('index','trigger') AND tbl_name=? AND sql IS NOT NULL").all(table).map(row=>row.sql);
+   db.exec(schema(table).replace(NARROW_CURRENCY,'CHECK(length(currency)=3)').replace(/^CREATE TABLE\s+(?:IF NOT EXISTS\s+)?["`]?\w+["`]?/i,`CREATE TABLE ${temp}`));
+   db.exec(`INSERT INTO ${temp} SELECT * FROM ${table};DROP TABLE ${table};ALTER TABLE ${temp} RENAME TO ${table};`);
+   for(const sql of indexes)db.exec(sql);
+   if(db.prepare('PRAGMA foreign_key_check').all().some(row=>row.table===table||row.parent===table))throw new Error(`The ${table} table could not be upgraded safely.`);
+  });
+ }finally{db.exec('PRAGMA foreign_keys=ON');}
+}
 export function openStore(file){
  const db=new DatabaseSync(file);db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
  CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password TEXT NOT NULL);
@@ -118,7 +137,7 @@ export function openStore(file){
   id TEXT PRIMARY KEY,studio_id TEXT NOT NULL REFERENCES studios(id),project_id TEXT NOT NULL,
   number TEXT NOT NULL,estimate_id TEXT NOT NULL,estimate_version INTEGER NOT NULL,
   kind TEXT NOT NULL CHECK(kind IN ('Deposit','Balance','Full')),
-  currency TEXT NOT NULL CHECK(currency IN ('GBP','EUR','USD')),
+  currency TEXT NOT NULL CHECK(length(currency)=3),
   amount_minor INTEGER NOT NULL CHECK(amount_minor>0),net_minor INTEGER NOT NULL CHECK(net_minor>=0),
   tax_minor INTEGER NOT NULL CHECK(tax_minor>=0),tax_rate REAL NOT NULL CHECK(tax_rate BETWEEN 0 AND 100),
   due_date TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',payment_instructions TEXT NOT NULL,

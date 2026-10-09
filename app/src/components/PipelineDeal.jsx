@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {CalendarDays,Eye,FileText,MessageSquare,Pause,Play,Plus,Receipt,Send,Trash2,X} from 'lucide-react';
 import {NotJoinedNotice} from './NotJoinedNotice';
+import {CURRENCIES} from '../lib/currencies.js';
 
 // The enquiry's quote, proposal, date hold, deposit and follow-ups, read from the
 // linked project and driven from the enquiry so the owner never has to leave it.
@@ -155,7 +156,7 @@ export function DealQuote({detail,signal,studio,request,run,busy,openProject,onC
     <td><input className="is-price" aria-label={`Line ${i+1} price`} type="number" min="0" step="0.01" required value={l.unitAmount/100} onChange={e=>update(i,{unitAmount:Math.round(Number(e.target.value)*100)})}/></td>
     <td>{money(Number(l.quantity)*l.unitAmount,currency)}</td>
     <td><button type="button" className="pl-icon" aria-label={`Remove line ${i+1}`} onClick={()=>setLines(list=>list.filter((x,j)=>j!==i))}><Trash2 size={14}/></button></td></tr>)}</tbody></table>:<p className="pl-muted">Add the first line from your price list or as a custom line.</p>}
-   <div className="pl-addrow"><label className="sr-only" htmlFor="quote-pick">Add from your price list</label><select id="quote-pick" value={pick} onChange={e=>setPick(e.target.value)}><option value="">{available.length?'Choose from your price list…':'Custom line'}</option>{available.map(i=><option key={i.id} value={i.id}>{i.name} ({money(i.unitAmount,i.currency)} {i.unit})</option>)}</select><button type="button" className="pl-btn is-small is-ghost" onClick={add}><Plus size={13}/>Add line</button><label className="pl-currency">Currency<select value={currency} onChange={e=>{setCurrency(e.target.value);setLines([]);}}>{['GBP','EUR','USD'].map(c=><option key={c}>{c}</option>)}</select></label></div>
+   <div className="pl-addrow"><label className="sr-only" htmlFor="quote-pick">Add from your price list</label><select id="quote-pick" value={pick} onChange={e=>setPick(e.target.value)}><option value="">{available.length?'Choose from your price list…':'Custom line'}</option>{available.map(i=><option key={i.id} value={i.id}>{i.name} ({money(i.unitAmount,i.currency)} {i.unit})</option>)}</select><button type="button" className="pl-btn is-small is-ghost" onClick={add}><Plus size={13}/>Add line</button><label className="pl-currency">Currency<select value={currency} onChange={e=>{setCurrency(e.target.value);setLines([]);}}>{CURRENCIES.map(c=><option key={c}>{c}</option>)}</select></label></div>
    <div className="pl-totals"><span>Total <strong>{money(total,currency)}</strong></span>{total>0&&planSplit(planTemplate,total).map(step=><span key={step.label}>{step.label} {money(step.amount,currency)}, {step.when}</span>)}</div>
    <label className="pl-field">Note for the client<textarea rows="2" maxLength="3000" value={note} onChange={e=>setNote(e.target.value)} placeholder="Anything that explains the pricing"/></label>
    <div className="pl-acts"><button className="pl-btn" disabled={busy||!lines.length}>Share quote</button>{editing&&<button type="button" className="pl-btn is-ghost" onClick={()=>setEditing(false)}>Cancel</button>}</div>

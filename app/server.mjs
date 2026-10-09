@@ -20,7 +20,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import Stripe from 'stripe';
-import {openStore,STAFF_ACCESS,id,now,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
+import {openStore,widenCurrencyChecks,STAFF_ACCESS,id,now,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
 import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask,deleteTask} from './crm.mjs';
 import {clientErasurePreview,eraseClient} from './client-erasure.mjs';
 import {bindInvitedContact,conversationAccess,ensurePrimaryContact,listClientContacts,listStakeholders,joinStatus,projectAccess,projectClientId} from './relationships.mjs';
@@ -40,6 +40,7 @@ import {validateIntakeQuestions,captureIntakeAnswers,updateIntakeAnswers,normali
 import {searchWorkspace} from './workspace-search.mjs';
 import {seedShowcase} from './demo-showcase.mjs';
 import {defaultTaxRate,isVatDocument,isVatRegistered} from './src/lib/vat.js';
+import {isCurrency} from './src/lib/currencies.js';
 import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
@@ -87,7 +88,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installFinances(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBookingPayments(db);installPlanAutopay(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map(),bookingLinks=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installFinances(db);widenCurrencyChecks(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBookingPayments(db);installPlanAutopay(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map(),bookingLinks=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  // Payment at booking and plan autopay take money without an invoice being opened, so a live
@@ -874,7 +875,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }else if(action==='proposal-withdraw'){
      requireOwner();const q=p.proposals?.at(-1);if(!q||q.id!==body.proposalId||q.status!=='Awaiting response')fail(409,'Only the current unanswered proposal can be withdrawn.');q.status='Withdrawn';q.withdrawnBy=user.name;q.withdrawnAt=now();event(p,user,'Withdrew proposal version '+q.version);
     }else if(action==='estimates'){
-     requireOwner();p.estimates||=[];if(body.discardDraft===true){delete p.estimateDraft;event(p,user,'Discarded an estimate draft');}else{if(!Array.isArray(body.items)||body.items.length<1||body.items.length>30||!['GBP','EUR','USD'].includes(body.currency))fail(400,'Add estimate items and a supported currency.');
+     requireOwner();p.estimates||=[];if(body.discardDraft===true){delete p.estimateDraft;event(p,user,'Discarded an estimate draft');}else{if(!Array.isArray(body.items)||body.items.length<1||body.items.length>30||!isCurrency(body.currency))fail(400,'Add estimate items and a supported currency.');
      const items=body.items.map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))fail(400,'Check each estimate item.');const title=str(item.title,200);if(!title||!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>10000||!Number.isInteger(item.unitAmount)||item.unitAmount<0||item.unitAmount>100000000)fail(400,'Check item descriptions, quantities and amounts.');return {title,quantity:item.quantity,unitAmount:item.unitAmount};});
      const usual=billingDefaults(db,studio.id),vatRegistered=isVatRegistered(usual),taxRate=body.taxRate??defaultTaxRate(usual);if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
      const subtotal=items.reduce((sum,i)=>sum+i.quantity*i.unitAmount,0),tax=Math.round(subtotal*taxRate/100);if(subtotal>100000000)fail(400,'The estimate total is too large.');

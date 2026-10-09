@@ -5,6 +5,7 @@ import {useConfirm} from './ConfirmDialog';
 import {EXPENSE_CATEGORIES,REPORT_PERIODS,expensesCSV,monthlyReportCSV} from '../lib/finance-report.js';
 import {vatShare} from '../lib/vat.js';
 import './finance-views.css';
+import {CURRENCIES} from '../lib/currencies.js';
 
 const money=(minor,currency='GBP')=>{
  try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}
@@ -47,7 +48,7 @@ function CostForm({expense,projects,studio,request,defaultProjectId='',onSaved,o
    <label><span>Date</span><input name="spentOn" type="date" required defaultValue={expense?.spentOn||localToday()}/></label>
    <label><span>Amount paid</span><input name="amount" type="number" min="0.01" step="0.01" required inputMode="decimal" defaultValue={expense?(expense.amountMinor/100).toFixed(2):''} placeholder="0.00"/></label>
    <label><span>VAT included (optional)</span><input name="vat" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={expense?.vatMinor?(expense.vatMinor/100).toFixed(2):''} placeholder="0.00"/><small>The VAT shown on the receipt, if you are VAT registered and can reclaim it.</small></label>
-   <label><span>Currency</span><select name="currency" defaultValue={expense?.currency||'GBP'}>{['GBP','EUR','USD'].map(code=><option key={code}>{code}</option>)}</select></label>
+   <label><span>Currency</span><select name="currency" defaultValue={expense?.currency||'GBP'}>{CURRENCIES.map(code=><option key={code}>{code}</option>)}</select></label>
    <label><span>Category</span><select name="category" defaultValue={expense?.category||EXPENSE_CATEGORIES[0]}>{EXPENSE_CATEGORIES.map(item=><option key={item}>{item}</option>)}</select></label>
    <label className="finance-form-wide"><span>Project</span><select name="projectId" defaultValue={expense?.projectId??defaultProjectId}><option value="">Studio overhead (no project)</option>{projects.map(project=><option key={project.id} value={project.id}>{project.title}{project.brief?.name?` · ${project.brief.name}`:''}</option>)}</select></label>
    <label className="finance-form-wide"><span>Receipt (optional)</span><input name="receipt" type="file" accept="image/png,image/jpeg,image/webp,application/pdf"/><small>{expense?.receipt&&!removeReceipt?<>Attached: {expense.receipt.name}. Choose a new file to replace it, or <button type="button" className="billing-text-button" onClick={()=>setRemoveReceipt(true)}>remove it</button>.</>:'A photo or PDF up to 5 MB. On a phone you can take the photo here.'}</small></label>

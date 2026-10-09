@@ -6,6 +6,7 @@ import {invoiceFonts,invoiceLayouts,invoicePageHtml,sampleInvoice} from '../lib/
 import {lateFeeTerms} from '../lib/invoice-charges';
 import {DEFAULT_VAT_RATE} from '../lib/vat';
 import '../studio-commerce.css';
+import {CURRENCIES} from '../lib/currencies.js';
 
 const money=(minor,currency='GBP')=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}catch{return `${((Number(minor)||0)/100).toFixed(2)} ${currency}`;}};
 const shortDate=value=>value?new Date(value.length===10?value+'T12:00:00':value).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
@@ -49,7 +50,7 @@ function PriceList({studio,request}){
    <WorkspaceField className="commerce-span-2" label="Item name" value={draft.name} maxLength={120} required onChange={e=>setDraft({...draft,name:e.target.value})} placeholder="For example, organic balloon garland"/>
    <WorkspaceField label="Category (optional)" value={draft.category} maxLength={60} onChange={e=>setDraft({...draft,category:e.target.value})} placeholder="Installations"/>
    <WorkspaceField label="Price" type="number" min="0" step="0.01" value={draft.unitAmount} required onChange={e=>setDraft({...draft,unitAmount:e.target.value})}/>
-   <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={draft.currency} onValueChange={currency=>setDraft({...draft,currency})} options={['GBP','EUR','USD']}/></WorkspaceField>
+   <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={draft.currency} onValueChange={currency=>setDraft({...draft,currency})} options={CURRENCIES}/></WorkspaceField>
    <WorkspaceField label="Charged"><WorkspaceSelect label="Charged" value={draft.unit} onValueChange={unit=>setDraft({...draft,unit})} options={Object.entries(units).map(([value,label])=>({value,label}))}/></WorkspaceField>
    <WorkspaceField className="commerce-span-3" label="Description (optional)" value={draft.description} maxLength={500} onChange={e=>setDraft({...draft,description:e.target.value})}/>
    <div className="commerce-form-actions"><WorkspaceButton type="submit" disabled={busy}>{editing?'Save item':'Add to price list'}</WorkspaceButton>{editing&&<WorkspaceButton variant="ghost" onClick={()=>{setEditing('');setDraft(blank);}}>Cancel</WorkspaceButton>}</div>
@@ -96,7 +97,7 @@ export function InvoiceDefaultsSettings({studio,request}){
     <WorkspaceField label="Studio address"><textarea rows={3} maxLength={500} value={form.sellerAddress} onChange={e=>set({sellerAddress:e.target.value})}/></WorkspaceField>
     <WorkspaceField label="Payment instructions"><textarea rows={3} maxLength={1000} value={form.paymentInstructions} onChange={e=>set({paymentInstructions:e.target.value})} placeholder="Bank name, sort code, account number and the reference to use"/></WorkspaceField>
     <WorkspaceField label="Studio contact" value={form.sellerContact} maxLength={300} onChange={e=>set({sellerContact:e.target.value})} placeholder="Email or phone"/>
-    <WorkspaceField label="Usual currency"><select value={form.currency||'GBP'} onChange={e=>set({currency:e.target.value})}>{['GBP','EUR','USD'].map(code=><option key={code}>{code}</option>)}</select></WorkspaceField>
+    <WorkspaceField label="Usual currency"><select value={form.currency||'GBP'} onChange={e=>set({currency:e.target.value})}>{CURRENCIES.map(code=><option key={code}>{code}</option>)}</select></WorkspaceField>
     <WorkspaceField label="Payment terms (days)" type="number" min="0" max="120" value={form.paymentTermsDays} onChange={e=>set({paymentTermsDays:Number(e.target.value)})}/>
    </div>
    <header className="settings-pane-heading commerce-subheading"><h2>VAT</h2><p>Estimates and invoices show VAT only when you are registered. If you are not, there is no tax line at all.</p></header>
@@ -273,7 +274,7 @@ export function BookingSettings({studio,request}){
    {(form.payment.required||data.paymentsAvailable)&&<div className="settings-fields commerce-payment-fields">
     <WorkspaceField label="What the payment is called" value={form.payment.label} maxLength={60} required onChange={e=>set({payment:{...form.payment,label:e.target.value}})} placeholder="Booking fee or deposit"/>
     <WorkspaceField label={`Amount (${form.payment.currency})`} type="number" min="1" max="10000" step="0.01" value={(form.payment.amountMinor/100).toFixed(2)} onChange={e=>set({payment:{...form.payment,amountMinor:Math.round(Number(e.target.value)*100)}})}/>
-    <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={form.payment.currency} onValueChange={currency=>set({payment:{...form.payment,currency}})} options={['GBP','EUR','USD']}/></WorkspaceField>
+    <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={form.payment.currency} onValueChange={currency=>set({payment:{...form.payment,currency}})} options={CURRENCIES}/></WorkspaceField>
    </div>}
    <h3 className="commerce-small-heading">Weekly hours</h3>
    <div className="commerce-week">{weekdays.map(([day,label])=>{const windows=form.weekly[day]||[];return <div key={day} className="commerce-week-row"><span>{label}</span>{windows.length?<div className="commerce-week-windows">{windows.map((window,index)=><div key={index}><input aria-label={`${label} start`} type="time" value={window.start} onChange={e=>setDay(day,windows.map((w,i)=>i===index?{...w,start:e.target.value}:w))}/><span>to</span><input aria-label={`${label} end`} type="time" value={window.end} onChange={e=>setDay(day,windows.map((w,i)=>i===index?{...w,end:e.target.value}:w))}/><WorkspaceButton variant="ghost" iconOnly aria-label={`Remove ${label} hours`} onClick={()=>setDay(day,windows.filter((_,i)=>i!==index))}><Trash2 size={15}/></WorkspaceButton></div>)}{windows.length<3&&<WorkspaceButton variant="ghost" size="small" onClick={()=>setDay(day,[...windows,{start:'14:00',end:'17:00'}])}>Add hours</WorkspaceButton>}</div>:<div className="commerce-week-windows"><small>Unavailable</small><WorkspaceButton variant="ghost" size="small" onClick={()=>setDay(day,[{start:'10:00',end:'17:00'}])}>Add hours</WorkspaceButton></div>}</div>;})}</div>

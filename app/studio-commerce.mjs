@@ -1,13 +1,14 @@
 import {id,now,transaction} from './store.mjs';
 import {invoiceFonts,invoiceLayouts,normaliseInvoiceDesign} from './src/lib/invoice-design.js';
 import {DEFAULT_VAT_RATE,isVatRegistered} from './src/lib/vat.js';
+import {CURRENCIES} from './src/lib/currencies.js';
 import {defaultLateFee,defaultTips,validateLateFee,validateTips} from './invoice-extras.mjs';
 
 // Studio-level libraries the owner reuses across projects: a price list,
 // saved message templates and the details printed on every invoice.
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const text=(value,max,label,required=false)=>{if(value==null)value='';if(typeof value!=='string'||value.length>max)fail(400,`Check ${label}.`);const result=value.trim();if(required&&!result)fail(400,`Add ${label}.`);return result;};
-export const currencies=['GBP','EUR','USD'];
+export const currencies=CURRENCIES;
 export const catalogueUnits=['each','hour','day','person','item','set'];
 export const placeholderKeys=['client_first_name','client_name','project_title','project_date','studio_name','booking_link','portal_link'];
 
@@ -99,7 +100,7 @@ export function billingDefaults(db,studioId){const saved=readSetting(db,studioId
 export function saveBillingDefaults(db,studioId,body){
  const terms=body.paymentTermsDays??14;if(!Number.isInteger(terms)||terms<0||terms>120)fail(400,'Use payment terms between 0 and 120 days.');
  const vatRegistered=typeof body.vatRegistered==='boolean'?body.vatRegistered:isVatRegistered(body);if(body.vatRegistered!=null&&typeof body.vatRegistered!=='boolean')fail(400,'Choose whether the studio is VAT registered.');
- const currency=body.currency??'GBP',taxRate=body.taxRate??(vatRegistered?DEFAULT_VAT_RATE:0);if(!['GBP','EUR','USD'].includes(currency))fail(400,'Choose GBP, EUR or USD.');if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
+ const currency=body.currency??'GBP',taxRate=body.taxRate??(vatRegistered?DEFAULT_VAT_RATE:0);if(!currencies.includes(currency))fail(400,'Choose a supported currency.');if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
  return writeSetting(db,studioId,'billing_defaults',{currency,vatRegistered,taxRate,sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan),lateFee:validateLateFee(body.lateFee),tips:validateTips(body.tips)});
 }
 

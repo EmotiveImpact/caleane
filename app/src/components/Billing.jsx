@@ -30,9 +30,10 @@ export const isOverdue=(invoice,day=localToday())=>isOpen(invoice)&&!!invoice.du
 // Paid in full, including an invoice that was paid and later partly refunded or reduced by a credit note.
 const isSettled=invoice=>invoice.status==='Paid'||invoice.status==='Partly refunded';
 // Totals per currency: invoiced net of credit notes and cancellations, paid net of refunds, and still to collect.
+// A currency whose invoices were all cancelled has nothing to report, so it gets no row.
 export function ledgerTotals(invoices){
  const sums={};for(const item of invoices){const row=sums[item.currency]||(sums[item.currency]={invoiced:0,paid:0,outstanding:0});if(item.status!=='Cancelled')row.invoiced+=item.dueMinor??item.amountMinor;row.paid+=item.paidMinor||0;if(isOpen(item))row.outstanding+=invoiceBalance(item);}
- return Object.entries(sums).map(([currency,row])=>({currency,...row}));
+ return Object.entries(sums).filter(([,row])=>row.invoiced||row.paid||row.outstanding).map(([currency,row])=>({currency,...row}));
 }
 // Spreadsheet-safe cell: quote everything and neutralise leading formula characters (see forms.mjs).
 const csvCell=value=>'"'+String(value??'').replace(/^[\s]*[=+@\-\t\r]/,"'$&").replaceAll('"','""')+'"';

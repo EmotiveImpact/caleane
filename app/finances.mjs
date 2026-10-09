@@ -8,7 +8,7 @@ const MAX_RECEIPT=5*1024*1024,MAX_AMOUNT=100000000;
 export function installFinances(db){db.exec(`
  CREATE TABLE IF NOT EXISTS expenses(id TEXT PRIMARY KEY,studio_id TEXT NOT NULL REFERENCES studios(id),project_id TEXT,
   spent_on TEXT NOT NULL,description TEXT NOT NULL,supplier TEXT NOT NULL DEFAULT '',category TEXT NOT NULL,
-  currency TEXT NOT NULL CHECK(currency IN ('GBP','EUR','USD')),amount_minor INTEGER NOT NULL CHECK(amount_minor>0),
+  currency TEXT NOT NULL CHECK(length(currency)=3),amount_minor INTEGER NOT NULL CHECK(amount_minor>0),
   created_by TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
  CREATE INDEX IF NOT EXISTS expenses_studio_date ON expenses(studio_id,spent_on DESC);
  CREATE INDEX IF NOT EXISTS expenses_project ON expenses(studio_id,project_id);

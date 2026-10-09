@@ -50,7 +50,8 @@ test('CSV export neutralises spreadsheet formulas',()=>{
  const csv=ui.invoiceLedgerCSV([invoices[0]],new Map(projects.map(p=>[p.id,p])));
  assert.match(csv,/"'=HYPERLINK\(""http:\/\/evil.test""\)","'\+Ada Brook"/);
  assert.match(csv.split('\r\n')[1],/"Yes"/);
- assert.deepEqual(ui.ledgerTotals([invoices[3]]),[{currency:'GBP',invoiced:0,paid:0,outstanding:0}]);
+ assert.deepEqual(ui.ledgerTotals([invoices[3]]),[],'a currency with only cancelled invoices adds no £0.00 row');
+ assert.deepEqual(ui.ledgerTotals([invoices[0],{...invoices[3],currency:'EUR'}]).map(row=>row.currency),['GBP']);
 });
 
 test('the ledger counts partly refunded invoices as paid and shows what is due after credits and fees',async()=>{
