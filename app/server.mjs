@@ -229,7 +229,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     planStepTask(db,{studioId:studio.id,project,step,plan,detail:`${reason} Open Billing on the project to issue it.`});
     recordStudioNotice(db,{studioId:studio.id,projectId:project.id,sourceKey:`plan-auto:${step.id}`,title:`${step.label} could not be issued automatically`,detail:`${reason} ${project.title}`});
    };
-   const customerAddress=db.prepare('SELECT snapshot FROM invoices WHERE studio_id=? AND project_id=? ORDER BY issued_at DESC').all(studio.id,project.id).map(item=>JSON.parse(item.snapshot).customerAddress).find(Boolean)||'';
+   // The client's billing address from their latest invoice on this project, or else on another of their projects.
+   const customerAddress=db.prepare("SELECT json_extract(snapshot,'$.customerAddress') AS address FROM invoices WHERE studio_id=? AND (project_id=? OR json_extract(snapshot,'$.billToEmail')=?) AND COALESCE(json_extract(snapshot,'$.customerAddress'),'')<>'' ORDER BY project_id=? DESC,issued_at DESC LIMIT 1").get(studio.id,project.id,project.clientEmail||'',project.id)?.address||'';
    const missing=[[saved.sellerAddress,'your studio address'],[saved.sellerContact,'your studio contact'],[saved.paymentInstructions,'payment instructions'],[customerAddress,'the client billing address'],[project.brief?.date,'the service date']].filter(([value])=>!value).map(([,label])=>label);
    if(missing.length){block(`Automatic issuing needs ${missing.length>1?missing.slice(0,-1).join(', ')+' and '+missing.at(-1):missing[0]}.`);continue;}
    try{

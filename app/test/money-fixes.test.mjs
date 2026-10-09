@@ -214,3 +214,18 @@ test('lines can be zero-rated, exempt or at the reduced rate, and the invoice sh
  assert.doesNotMatch(invoicePageHtml(exempt,{}),/VAT \(20%\)/);
  assert.equal((await call(invoices+q,'POST',{...issue,quick:true,kind:'Full',label:'Bad',currency:'GBP',items:[{title:'Hire',quantity:1,unitAmount:100,taxRate:'zero'}]})).status,400);
 });
+
+test('a plan on a returning client’s new project issues itself with the address from their earlier invoice',async t=>{
+ const {call,q,issue,invoices}=await workspace(t);
+ const defaults=(await call('/api/billing-defaults'+q)).data.defaults;
+ await call('/api/billing-defaults'+q,'POST',{...defaults,sellerAddress:issue.sellerAddress,sellerContact:issue.sellerContact,paymentInstructions:issue.paymentInstructions});
+ assert.equal((await call(invoices+q,'POST',{...issue,quick:true,kind:'Full',label:'Extras',currency:'GBP',items:[{title:'Hire',quantity:1,unitAmount:5000}]})).status,201);
+ const {project}=(await call('/api/projects'+q,'POST',{name:'Amelia Taylor',email:'amelia@example.test',occasion:'Anniversary dinner',date:'2027-03-14',venue:'The Garden Room',vision:'Dinner for twelve.',colours:['Ivory'],customColours:'',pinterest:'',budget:''})).data;
+ const estimate=(await call(`/api/projects/${project.id}/estimates${q}`,'POST',{title:'Dinner',currency:'GBP',taxRate:20,items:[{title:'Flowers',quantity:1,unitAmount:100000}]})).data.project.estimates.at(-1);
+ await call(`/api/projects/${project.id}/estimate-decision${q}`,'POST',{estimateId:estimate.id,decision:'confirm'},'client');
+ const plan=`/api/projects/${project.id}/invoices/plan${q}`;
+ await call(plan,'POST',{action:'create'});
+ const response=await call(plan,'POST',{action:'auto-issue',on:true});
+ assert.equal(response.data.invoices.length,1,response.data.plan?.steps?.[0]?.autoBlocked?.reason);
+ assert.equal(response.data.invoices[0].snapshot.customerAddress,issue.customerAddress);
+});
