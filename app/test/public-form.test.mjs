@@ -98,3 +98,17 @@ test('a paused form offers the studio email and website',()=>{
  assert.match(screen.getByRole('link',{name:'Email hello@nay.test'}).getAttribute('href'),/^mailto:hello@nay\.test\?subject=/);
  assert.equal(screen.getByRole('link',{name:'Visit nay.test'}).getAttribute('href'),'https://nay.test/');
 });
+test('a file question uploads each file and sends its reference with the enquiry',async()=>{
+ for(const key of ['FileReader','File','Blob','location','sessionStorage'])Object.defineProperty(globalThis,key,{configurable:true,value:dom.window[key]});
+ const requests=[],realFetch=globalThis.fetch;
+ globalThis.fetch=async(url,init)=>{requests.push([url,JSON.parse(init.body)]);return {ok:true,json:async()=>url.endsWith('/uploads')?{upload:{id:'upload-1',name:'moodboard.png'}}:{reference:'ABC123'}};};
+ try{
+  const fileForm={...definition,theme:{look:'classic'},layout:'page',projectTypes:['Wedding'],questions:[{id:'q-moodboard',label:'Share your inspiration',type:'file',required:true,options:[]}]};
+  delete fileForm.screens;
+  const input=userEvent.setup();const {container}=render(h(PublicForm,{studio:{slug:'test',name:'Test studio'},form:{slug:'moodboard',version:3,definition:fileForm}}));
+  await input.upload(container.querySelector('input[type=file]'),new dom.window.File(['png-bytes'],'moodboard.png',{type:'image/png'}));
+  assert.ok((await screen.findAllByText('moodboard.png')).length);
+  assert.equal(requests[0][0],'/api/public/test/forms/moodboard/uploads');assert.equal(requests[0][1].name,'moodboard.png');
+  assert.ok(screen.getByRole('button',{name:'Remove moodboard.png'}));
+ }finally{globalThis.fetch=realFetch;}
+});

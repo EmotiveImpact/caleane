@@ -9,6 +9,7 @@ export function studioStorageBytes(db,studioId){
  let total=db.prepare('SELECT COALESCE(SUM(length(f.content)),0) AS n FROM files f JOIN projects p ON p.id=f.project_id WHERE p.studio_id=?').get(studioId).n;
  if(hasTable(db,'task_attachments'))total+=db.prepare('SELECT COALESCE(SUM(length(content)),0) AS n FROM task_attachments WHERE studio_id=?').get(studioId).n;
  if(hasTable(db,'conversation_files'))total+=db.prepare('SELECT COALESCE(SUM(length(f.content)),0) AS n FROM conversation_files f JOIN conversations c ON c.id=f.conversation_id WHERE c.studio_id=?').get(studioId).n;
+ if(hasTable(db,'enquiry_uploads'))total+=db.prepare('SELECT COALESCE(SUM(length(content)),0) AS n FROM enquiry_uploads WHERE studio_id=?').get(studioId).n;
  return total;
 }
 export function assertQuota(db,studioId,bytes,limit=studioQuotaBytes()){
@@ -24,5 +25,7 @@ export function cleanupUnattachedUploads(db,{olderThanMs=86400000,clock=Date.now
   WHERE m.conversation_id=conversation_files.conversation_id AND a.value=conversation_files.id)`).run(new Date(clock()-olderThanMs).toISOString()).changes);
  if(hasTable(db,'task_attachments')&&hasTable(db,'task_collaboration'))removed+=Number(db.prepare(`DELETE FROM task_attachments WHERE NOT EXISTS(SELECT 1 FROM task_collaboration t JOIN json_each(t.data,'$.files') f
   WHERE t.studio_id=task_attachments.studio_id AND t.task_key=task_attachments.task_key AND json_extract(f.value,'$.id')=task_attachments.id)`).run().changes);
+ // Files sent with a form that was never submitted.
+ if(hasTable(db,'enquiry_uploads'))removed+=Number(db.prepare('DELETE FROM enquiry_uploads WHERE created_at<?').run(new Date(clock()-olderThanMs).toISOString()).changes);
  return removed;
 }

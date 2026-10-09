@@ -1,4 +1,4 @@
-import {installForms,listForms,changeForm,publicForm,submitForm,listFormResponses,formResponseCSV} from './forms.mjs';
+import {installForms,listForms,changeForm,publicForm,submitForm,listFormResponses,formResponseCSV,formAcceptsUploads,storeEnquiryUpload} from './forms.mjs';
 import {installDataGovernance,dataGovernance,changeGovernance,streamStudioExport} from './data-governance.mjs';
 import {handleCalendarSync,syncAllCalendars} from './calendar-sync.mjs';
 import {handleBookingIntegrations,safeCalendarBusy,completeBookingIntegrations,syncBookingIntegrations} from './booking-integrations.mjs';
@@ -166,7 +166,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     res.writeHead(401,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','WWW-Authenticate':'Basic realm="Caleane preview", charset="UTF-8"'});
     return res.end('Preview access required.');
    }
-   const publicMatch=route.match(/^\/api\/public\/([a-z0-9-]+)(?:\/(enquiries)|\/forms\/([a-z0-9-]+)(?:\/(enquiries))?)?$/);
+   const publicMatch=route.match(/^\/api\/public\/([a-z0-9-]+)(?:\/(enquiries)|\/forms\/([a-z0-9-]+)(?:\/(enquiries|uploads))?)?$/);
    let publicStudio;
    if(publicMatch){publicStudio=db.prepare('SELECT * FROM studios WHERE slug=?').get(publicMatch[1]);if(!publicStudio)fail(404,'Studio not found.');const allowed=[origin,...JSON.parse(publicStudio.origins)];if(req.headers.origin&&!allowed.includes(req.headers.origin))fail(403,'This website is not connected to the studio.');if(req.headers.origin){res.setHeader('Access-Control-Allow-Origin',req.headers.origin);res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Headers','Content-Type, Idempotency-Key');res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');}if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}}
    // Resolve the session before reading a body, so only signed-in people can send upload-sized requests.
@@ -175,10 +175,12 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(route.startsWith('/api/')&&!['GET','HEAD','OPTIONS'].includes(req.method)){
     if(!publicMatch&&req.headers.origin!==origin)fail(403,'Please use this workspace to make changes.');
     if(!/^application\/json(?:;|$)/i.test(String(req.headers['content-type']||'')))fail(415,'Use JSON for this request.');
-    // Public form and booking submissions are text only and fit the 64 KB limit; uploads require a session.
-    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references))$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
+    // Public form and booking submissions are text only and fit the 64 KB limit; uploads require a session,
+    // except a file sent to a published form with a file question, which is rate limited before its body is read.
+    const formUpload=publicMatch?.[4]==='uploads'&&req.method==='POST';if(formUpload){rate(req,'form-upload',20);if(!formAcceptsUploads(db,publicStudio.id,publicMatch[3])){res.setHeader('Connection','close');fail(404,'This form does not take files.');}}
+    const isUpload=formUpload||/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references))$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
     // Refusals before the body is read close the connection, so the unread body is discarded rather than parsed as the next request.
-    if((large&&!user)||Number(req.headers['content-length']||0)>limit){res.setHeader('Connection','close');fail(large&&!user?401:413,large&&!user?'Please sign in.':tooLarge);}
+    if((large&&!user&&!formUpload)||Number(req.headers['content-length']||0)>limit){res.setHeader('Connection','close');fail(large&&!user&&!formUpload?401:413,large&&!user&&!formUpload?'Please sign in.':tooLarge);}
     await new Promise((resolve,reject)=>{let bytes=0;req.on('data',chunk=>{if(bytes<0)return;bytes+=chunk.length;if(bytes>limit){bytes=-1;res.setHeader('Connection','close');reject(Object.assign(new Error(tooLarge),{status:413}));}else chunks.push(chunk);});req.on('end',resolve);req.on('error',reject);});
     try{body=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');if(!body||Array.isArray(body)||typeof body!=='object')throw 0;}catch{fail(400,'We could not read that request.');}
    }
@@ -192,6 +194,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(publicMatch[3]&&!form)fail(404,'Form not found.');
     return reply(200,{enabled:true,studio:{name:publicStudio.name,slug:publicStudio.slug,accent:publicStudio.accent,branding:brand},form,plannerUrl:`${origin}/intake/${publicStudio.slug}${publicMatch[3]?'/'+publicMatch[3]:''}`});
    }
+   if(publicMatch?.[4]==='uploads'&&req.method==='POST')return reply(201,{upload:storeEnquiryUpload(db,publicStudio,publicMatch[3],body,sniffMime)});
    if(publicMatch&&(publicMatch[2]||publicMatch[4])&&req.method==='POST'){
     const formExists=db.prepare('SELECT 1 FROM enquiry_forms WHERE studio_id=? AND slug=?').get(publicStudio.id,publicMatch[3]||'enquiry');
     if(formExists||publicMatch[3]){rate(req,'intake',30);const result=submitForm(db,{studio:publicStudio,slug:publicMatch[3]||'enquiry',body,key:req.headers['idempotency-key'],buildBrief:brief,legacy:!publicMatch[3],onCreated:projectId=>recordEnquiry(db,{studioId:publicStudio.id,projectId})});return reply(result.status,result.data);}
