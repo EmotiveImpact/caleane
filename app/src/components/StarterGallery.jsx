@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {Check,FileText,MessageSquare,ReceiptText,ScrollText} from 'lucide-react';
 import {WorkspaceButton} from './workspace/WorkspaceUI';
 import {starterContract,starterFormDefinition,starterFormSlug,starterKindFor,starterKinds,starterKit} from '../lib/starter-gallery';
+import {fillMergeFields} from '../lib/merge-fields';
 import {accentContrast} from '../lib/accent-theme';
 import '../studio-commerce.css';
 import '../starter-gallery.css';
@@ -25,7 +26,7 @@ export function StarterGallery({studio,request,navigate,onAdded}){
    .catch(e=>{if(active)setError(e.message);});
   return()=>{active=false;};
  },[studio.id,request]);
- const kit=starterKit(kind),contract=starterContract(kind,{studioName:studio.name}),ready=!!saved.templates;
+ const kit=starterKit(kind),contract=starterContract(kind),ready=!!saved.templates;
  const hasTemplate=item=>saved.templates?.some(t=>same(t.name,item.name));
  const hasItem=item=>saved.items?.some(i=>!i.archived&&same(i.name,item.name));
  const form=saved.forms?.find(f=>f.slug===starterFormSlug(kind));
@@ -55,7 +56,7 @@ export function StarterGallery({studio,request,navigate,onAdded}){
    </article>
    <article className="starter-card" aria-labelledby="starter-contract">
     <header><ScrollText size={18}/><div><h3 id="starter-contract">{contract.title}</h3><small>Plain-English terms with the clauses this kind of work usually needs.</small></div></header>
-    <details className="starter-contract-preview"><summary>Read the terms</summary><div dangerouslySetInnerHTML={{__html:contract.termsHtml}}/></details>
+    <details className="starter-contract-preview"><summary>Read the terms</summary><div dangerouslySetInnerHTML={{__html:fillMergeFields(contract.termsHtml,{studio_name:studio.name})}}/></details>
     <p className="starter-hint">To use it, open a project, go to Contracts and choose <strong>Use starter</strong>. Fill in the parts in square brackets and have a solicitor check it before you rely on it.</p>
    </article>
    <article className="starter-card" aria-labelledby="starter-form">

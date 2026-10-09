@@ -12,6 +12,7 @@ import {handleConversationOrganiser} from './conversation-organiser.mjs';
 import {handleScheduledMessages,sendDueScheduled} from './conversation-scheduled.mjs';
 import {createAccountSecurity} from './account-security.mjs';
 import {installEngagements,getEngagements,changeEngagements,projectCalendar} from './engagements.mjs';
+import {findPlaceholders,placeholderMessage} from './src/lib/merge-fields.js';
 import http from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
@@ -611,7 +612,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      return reply(200,{stripe:{configured:stripeReady,connected:!!connected,chargesEnabled}});
     }
     const engagementMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/engagements(?:\/([a-z-]+))?$/);
-    if(engagementMatch){const args={studioId:studio.id,projectId:engagementMatch[1],userId:user.id};if(req.method==='GET'&&!engagementMatch[2])return reply(200,getEngagements(db,args));if(req.method==='POST'&&engagementMatch[2]){const result=changeEngagements(db,{...args,action:engagementMatch[2],body});await syncProjectArchives(db,args);automate(studio.id,args.projectId);return reply(200,result);}fail(405,'Method not allowed.');}
+    if(engagementMatch){const args={studioId:studio.id,projectId:engagementMatch[1],userId:user.id};if(req.method==='GET'&&!engagementMatch[2])return reply(200,getEngagements(db,args));if(req.method==='POST'&&engagementMatch[2]){const {eventId,...result}=changeEngagements(db,{...args,action:engagementMatch[2],body});queueProjectEvent(studio.id,args.projectId,user.id,eventId);await syncProjectArchives(db,args);automate(studio.id,args.projectId);return reply(200,result);}fail(405,'Method not allowed.');}
     const calendarMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/calendar\.ics$/);
     if(calendarMatch&&req.method==='GET'){const calendar=projectCalendar(db,{studioId:studio.id,projectId:calendarMatch[1],userId:user.id});res.writeHead(200,{'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'attachment; filename="caleane-project.ics"','Cache-Control':'private, no-store'});return res.end(calendar);}
     const documentMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/documents(?:\/([a-f0-9-]+)\/pdf)?$/);
@@ -851,6 +852,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      const estimate=p.estimates?.at(-1);if(!estimate||estimate.id!==body.estimateId||estimate.briefRevision!==p.briefRevision||!['Awaiting review','Budget confirmed'].includes(estimate.status))fail(409,'Create or confirm a current estimate before sharing a proposal.');
      const title=str(body.title,200),scope=str(body.scope,10000),exclusions=str(body.exclusions||'',5000),delivery=str(body.delivery,5000),expiresOn=date(body.expiresOn,'reply date');if(!title||!scope||!delivery||!expiresOn||expiresOn<now().slice(0,10))fail(400,'Add a title, scope, delivery plan and a future reply date.');
      const richDocument=body.documentHtml===undefined?{}:(await import('./engagements.mjs')).agreementDocument({termsHtml:body.documentHtml});
+     const gaps=findPlaceholders(title,scope,exclusions,delivery,richDocument.termsHtml||'');if(gaps.length)fail(400,placeholderMessage(gaps,'this proposal'));
      p.proposals.forEach(q=>{if(q.status==='Awaiting response')q.status='Superseded';});p.proposals.push({id:id(),version:p.proposals.length+1,title,scope,exclusions,delivery,expiresOn,...(richDocument.termsHtml?{documentHtml:richDocument.termsHtml,documentFormat:richDocument.documentFormat}:{}),estimate:structuredClone(estimate),briefRevision:p.briefRevision,status:'Awaiting response',by:user.name,createdAt:now()});event(p,user,'Shared proposal version '+p.proposals.length);
     }else if(action==='proposal-response'){
      if(owner)fail(403,'A client approver responds to the proposal.');const q=p.proposals?.at(-1);if(!q||q.id!==body.proposalId||q.status!=='Awaiting response'||q.briefRevision!==p.briefRevision||q.expiresOn<now().slice(0,10))fail(409,'This proposal changed or expired. Ask the studio for an update.');if(!['accept','changes'].includes(body.decision))fail(400,'Choose accept or request changes.');const feedback=str(body.feedback||'',3000);if(body.decision==='accept'&&body.acknowledged!==true)fail(400,'Confirm that you reviewed the scope and investment.');if(body.decision==='changes'&&!feedback)fail(400,'Describe the changes you need.');q.status=body.decision==='accept'?'Scope accepted':'Changes requested';q.feedback=feedback;q.decidedBy=user.name;q.decidedByUserId=user.id;q.decidedAt=now();event(p,user,q.status+' · proposal version '+q.version);

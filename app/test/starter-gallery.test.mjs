@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {createWorkspace} from '../server.mjs';
 import {placeholderKeys} from '../studio-commerce.mjs';
+import {fillMergeFields} from '../src/lib/merge-fields.js';
 import {starterContract,starterFormDefinition,starterFormSlug,starterKindFor,starterKinds,starterKit} from '../src/lib/starter-gallery.js';
 
 const origin='http://127.0.0.1:4320';
@@ -23,7 +24,7 @@ test('there is a starter kit for every kind of work, written without em dashes o
  // Older kinds of work borrow the gallery of the group they now belong to.
  assert.equal(starterKindFor('floral-design'),'event-styling');
  assert.equal(starterKindFor('unknown'),'event-styling');
- assert.match(starterContract('photo-film',{studioName:'Fern & <Co>'}).termsHtml,/Fern &amp; &lt;Co&gt;/);
+ assert.match(fillMergeFields(starterContract('photo-film').termsHtml,{studio_name:'Fern & <Co>'}),/Fern &amp; &lt;Co&gt;/);
 });
 
 test('every starter passes the same checks as the Templates, Pricing, Forms and Contracts screens',async t=>{
@@ -48,11 +49,13 @@ test('every starter passes the same checks as the Templates, Pricing, Forms and 
   assert.equal(form.status,201,`${id} form: ${form.data.error}`);
   assert.equal(form.data.form.status,'draft');
   assert.deepEqual(form.data.form.definition.questions.map(item=>item.label),kit.form.questions.map(item=>item.label));
-  const contract=starterContract(id,{studioName:studio.name});
+  const contract=starterContract(id);
   const agreement=await call(`/api/projects/${project.id}/engagements/create-agreement${q}`,'POST',{...contract,expiresOn:'2099-01-01'});
   assert.equal(agreement.status,200,`${id} contract: ${agreement.data.error}`);
   assert.equal(agreement.data.agreements[0].title,kit.contract.title);
-  assert.equal(agreement.data.agreements[0].termsHtml,contract.termsHtml);
+  // Merge fields fill in from the project on save; only the studio's own choice is left as a gap.
+  assert.equal(agreement.data.agreements[0].termsHtml,fillMergeFields(contract.termsHtml,agreement.data.mergeFields));
+  assert.doesNotMatch(agreement.data.agreements[0].termsHtml,/\{[a-z_]+\}/);
  }
  // A second copy of a form starter is refused rather than overwriting the first.
  assert.equal((await call('/api/forms'+q,'POST',{slug:starterFormSlug('general'),definition:starterFormDefinition('general')})).status,409);

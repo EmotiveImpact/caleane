@@ -200,14 +200,16 @@ export function starterKit(kind){
 const escapeHtml=value=>String(value).replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[character]);
 
 // The shared clauses come first and last; each kind of work adds its own in the middle.
-export function starterContract(kind,{studioName='The studio'}={}){
- const kit=starterKit(kind),studio=studioName;
+// Merge fields such as {client_name} fill in from the project when the draft is saved
+// (see merge-fields.js); the one [square-bracket gap] is a choice only the studio can make.
+export function starterContract(kind){
+ const kit=starterKit(kind);
  const sections=[
-  ['Who this agreement is between',`This agreement is between ${studio} (“we”, “us”) and the client named in the project space (“the client”). It covers the work described in the accepted proposal for this project.`],
-  ['Fees and payment','The fee is set out in the accepted proposal. A deposit of [deposit percentage]% is due to secure the date or start the work, and the balance is due as shown in the payment plan. The deposit covers time we set aside and work we begin straight away, so it cannot be refunded.'],
+  ['Who this agreement is between','This agreement is between {studio_name} (“we”, “us”) and {client_name} (“the client”). It covers {project_name} on {event_date} at {venue}, as described in the accepted proposal for this project.'],
+  ['Fees and payment','The total fee is {total}, as set out in the accepted proposal. A deposit of {deposit_percentage}% ({deposit_amount}) is due to secure the date or start the work, and the balance is due as shown in the payment plan. The deposit covers time we set aside and work we begin straight away, so it cannot be refunded.'],
   ...kit.contract.clauses,
   ['Changes to the work','Either side can ask for changes. We will confirm any change to the price or timing in writing before carrying it out.'],
-  ['Cancellation','The client can cancel by telling us in writing. Payments already made are kept, and if the client cancels within [number] days of the project date, the full fee is due. If we need to cancel, we will refund everything the client has paid.'],
+  ['Cancellation','The client can cancel by telling us in writing. Payments already made are kept, and if the client cancels within [number of days] days of the project date, the full fee is due. If we need to cancel, we will refund everything the client has paid.'],
   ['Liability','We take care in everything we do. Our total liability under this agreement is limited to the fees paid, and we are not liable for indirect losses. Nothing here limits liability that cannot be limited by law.'],
   ['Personal information','We use the client’s details only to deliver this work and keep them securely, as described in our privacy notice.'],
   ['Accepting this agreement','By accepting this version in the project space, the client confirms they have read and agree to these terms. This agreement is governed by the law of England and Wales.']
