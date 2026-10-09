@@ -166,7 +166,7 @@ function App(){
   let known=projects.find(x=>x.id===target.projectId);if(!known){try{const d=await request('/api/projects?studio='+studio.id);setProjects(d.projects);known=d.projects.find(x=>x.id===target.projectId);}catch{}}
   routeTo('projects',target.projectId,null,target.tab||(known?.canContribute?'Brief':'Overview'));}
  function openSetup(step){
-  if(step==='brand'||step==='calendar'){routeTo('settings');const q=new URLSearchParams(location.search);q.set('settingsTab',step==='brand'?'appearance':'connections');history.replaceState(null,'','/?'+q);}
+  if(step==='brand'||step==='calendar'){routeTo('settings');const q=new URLSearchParams(location.search);q.set('settingsTab',step==='brand'?'brand':'connections');history.replaceState(null,'','/?'+q);}
   else routeTo({form:'forms',project:'projects',invite:'clients',team:'members'}[step]||'overview');}
  async function refresh(){await run(async()=>{const d=await request('/api/projects?studio='+studio.id);setProjects(d.projects);setNotice('Up to date.');});}
  function syncInvoice(invoice){projectWriteVersion.current++;setProjects(previous=>previous.map(item=>item.id===invoice.projectId?{...item,latestInvoice:{id:invoice.id,number:invoice.number,kind:invoice.kind,currency:invoice.currency,amountMinor:invoice.amountMinor,paidMinor:invoice.paidMinor,dueDate:invoice.dueDate,status:invoice.status}}:item));request('/api/projects?studio='+studio.id).then(data=>setProjects(data.projects)).catch(e=>setError(e.message));}
