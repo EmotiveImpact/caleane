@@ -54,7 +54,7 @@
 .logic-section-heading>span{font-size:11px;color:var(--studio-muted)}
 .logic-fallback{padding:14px 0;margin-bottom:14px;border-top:1px solid var(--studio-rule);border-bottom:1px solid var(--studio-rule);display:grid;gap:6px;font-size:13px;line-height:1.5}
 .logic-fallback strong,.logic-fallback small{font-size:11px;color:var(--studio-muted);font-weight:400}
-.form-settings-dialog{position:fixed;z-index:96;inset:6vh max(24px,calc((100vw - 880px)/2));background:var(--studio-paper,#fff);color:var(--studio-ink,#202326);border-radius:var(--ws-radius);display:flex;flex-direction:column;font-family:var(--folio-content-font,'Instrument Sans',sans-serif);container:none;overflow:hidden;box-shadow:0 16px 70px #0002}
+.form-settings-dialog{position:fixed;z-index:calc(var(--layer-dialog) + 1);inset:6vh max(24px,calc((100vw - 880px)/2));background:var(--studio-paper,#fff);color:var(--studio-ink,#202326);border-radius:var(--ws-radius);display:flex;flex-direction:column;font-family:var(--folio-content-font,'Instrument Sans',sans-serif);container:none;overflow:hidden;box-shadow:0 16px 70px #0002}
 .form-settings-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 26px;border-bottom:1px solid var(--studio-rule,#ddd)}
 .form-settings-dialog header h2{font-size:21px;line-height:1.2;margin:0 0 6px;font-weight:550}
 .form-settings-dialog header p{font-size:13px;color:var(--studio-muted);margin:0}

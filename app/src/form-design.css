@@ -66,8 +66,8 @@
 .forms-field-toggles .ws-switch-row{padding:8px 0;gap:12px}
 .forms-field-toggles .ws-switch-row strong{font-size:12px}
 .forms-workspace :is(.form-layout-choice,.form-shape-choice,.form-inspector-tabs button,.screen-outline-item):focus-visible{outline:2px solid var(--studio-accent);outline-offset:4px}
-.form-preview-scrim{position:fixed;inset:0;background:#17201980;z-index:95;backdrop-filter:blur(5px)}
-.form-expanded-preview{position:fixed;inset:24px;z-index:96;background:#f0f2ef;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;font-family:'Instrument Sans',Arial,sans-serif;box-shadow:0 20px 100px #0003}
+.form-preview-scrim{position:fixed;inset:0;background:#17201980;z-index:var(--layer-dialog);backdrop-filter:blur(5px)}
+.form-expanded-preview{position:fixed;inset:24px;z-index:calc(var(--layer-dialog) + 1);background:#f0f2ef;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;font-family:'Instrument Sans',Arial,sans-serif;box-shadow:0 20px 100px #0003}
 .form-expanded-preview>header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;gap:20px;background:white;border-bottom:1px solid #e3e6e3;flex-shrink:0}
 .form-expanded-preview h2{font-size:15px;font-weight:550;margin:0 0 4px;letter-spacing:-.02em}
 .form-expanded-preview header p{font-size:11px;color:#727a73;margin:0}
