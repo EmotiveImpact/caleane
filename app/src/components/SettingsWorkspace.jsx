@@ -12,6 +12,7 @@ import {XeroSettings} from './XeroSettings';
 import {BookingIntegrations} from './BookingIntegrations';
 import {BookingSettings,InvoiceDefaultsSettings,InvoiceDesignSection,LateFeeSettings,PriceListSettings,ReminderSettings,TemplateSettings} from './StudioCommerceSettings';
 import {StarterGallery} from './StarterGallery';
+import {ProjectTemplateSettings} from './ProjectTemplates';
 import {CustomFieldSettings} from './CustomFields';
 import {MessageEmailSetting} from './MessageEmailSetting';
 import {DEFAULT_WORKFLOW,projectTypesFor,workflowOptionsFor} from '../lib/workflows';
@@ -137,7 +138,7 @@ export function SettingsWorkspace({studio,request,run,busy,reload,navigate}){
       {panel('invoice-design',section==='invoice-design'&&<InvoiceDesignSection studio={studio} request={request}/>)}
       {panel('price-list',section==='price-list'&&<PriceListSettings studio={studio} request={request}/>)}
       {panel('reminders',section==='reminders'&&<><section className="settings-pane-layout settings-notification-email" aria-labelledby="settings-notification-email-title"><div className="settings-pane-form"><header className="settings-pane-heading"><h2 id="settings-notification-email-title">Your notifications</h2><p>How Caleane lets you know about new client messages. This choice is yours alone and does not change anyone else’s.</p></header><MessageEmailSetting className="settings-notification-email-box" studio={studio} request={request}/></div></section><ReminderSettings studio={studio} request={request}/></>)}
-      {panel('templates',section==='templates'&&<><StarterGallery studio={studio} request={request} navigate={navigate} onAdded={()=>setTemplatesKey(key=>key+1)}/><TemplateSettings key={templatesKey} studio={studio} request={request}/></>)}
+      {panel('templates',section==='templates'&&<><StarterGallery studio={studio} request={request} navigate={navigate} onAdded={()=>setTemplatesKey(key=>key+1)}/><ProjectTemplateSettings studio={studio} request={request}/><TemplateSettings key={templatesKey} studio={studio} request={request}/></>)}
       {panel('fields',section==='fields'&&<CustomFieldSettings studio={studio} request={request}/>)}
       {panel('connections',<div className="settings-connections"><CalendarSyncSettings studio={studio} request={request}/><StripeConnectSettings studio={studio} request={request}/></div>)}
       {panel('integrations',section==='integrations'&&<div className="integration-cards"><header className="settings-pane-heading"><h2>Integrations</h2><p>Send your invoices, enquiries and bookings on to the other tools your studio uses. Calendars and card payments are under Connections.</p></header><XeroSettings studio={studio} request={request}/><WebhookSettings studio={studio} request={request}/></div>)}

@@ -2,6 +2,7 @@ import React,{useEffect,useId,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {Check,FolderPlus,MessageSquareText,Plus,X} from 'lucide-react';
 import {briefFieldsFor,DEFAULT_WORKFLOW,projectTypesFor,workflowFor,workflowOptionsFor} from '../lib/workflows';
+import {templateAdds} from './ProjectTemplates';
 
 const previewImages={
  'event-styling':'/assets/candlelit-table.webp',
@@ -24,6 +25,14 @@ function emptyProject(studio,client){return {
  occasion:'',date:'',venue:'',vision:'',details:{}
 };}
 
+// A saved template fills in the kind of work and the starting brief. Anything
+// already carried in from an enquiry (the client, the title, their idea) stays.
+function withTemplate(form,template,fromEnquiry){
+ if(!template)return form;
+ const b=template.brief||{};
+ return {...form,workflowType:b.workflowType||form.workflowType,occasion:fromEnquiry&&form.occasion?form.occasion:b.occasion||form.occasion,vision:fromEnquiry&&form.vision?form.vision:b.vision||form.vision,details:{...(b.details||{})},budget:b.budget||'',colours:b.colours||[],customColours:b.customColours||''};
+}
+
 export function NewProject({studio,request,busy,onCreate,client,onOpenPipeline}){
  const [open,setOpen]=useState(false);
  const [mode,setMode]=useState('blank');
@@ -32,10 +41,13 @@ export function NewProject({studio,request,busy,onCreate,client,onOpenPipeline})
  const [opportunitiesLoading,setOpportunitiesLoading]=useState(false);
  const [opportunitiesError,setOpportunitiesError]=useState('');
  const [selectedId,setSelectedId]=useState('');
+ const [templates,setTemplates]=useState([]);
+ const [templateId,setTemplateId]=useState('');
  const [submitting,setSubmitting]=useState(false);
  const [error,setError]=useState('');
  const projectTypesId=useId();
  const opportunity=opportunities.find(item=>item.id===selectedId);
+ const template=templates.find(item=>item.id===templateId);
  const available=opportunities.filter(item=>!item.projectId&&item.stage!=='Lost'&&(!client||item.clientId===client.id));
  const workflow=workflowFor(studio,{brief:{workflowType:form.workflowType}});
  const previewImage=previewImages[form.workflowType]||previewImages[DEFAULT_WORKFLOW];
@@ -44,8 +56,9 @@ export function NewProject({studio,request,busy,onCreate,client,onOpenPipeline})
  useEffect(()=>{
   if(!open)return;
   let active=true;
-  setMode('blank');setForm(emptyProject(studio,client));setSelectedId('');setError('');
+  setMode('blank');setForm(emptyProject(studio,client));setSelectedId('');setTemplateId('');setError('');
   setOpportunitiesError('');setOpportunitiesLoading(true);
+  request('/api/project-templates?studio='+studio.id).then(result=>{if(active)setTemplates(result.templates||[]);}).catch(()=>{if(active)setTemplates([]);});
   request('/api/opportunities?studio='+studio.id).then(result=>{
    if(active)setOpportunities(result.opportunities||[]);
   }).catch(cause=>{if(active)setOpportunitiesError(cause.message||'The enquiries could not be loaded.');})
@@ -54,12 +67,17 @@ export function NewProject({studio,request,busy,onCreate,client,onOpenPipeline})
  },[open,studio.id,client?.id]);
 
  function chooseMode(next){
-  setMode(next);setSelectedId('');setForm(emptyProject(studio,client));setError('');
+  setMode(next);setSelectedId('');setForm(withTemplate(emptyProject(studio,client),template,false));setError('');
  }
  function chooseOpportunity(id){
   setSelectedId(id);setError('');
   const item=opportunities.find(entry=>entry.id===id);
-  setForm({...emptyProject(studio,client),name:item?.clientName||'',email:item?.clientEmail||'',occasion:item?.title||'',vision:item?.description||''});
+  setForm(withTemplate({...emptyProject(studio,client),name:item?.clientName||'',email:item?.clientEmail||'',occasion:item?.title||'',vision:item?.description||''},template,true));
+ }
+ function chooseTemplate(id){
+  setTemplateId(id);setError('');
+  const next=templates.find(item=>item.id===id);
+  setForm(current=>next?withTemplate({...current,occasion:mode==='enquiry'?current.occasion:'',vision:mode==='enquiry'?current.vision:''},next,mode==='enquiry'):{...current,workflowType:emptyProject(studio,client).workflowType,details:{},budget:'',colours:[],customColours:''});
  }
  async function submit(event){
   event.preventDefault();
@@ -68,6 +86,7 @@ export function NewProject({studio,request,busy,onCreate,client,onOpenPipeline})
   const payload={
    ...form,
    ...(mode==='blank'&&client?{clientId:client.id}:{}),
+   ...(template?{templateId:template.id}:{}),
    details:Object.fromEntries(briefFieldsFor(form.workflowType).map(field=>[field.key,form.details[field.key]||'']))
   };
   try{
@@ -89,6 +108,7 @@ export function NewProject({studio,request,busy,onCreate,client,onOpenPipeline})
      <form id="studio-new-project" className="studio-setup-form" onSubmit={submit}>
       <Dialog.Title>Create project</Dialog.Title>
       <Dialog.Description>Begin with a client and a starting point. The brief can grow with the work.</Dialog.Description>
+      {templates.length>0&&<div className="studio-setup-template"><label>Start from<select aria-label="Start from" value={templateId} onChange={event=>chooseTemplate(event.target.value)}><option value="">A blank brief</option>{templates.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>{template&&<p className="studio-setup-help">{template.description?template.description+' ':''}{templateAdds(template)} You can change anything before or after creating.</p>}</div>}
       <div className="studio-setup-fields two">
        <label>Client name<input name="name" value={form.name} onChange={event=>setField('name',event.target.value)} readOnly={Boolean(client)||mode==='enquiry'} maxLength="120" required placeholder="Who is this for?"/></label>
        <label>Client email<input name="email" type="email" value={form.email} onChange={event=>setField('email',event.target.value)} readOnly={Boolean(client)||mode==='enquiry'} required placeholder="client@example.com"/></label>
@@ -122,9 +142,9 @@ export function NewProject({studio,request,busy,onCreate,client,onOpenPipeline})
       <img src={previewImage} alt="Illustrative creative work for this service area"/>
       <h2>{form.occasion||'Your next project'}</h2>
       <p>{form.name||opportunity?.clientName||'Client to be added'} · {workflow.name}</p>
-      <div className="studio-setup-preview-facts"><div><span>Starting from</span><strong>{mode==='enquiry'?'Existing opportunity':'A new brief'}</strong></div><div><span>{workflow.date}</span><strong>{previewDate(form.date)}</strong></div><div><span>{workflow.place}</span><strong>{form.venue||'To be decided'}</strong></div></div>
+      <div className="studio-setup-preview-facts"><div><span>Starting from</span><strong>{[mode==='enquiry'?'Existing opportunity':template?null:'A new brief',template?.name].filter(Boolean).join(' · ')}</strong></div><div><span>{workflow.date}</span><strong>{previewDate(form.date)}</strong></div><div><span>{workflow.place}</span><strong>{form.venue||'To be decided'}</strong></div></div>
       <p className="studio-setup-preview-note">The project will hold the brief, references, messages, versions and decisions together. You can invite the client after creating it.</p>
-      <div className="studio-setup-preview-steps"><span><Check size={16}/>Add and refine the brief</span><span><Check size={16}/>Collect real project references</span><span><Check size={16}/>Review each direction and decision</span></div>
+      <div className="studio-setup-preview-steps">{template?.tasks?.length>0&&<span><Check size={16}/>{template.tasks.length===1?'1 task':template.tasks.length+' tasks'} added to the plan</span>}{template?.estimate?.items?.length>0&&<span><Check size={16}/>Estimate ready as a draft to review</span>}<span><Check size={16}/>Add and refine the brief</span><span><Check size={16}/>Collect real project references</span><span><Check size={16}/>Review each direction and decision</span></div>
      </aside>
     </div>
     <div className="studio-setup-actions"><button type="button" className="studio-setup-cancel" onClick={()=>setOpen(false)}>Cancel</button><button type="submit" form="studio-new-project" className="button" disabled={busy||submitting||mode==='enquiry'&&!opportunity}>{submitting?'Creating…':mode==='enquiry'?'Create linked project':'Create project'}</button></div>
