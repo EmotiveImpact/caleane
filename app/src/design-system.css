@@ -27,14 +27,14 @@ body :is(.button,.ws-button.ws-button,.crm-primary,.crm-secondary,.task-primary)
 body .modal :is(.button,.crm-primary,.task-primary,.ws-button--primary){min-height:var(--ds-control-height);padding-inline:20px;font-size:13px;font-weight:500}
 
 /* Status labels: square-cornered everywhere; number counts stay round */
-body :is(.badge,.ws-status,.doc-status,.folio-finances-status,.crm-stage-chip,.journey-status,.studio-status){border-radius:var(--ds-radius-status)!important}
+body :is(.badge,.ws-status,.doc-status,.folio-finances-status,.crm-stage-chip,.journey-status,.studio-status){border-radius:var(--ds-radius-status)}
 
 /* Tabs: one underline style for every list filter */
 .folio-workspace :is(.studio-tabs,.ws-filters,.studio-billing-filters,.folio-library-filters)>button{font-size:var(--ds-tab-size)!important;font-weight:520;color:var(--studio-muted);padding:12px 0 15px!important;background:none}
-.folio-workspace :is(.studio-tabs>button.active,.studio-tabs>button[aria-pressed=true],.ws-filters>button[data-state=on],.studio-billing-filters>button[aria-pressed=true],.folio-library-filters>button[aria-pressed=true]){color:var(--studio-ink)!important;font-weight:600}
+.folio-workspace :is(.studio-tabs>button.active,.studio-tabs>button[aria-pressed=true],.ws-filters>button[data-state=on],.studio-billing-filters>button[aria-pressed=true],.folio-library-filters>button[aria-pressed=true]){color:var(--studio-ink);font-weight:600}
 .folio-workspace :is(.studio-billing-filters,.folio-library-filters){gap:24px}
 .folio-workspace :is(.studio-billing-filters,.folio-library-filters)>button{border-bottom-width:2px}
-.folio-workspace :is(.studio-billing-filters,.folio-library-filters)>button[aria-pressed=true]{border-bottom-color:var(--studio-ink)!important}
+.folio-workspace :is(.studio-billing-filters,.folio-library-filters)>button[aria-pressed=true]{border-bottom-color:var(--studio-ink)}
 .folio-workspace .ws-filters>button[data-state=on]:after{background:var(--studio-ink)}
 .folio-workspace :is(.studio-tabs,.ws-filters,.folio-library-filters)>button>span{display:inline-grid;place-items:center;min-width:23px;height:auto;padding:2px 7px;border-radius:20px;background:#eceeed;color:var(--studio-muted);font-size:12px;font-weight:500}
 
@@ -54,15 +54,15 @@ body :is(.badge,.ws-status,.doc-status,.folio-finances-status,.crm-stage-chip,.j
 }
 
 /* Selected items: a soft background only, no coloured bar down the left edge */
-body :is(.folio-rail nav button.active,.folio-settings.active,.ws-inbox .relationship-thread.active)::before{content:none!important}
-body :is(.contract-versions>button[aria-current=true],.settings-nav button[aria-current=page],.billing-invoice-list button.selected,.crm-task-list article.is-search-result){box-shadow:none!important}
+body :is(.folio-rail nav button.active,.folio-settings.active,.ws-inbox .relationship-thread.active)::before{content:none}
+body :is(.contract-versions>button[aria-current=true],.settings-nav button[aria-current=page],.billing-invoice-list button.selected,.crm-task-list article.is-search-result){box-shadow:none}
 body .contract-versions>button[aria-current=true]{background:#eceeed!important;border-radius:var(--ds-radius-control)}
 body .draft-list>button.active{border-left:0!important;padding-left:10px}
 body .billing-invoice-list button{padding-inline:12px}
 body .billing-invoice-list button.selected{background:#f3f4f3;padding-left:12px}
 
 /* Search in the top bar is an icon; the shortcut is in its tooltip */
-.workspace-search-trigger{padding:8px!important;border-radius:var(--ds-radius-control)}
+.workspace-search-trigger{padding:8px;border-radius:var(--ds-radius-control)}
 .workspace-search-trigger:hover{background:#eceeed}
-.workspace-search-trigger :is(span,kbd){display:none!important}
+.workspace-search-trigger :is(span,kbd){display:none}
 .project-body[hidden]{display:none!important}
