@@ -13,7 +13,9 @@ export function installFinances(db){db.exec(`
  CREATE INDEX IF NOT EXISTS expenses_studio_date ON expenses(studio_id,spent_on DESC);
  CREATE INDEX IF NOT EXISTS expenses_project ON expenses(studio_id,project_id);
  CREATE TABLE IF NOT EXISTS expense_receipts(expense_id TEXT PRIMARY KEY REFERENCES expenses(id) ON DELETE CASCADE,studio_id TEXT NOT NULL,
-  name TEXT NOT NULL,mime TEXT NOT NULL,content BLOB NOT NULL,created_at TEXT NOT NULL);`);}
+  name TEXT NOT NULL,mime TEXT NOT NULL,content BLOB NOT NULL,created_at TEXT NOT NULL);`);
+ // VAT paid on a cost, so a VAT-registered studio can see what it can reclaim. Older rows have none.
+ if(!db.prepare('PRAGMA table_info(expenses)').all().some(column=>column.name==='vat_minor'))db.exec('ALTER TABLE expenses ADD COLUMN vat_minor INTEGER NOT NULL DEFAULT 0');}
 
 // Identify a receipt from its bytes, never from the name or the browser's claim.
 function sniffReceipt(data){
@@ -26,7 +28,7 @@ function sniffReceipt(data){
 const text=(value,max,label,required=false)=>{if(value==null)value='';if(typeof value!=='string'||value.length>max)fail(400,`Check ${label}.`);const out=value.trim();if(required&&!out)fail(400,`Add ${label}.`);return out;};
 const validDay=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!isNaN(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;
 
-function expenseDTO(row){return {id:row.id,projectId:row.project_id||'',spentOn:row.spent_on,description:row.description,supplier:row.supplier,category:row.category,currency:row.currency,amountMinor:row.amount_minor,receipt:row.receipt_mime?{name:row.receipt_name,mime:row.receipt_mime,size:row.receipt_size}:null,createdAt:row.created_at,updatedAt:row.updated_at};}
+function expenseDTO(row){return {id:row.id,projectId:row.project_id||'',spentOn:row.spent_on,description:row.description,supplier:row.supplier,category:row.category,currency:row.currency,amountMinor:row.amount_minor,vatMinor:row.vat_minor||0,receipt:row.receipt_mime?{name:row.receipt_name,mime:row.receipt_mime,size:row.receipt_size}:null,createdAt:row.created_at,updatedAt:row.updated_at};}
 const SELECT=`SELECT e.*,r.name AS receipt_name,r.mime AS receipt_mime,length(r.content) AS receipt_size FROM expenses e LEFT JOIN expense_receipts r ON r.expense_id=e.id AND r.studio_id=e.studio_id`;
 export function listExpenses(db,studioId,projectId=''){return (projectId?db.prepare(`${SELECT} WHERE e.studio_id=? AND e.project_id=? ORDER BY e.spent_on DESC,e.created_at DESC`).all(studioId,projectId):db.prepare(`${SELECT} WHERE e.studio_id=? ORDER BY e.spent_on DESC,e.created_at DESC`).all(studioId)).map(expenseDTO);}
 const getExpense=(db,studioId,expenseId)=>{const row=db.prepare(`${SELECT} WHERE e.studio_id=? AND e.id=?`).get(studioId,expenseId);if(!row)fail(404,'That cost could not be found.');return row;};
@@ -35,11 +37,12 @@ function fields(db,studioId,body){
  const amountMinor=body.amountMinor;
  if(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>MAX_AMOUNT)fail(400,'Enter an amount above zero.');
  if(!currencies.includes(body.currency))fail(400,'Choose a supported currency.');
+ const vatMinor=body.vatMinor??0;if(!Number.isSafeInteger(vatMinor)||vatMinor<0||vatMinor>=amountMinor)fail(400,'Enter VAT paid of zero or more, less than the amount paid.');
  if(!validDay(body.spentOn))fail(400,'Enter the date of the cost.');
  if(!EXPENSE_CATEGORIES.includes(body.category))fail(400,'Choose a category.');
  const projectId=body.projectId?text(body.projectId,100,'the project'):'';
  if(projectId&&!db.prepare('SELECT 1 FROM projects WHERE id=? AND studio_id=?').get(projectId,studioId))fail(400,'Choose one of your projects, or leave it as a studio overhead.');
- return {amountMinor,currency:body.currency,spentOn:body.spentOn,category:body.category,projectId,description:text(body.description,200,'what the cost was for',true),supplier:text(body.supplier,120,'the supplier')};
+ return {amountMinor,vatMinor,currency:body.currency,spentOn:body.spentOn,category:body.category,projectId,description:text(body.description,200,'what the cost was for',true),supplier:text(body.supplier,120,'the supplier')};
 }
 function receipt(body){
  const file=body.receipt;
@@ -55,13 +58,13 @@ const saveReceipt=(db,studioId,expenseId,file)=>db.prepare('INSERT INTO expense_
 function changeExpense(db,{studioId,userId},body){
  if(body.action==='create'){
   const f=fields(db,studioId,body),file=body.receipt?receipt(body):null,expenseId=id(),at=now();
-  transaction(db,()=>{db.prepare('INSERT INTO expenses VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(expenseId,studioId,f.projectId||null,f.spentOn,f.description,f.supplier,f.category,f.currency,f.amountMinor,userId,at,at);if(file)saveReceipt(db,studioId,expenseId,file);});
+  transaction(db,()=>{db.prepare('INSERT INTO expenses(id,studio_id,project_id,spent_on,description,supplier,category,currency,amount_minor,created_by,created_at,updated_at,vat_minor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(expenseId,studioId,f.projectId||null,f.spentOn,f.description,f.supplier,f.category,f.currency,f.amountMinor,userId,at,at,f.vatMinor);if(file)saveReceipt(db,studioId,expenseId,file);});
   return expenseDTO(getExpense(db,studioId,expenseId));
  }
  const existing=getExpense(db,studioId,text(body.id,100,'the cost'));
  if(body.action==='update'){
   const f=fields(db,studioId,body),file=body.receipt?receipt(body):null;
-  transaction(db,()=>{db.prepare('UPDATE expenses SET project_id=?,spent_on=?,description=?,supplier=?,category=?,currency=?,amount_minor=?,updated_at=? WHERE id=? AND studio_id=?').run(f.projectId||null,f.spentOn,f.description,f.supplier,f.category,f.currency,f.amountMinor,now(),existing.id,studioId);if(file)saveReceipt(db,studioId,existing.id,file);else if(body.removeReceipt===true)db.prepare('DELETE FROM expense_receipts WHERE expense_id=? AND studio_id=?').run(existing.id,studioId);});
+  transaction(db,()=>{db.prepare('UPDATE expenses SET project_id=?,spent_on=?,description=?,supplier=?,category=?,currency=?,amount_minor=?,vat_minor=?,updated_at=? WHERE id=? AND studio_id=?').run(f.projectId||null,f.spentOn,f.description,f.supplier,f.category,f.currency,f.amountMinor,f.vatMinor,now(),existing.id,studioId);if(file)saveReceipt(db,studioId,existing.id,file);else if(body.removeReceipt===true)db.prepare('DELETE FROM expense_receipts WHERE expense_id=? AND studio_id=?').run(existing.id,studioId);});
   return expenseDTO(getExpense(db,studioId,existing.id));
  }
  if(body.action==='delete'){transaction(db,()=>{db.prepare('DELETE FROM expense_receipts WHERE expense_id=? AND studio_id=?').run(existing.id,studioId);db.prepare('DELETE FROM expenses WHERE id=? AND studio_id=?').run(existing.id,studioId);});return null;}

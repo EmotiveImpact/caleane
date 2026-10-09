@@ -16,9 +16,11 @@ function save(db,studioId,projectId,plan){db.prepare('INSERT INTO payment_plans 
 
 export function dueDateFor(due,{today,confirmedAt,eventDate}){
  if(due.type==='days_after_confirm')return addDays((confirmedAt||today).slice(0,10),due.days);
- if(due.type==='days_before_event'&&isDay(eventDate))return addDays(eventDate,-due.days);
+ if(due.type==='days_before_event')return isDay(eventDate)?addDays(eventDate,-due.days):'';
  return today;
 }
+// A payment tied to the event date waits, undated, until the project has one.
+export function stepDueDate(step,project){return step.dueDate||(step.due?dueDateFor(step.due,{today:'',eventDate:project?.brief?.date}):'')||'';}
 
 export function confirmedEstimate(project){
  const estimate=project.estimates?.at(-1);
@@ -30,7 +32,8 @@ export function planFromTemplate(template,estimate,context){
  let allocated=0;
  const steps=template.map((step,index)=>{
   const amountMinor=index===template.length-1?estimate.total-allocated:Math.round(estimate.total*step.percent/100);allocated+=amountMinor;
-  return {id:id(),label:step.label,amountMinor,dueDate:dueDateFor(step.due,context),invoiceId:null};
+  const dueDate=dueDateFor(step.due,context);
+  return {id:id(),label:step.label,amountMinor,dueDate,...(dueDate?{}:{due:step.due}),invoiceId:null};
  });
  return {estimateId:estimate.id,estimateVersion:estimate.version,currency:estimate.currency,totalMinor:estimate.total,steps,revision:1,updatedAt:now()};
 }
@@ -38,7 +41,7 @@ export function planFromTemplate(template,estimate,context){
 export function planView(db,studioId,project,invoices){
  const plan=getPlan(db,studioId,project.id);if(!plan)return null;
  const estimate=confirmedEstimate(project),byId=new Map(invoices.map(item=>[item.id,item]));
- return {...plan,current:!!estimate&&estimate.id===plan.estimateId,steps:plan.steps.map(step=>{const invoice=step.invoiceId?byId.get(step.invoiceId):null;return {...step,invoice:invoice?{id:invoice.id,number:invoice.number,status:invoice.status}:null};})};
+ return {...plan,current:!!estimate&&estimate.id===plan.estimateId,steps:plan.steps.map(step=>{const invoice=step.invoiceId?byId.get(step.invoiceId):null;return {...step,dueDate:stepDueDate(step,project),invoice:invoice?{id:invoice.id,number:invoice.number,status:invoice.status}:null};})};
 }
 
 export function createPlan(db,{studioId,project,body,today=now().slice(0,10)}){
@@ -61,9 +64,11 @@ export function updatePlan(db,{studioId,project,body,today=now().slice(0,10)}){
   if(input.id&&!old)fail(409,'The payment plan changed. Refresh before saving.');
   if(old?.invoiceId)return old;
   if(!Number.isSafeInteger(input.amountMinor)||input.amountMinor<=0)fail(400,`Payment ${index+1} needs an amount above zero.`);
-  if(!isDay(input.dueDate))fail(400,`Choose a due date for payment ${index+1}.`);
+  // A payment still waiting for the event date may stay undated.
+  const undated=input.dueDate===''&&!!old&&!stepDueDate(old,project);
+  if(!undated&&!isDay(input.dueDate))fail(400,`Choose a due date for payment ${index+1}.`);
   const label=text(input.label,60,`the name of payment ${index+1}`);if(!label)fail(400,`Name payment ${index+1}.`);
-  return {id:old?.id||id(),label,amountMinor:input.amountMinor,dueDate:input.dueDate,invoiceId:null};
+  return {id:old?.id||id(),label,amountMinor:input.amountMinor,dueDate:undated?'':input.dueDate,...(undated?{due:old.due}:{}),invoiceId:null};
  });
  for(const step of plan.steps)if(step.invoiceId&&!steps.some(item=>item.id===step.id))fail(409,'Issued payments cannot be removed from the plan.');
  const issuedOrder=steps.filter(step=>step.invoiceId).map(step=>step.id).join(),planOrder=plan.steps.filter(step=>step.invoiceId).map(step=>step.id).join();
@@ -88,8 +93,27 @@ export function stepInvoice(db,{studioId,project,stepId,today=now().slice(0,10)}
  const last=index===plan.steps.length-1,first=!db.prepare('SELECT 1 FROM invoices WHERE studio_id=? AND project_id=? AND cancelled_at IS NULL').get(studioId,project.id);
  // The invoice table only knows deposit, balance and full; an instalment is a further deposit with its own label.
  const kind=last?(first?'Full':'Balance'):'Deposit';
- return {plan,step,body:{estimateId:estimate.id,kind,label:step.label,amountMinor:step.amountMinor,dueDate:step.dueDate>today?step.dueDate:today,note:`${step.label} · payment ${index+1} of ${plan.steps.length}`}};
+ const due=stepDueDate(step,project);
+ return {plan,step,body:{estimateId:estimate.id,kind,label:step.label,amountMinor:step.amountMinor,...(due?{dueDate:due>today?due:today}:{}),note:`${step.label} · payment ${index+1} of ${plan.steps.length}`}};
 }
 export function markStepInvoiced(db,{studioId,projectId,stepId,invoiceId}){
  const plan=getPlan(db,studioId,projectId);const step=plan.steps.find(item=>item.id===stepId);step.invoiceId=invoiceId;plan.revision++;plan.updatedAt=now();return save(db,studioId,projectId,plan);
+}
+// A deposit issued from the main invoice form takes its place in the plan, so
+// the plan does not offer the same payment again. A different amount moves the
+// difference onto the last open payment, keeping the plan total.
+export function linkIssuedDeposits(db,{studioId,projectId}){
+ const plan=getPlan(db,studioId,projectId);if(!plan)return null;
+ const active=new Set(db.prepare('SELECT id FROM invoices WHERE studio_id=? AND project_id=? AND cancelled_at IS NULL').all(studioId,projectId).map(row=>row.id));
+ const linked=new Set(plan.steps.map(step=>step.invoiceId).filter(Boolean));
+ const deposits=db.prepare("SELECT id,amount_minor+discount_minor AS gross FROM invoices WHERE studio_id=? AND project_id=? AND estimate_id=? AND kind='Deposit' AND cancelled_at IS NULL ORDER BY issued_at,id").all(studioId,projectId,plan.estimateId).filter(row=>!linked.has(row.id));
+ let changed=false;
+ for(const deposit of deposits){
+  const open=plan.steps.filter(step=>!step.invoiceId||!active.has(step.invoiceId)),step=open[0],last=open.at(-1);
+  if(!step||step===last)break;
+  const difference=step.amountMinor-deposit.gross;if(last.amountMinor+difference<=0)break;
+  last.amountMinor+=difference;step.amountMinor=deposit.gross;step.invoiceId=deposit.id;changed=true;
+ }
+ if(!changed)return plan;
+ plan.revision++;plan.updatedAt=now();return save(db,studioId,projectId,plan);
 }

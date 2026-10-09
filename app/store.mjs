@@ -2,7 +2,7 @@ import {installConversationFeatures,messageDetails,messageDetailsDTO,validateMes
 import {DatabaseSync} from 'node:sqlite';
 import {randomBytes,scryptSync,timingSafeEqual,createHash,randomUUID} from 'node:crypto';
 import {runMigrations} from './migrations.mjs';
-import {installRelationships,clientForProject,ensurePrimaryContact,ensureProjectRelationship,projectClientId} from './relationships.mjs';
+import {installRelationships,clientForProject,ensurePrimaryContact,ensureProjectRelationship,projectClientId,joinStatus} from './relationships.mjs';
 export const id=()=>randomUUID();
 export const now=()=>new Date().toISOString();
 export const hash=value=>createHash('sha256').update(value).digest('hex');
@@ -167,7 +167,7 @@ export function openStore(file){
  return db;
 }
 export function event(project,actor,text){project.activity.unshift({id:id(),actor:actor.name,text,at:now()});project.updatedAt=now();}
-export function makeProject(studioId,brief,actor,clientId=null){const p={id:id(),studioId,title:brief.occasion==='Wedding'?`${brief.name.split(' ')[0]}’s wedding`:brief.occasion+' · '+brief.name,clientEmail:brief.email,...(clientId?{clientId}:{}),status:'Enquiry',brief,briefRevision:1,briefLocked:false,briefHistory:[],changeRequests:[],messages:[],inspiration:[],designs:[],estimates:[],tasks:[],decisions:[],activity:[],createdAt:now(),updatedAt:now()};event(p,actor,'Submitted the first brief');return p;}
+export function makeProject(studioId,brief,actor,clientId=null){const p={id:id(),studioId,title:brief.occasion==='Wedding'?`${brief.name.split(' ')[0]}’s wedding`:brief.occasion+' · '+brief.name,clientEmail:brief.email,...(clientId?{clientId}:{}),status:'Enquiry',brief,briefRevision:1,briefAuthor:actor?.name,briefLocked:false,briefHistory:[],changeRequests:[],messages:[],inspiration:[],designs:[],estimates:[],tasks:[],decisions:[],activity:[],createdAt:now(),updatedAt:now()};event(p,actor,'Submitted the first brief');return p;}
 export function saveProject(db,p){transaction(db,()=>{db.prepare('UPDATE projects SET data=? WHERE id=? AND studio_id=?').run(JSON.stringify(p),p.id,p.studioId);materializeProjectConversation(db,p);});}
 export function insertProject(db,p){transaction(db,()=>{db.prepare('INSERT INTO projects VALUES(?,?,?,?)').run(p.id,p.studioId,p.clientEmail,JSON.stringify(p));materializeProjectConversation(db,p);ensureProjectOpportunity(db,p);});}
 
@@ -216,7 +216,9 @@ export function conversationDTO(db,c,user){
  const participants=c.project_id?[...db.prepare("SELECT u.id,u.name,'Studio owner' AS role FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.studio_id=? AND m.role='owner'").all(c.studio_id),...db.prepare("SELECT u.id,u.name,ps.role FROM crm_project_stakeholders ps JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id JOIN users u ON u.id=ct.user_id WHERE ps.studio_id=? AND ps.project_id=? AND ps.portal_access=1").all(c.studio_id,c.project_id),...db.prepare("SELECT u.id,u.name,'Studio contributor' AS role FROM studio_project_collaborators pc JOIN studio_staff ss ON ss.user_id=pc.user_id AND ss.studio_id=pc.studio_id JOIN users u ON u.id=pc.user_id WHERE pc.studio_id=? AND pc.project_id=?").all(c.studio_id,c.project_id)]:[...db.prepare("SELECT u.id,u.name,'Studio owner' AS role FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.studio_id=? AND m.role='owner'").all(c.studio_id),...db.prepare("SELECT u.id,u.name,'Client' AS role FROM crm_client_contacts cc JOIN crm_contacts ct ON ct.id=cc.contact_id AND ct.studio_id=cc.studio_id JOIN users u ON u.id=ct.user_id WHERE cc.studio_id=? AND cc.client_id=? AND cc.account_access=1").all(c.studio_id,c.client_id)];
  const people=[...new Map(participants.map(person=>[person.id,person])).values()],messages=rows.map(m=>({id:m.id,userId:m.user_id,by:m.author_name,role:m.role,text:m.text,at:m.created_at,...messageDetailsDTO(db,c,m.id)}));
  return {participants:people,id:c.id,subject:c.subject,clientId:c.client_id,clientName:client.name,clientEmail:client.email,projectId:c.project_id,projectTitle:project?JSON.parse(project.data).title:null,status:c.status,createdAt:c.created_at,updatedAt:c.updated_at,
-  messages,unreadMessages:rows.filter(m=>m.seq>seen&&(m.user_id?m.user_id!==user.id:m.author_name!==user.name)).length,...conversationExtras(db,c,user,rows,messages,seen,people)};
+  messages,unreadMessages:rows.filter(m=>m.seq>seen&&(m.user_id?m.user_id!==user.id:m.author_name!==user.name)).length,...conversationExtras(db,c,user,rows,messages,seen,people),
+  // The studio sees who cannot read this yet because they have not joined.
+  ...(db.prepare("SELECT 1 FROM memberships WHERE user_id=? AND studio_id=? AND role='owner'").get(user.id,c.studio_id)?{waitingToJoin:joinStatus(db,c.studio_id,c.project_id?{projectId:c.project_id}:{clientId:c.client_id}).waiting}:{})};
 }
 
 // Project list badges should not load full conversation histories into memory.

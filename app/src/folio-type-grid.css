@@ -243,7 +243,7 @@
 .crm-inspector-drawer .crm-editor>label,.crm-inspector-drawer .crm-form-pair>label { font-size:11px; }
 .crm-inspector-drawer :is(input,select,textarea) { font-size:12px; }
 .crm-drawer-loading { color:#858b93; font-size:12px; }
-.crm-create-dialog { position:fixed; left:50%; top:50%; z-index:101; transform:translate(-50%,-50%); }
+.crm-create-dialog { position:fixed; left:50%; top:50%; z-index:calc(var(--layer-dialog) + 1); transform:translate(-50%,-50%); }
 @media(max-width:900px) {
   .crm-stage-track { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
   .crm-stage-summary { border-right:1px solid #e5e7e9; border-bottom:1px solid #e5e7e9; }

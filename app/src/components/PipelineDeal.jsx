@@ -1,6 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {CalendarDays,Eye,FileText,MessageSquare,Pause,Play,Plus,Receipt,Send,Trash2,X} from 'lucide-react';
+import {NotJoinedNotice} from './NotJoinedNotice';
 
 // The enquiry's quote, proposal, date hold, deposit and follow-ups, read from the
 // linked project and driven from the enquiry so the owner never has to leave it.
@@ -48,6 +49,7 @@ export function whyFor(o,signal,issue){
   else if(f.kind==='deposit')parts.push('Accepted. Issue the deposit invoice and the date confirms itself once it is paid.');
   else if(f.kind==='waiting')parts.push(`${f.label}. Waiting on their reply.`);
   else if(f.kind==='opened'){if(s.opened?.kind!=='proposal')parts.push(`They opened the proposal on ${day(s.proposal?.openedAt)}.`);}
+  else if(f.kind==='not-joined')parts.push(`${(o.clientName||'They').split(/\s+/)[0]} has not joined yet, so they cannot see the proposal. Send them their invitation link.`);
   else if(f.kind==='unopened')parts.push('They have not opened the proposal yet. Check the invitation reached them.');
   else if(f.kind==='fit')parts.push('The date is free and the budget and area fit.');
  }
@@ -63,6 +65,7 @@ export function primaryFor(o,signal,issue){
  const s=signal||{},kinds=(s.flags||[]).map(f=>f.kind);
  if(issue?.kind==='review')return {label:'Review request',tab:'overview'};
  if(kinds.includes('deposit'))return {label:'Open billing',billing:true};
+ if(kinds.includes('not-joined'))return {label:'Invite to join',tab:'quote'};
  if(kinds.includes('changes')||o.projectId&&!s.estimate&&['Qualified','Proposal'].includes(o.stage))return {label:s.estimate?'Update quote':'Build quote',tab:'quote'};
  if(kinds.includes('silent')||kinds.includes('proposal-ending'))return {label:'See follow-ups',tab:'follow'};
  return {label:'Open',tab:'overview'};
@@ -99,7 +102,7 @@ export function DealOverview({detail,signal,studio,request,run,busy,openProject,
    {s.eventDate&&!hold&&detail.projectId&&<div><span>Hold this date while you talk</span><button type="button" className="pl-btn is-small is-ghost" disabled={busy} onClick={()=>deal.setDialog('hold')}><CalendarDays size={13}/>Hold date</button></div>}
    <div><span>Source</span><span>{detail.source||'Direct enquiry'}</span></div>
   </div>}
-  {deal.dialog==='offer'&&<OfferDatesDialog detail={detail} signal={s} studio={studio} act={deal.act} busy={busy} error={deal.error} onClose={()=>deal.setDialog(null)} onDone={deal.done}/>}
+  {deal.dialog==='offer'&&<OfferDatesDialog detail={detail} signal={s} studio={studio} request={request} act={deal.act} busy={busy} error={deal.error} onClose={()=>deal.setDialog(null)} onDone={deal.done}/>}
   {deal.dialog==='hold'&&<HoldDialog detail={detail} signal={s} q={deal.q} request={request} act={deal.act} busy={busy} error={deal.error} onClose={()=>deal.setDialog(null)} onDone={deal.done}/>}
  </div>;
 }
@@ -140,7 +143,7 @@ export function DealQuote({detail,signal,studio,request,run,busy,openProject,onC
  const update=(index,patch)=>setLines(list=>list.map((l,i)=>i===index?{...l,...patch}:l));
  function add(){const item=available.find(i=>i.id===pick);setLines(list=>[...list,item?{title:item.name,quantity:1,unitAmount:item.unitAmount}:{title:'',quantity:1,unitAmount:0}]);setPick('');}
  function newVersion(){setCurrency(estimate.currency);setLines(estimate.items.map(i=>({title:i.title,quantity:i.quantity,unitAmount:i.unitAmount})));setNote(estimate.note||'');setEditing(true);}
- async function share(e){e.preventDefault();const result=await deal.act(`/api/projects/${pid}/estimates?studio=${studio.id}`,'POST',{title:('Quote · '+detail.title).slice(0,200),note,currency,taxRate:0,items:lines.map(l=>({title:l.title.trim(),quantity:Number(l.quantity),unitAmount:Math.round(Number(l.unitAmount))}))});if(result){setEditing(false);setLines([]);await deal.done();}}
+ async function share(e){e.preventDefault();const result=await deal.act(`/api/projects/${pid}/estimates?studio=${studio.id}`,'POST',{title:('Quote · '+detail.title).slice(0,200),note,currency,items:lines.map(l=>({title:l.title.trim(),quantity:Number(l.quantity),unitAmount:Math.round(Number(l.unitAmount))}))});if(result){setEditing(false);setLines([]);await deal.done();}}
  const canPropose=estimate&&['Awaiting review','Budget confirmed'].includes(estimate.status)&&!['Awaiting response','Scope accepted'].includes(proposal?.status);
  return <div className="pl-quote">
   {deal.error&&<p className="crm-alert" role="alert">{deal.error}</p>}
@@ -161,7 +164,7 @@ export function DealQuote({detail,signal,studio,request,run,busy,openProject,onC
    <div className="pl-totals"><span>Total <strong>{money(estimate.total,estimate.currency)}</strong></span>{planSplit(planTemplate,estimate.total).map(step=><span key={step.label}>{step.label} {money(step.amount,estimate.currency)}, {step.when}</span>)}<span>Version {estimate.version} · shared {day(estimate.at)}</span>{proposal&&<span>Proposal {proposal.status==='Awaiting response'?`open until ${day(proposal.expiresOn)}`:proposal.status.toLowerCase()}</span>}</div>
    <div className="pl-acts">{canPropose&&<button type="button" className="pl-btn" disabled={busy} onClick={()=>deal.setDialog('proposal')}><Send size={13}/>Send proposal</button>}{proposal?.status==='Scope accepted'&&s.deposit?.status!=='Paid'&&<button type="button" className="pl-btn" onClick={()=>openProject({id:pid},'Billing')}><Receipt size={13}/>Open billing</button>}{proposal?.status!=='Scope accepted'&&<button type="button" className="pl-btn is-ghost" disabled={busy} onClick={newVersion}><Plus size={13}/>New version</button>}<button type="button" className="pl-btn is-ghost" onClick={()=>deal.setDialog('preview')}><Eye size={13}/>See it as the client</button>
     <Chip tone={estimate.status==='Budget confirmed'?'good':estimate.status==='Changes requested'?'warn':'info'}>Quote {estimate.status.toLowerCase()}</Chip>{proposal&&<Chip tone={proposal.status==='Scope accepted'?'good':proposal.status==='Awaiting response'?'info':'warn'}>Proposal {proposal.status.toLowerCase()}</Chip>}</div>
-   {!s.portalClient&&proposal?.status!=='Scope accepted'&&<p className="pl-muted">Invite the client to their project space so they can accept online.</p>}
+   {!s.portalClient&&proposal?.status!=='Scope accepted'&&(s.waitingToJoin?.length?<NotJoinedNotice waiting={s.waitingToJoin} studio={studio} request={request} projectId={pid} clientId={detail.clientId} what={proposal?'the proposal':'the quote'}/>:<p className="pl-muted">Invite the client to their project space so they can accept online.</p>)}
   </>}
   {deal.dialog==='preview'&&<ClientPreview detail={detail} signal={s} studio={studio} project={project} estimate={estimate} planTemplate={planTemplate} onClose={()=>deal.setDialog(null)} onOpen={()=>{deal.setDialog(null);openProject({id:pid},proposal?'Proposal':'Estimate');}}/>}
   {deal.dialog==='proposal'&&<ProposalDialog detail={detail} signal={s} studio={studio} request={request} act={deal.act} busy={busy} error={deal.error} onClose={()=>deal.setDialog(null)} onDone={deal.done}/>}
@@ -179,18 +182,19 @@ export function DealFollowUps({detail,signal,settings,onOpenAutomations,studio,r
  const steps=[{when:'Day 0',title:'Proposal sent',state:'sent',note:day(proposal.sharedAt)},...days.map((d,i)=>({when:'Day '+d,title:firstLine(settings.followUpMessages?.[i],{client_first_name:first,client_name:detail.clientName,project_title:detail.title,proposal_title:proposal.title,expires_on:day(proposal.expiresOn),studio_name:studio?.name||''})||'Follow-up '+(i+1),state:i<sent?'sent':!replied&&i===sent?'next':'',note:i<sent?'sent':!replied&&i===sent?(paused?'paused':s.nextFollowUp?'sends automatically on '+day(s.nextFollowUp):'next'):''}))];
  return <div className="pl-follow"><div className="pl-callout is-info"><span>{replied?`${first} has replied since the proposal was shared, so follow-ups have stopped.`:paused?'Follow-ups are paused for this proposal. Nothing more is sent until you resume them.':`Posts in ${first}’s project space as you. Stops as soon as they reply or accept.`}</span></div>
   {deal.error&&<p className="crm-alert" role="alert">{deal.error}</p>}
-  {!s.portalClient&&<p className="pl-muted">{first} has no access to their project space yet, so follow-ups wait until they are invited.</p>}
+  {!s.portalClient&&<><p className="pl-muted">Follow-ups wait until {first} has joined, so nothing is posted that they cannot see.</p><NotJoinedNotice waiting={s.waitingToJoin} studio={studio} request={request} projectId={detail.projectId} clientId={detail.clientId} what="the proposal or follow-ups"/></>}
   <ol className="pl-steps">{steps.map((step,i)=><li key={i} className={step.state?'is-'+step.state:''}><span className="pl-dot"/><div><strong>{step.title}</strong><small>{step.when}{step.note?' · '+step.note:''}</small></div>{step.state==='next'&&canSend&&<button type="button" className="pl-btn is-small is-ghost" disabled={busy} onClick={()=>followAction('send')}><Send size={13}/>Send now</button>}</li>)}</ol>
   <div className="pl-acts">{!replied&&sent<days.length&&<button type="button" className="pl-btn is-small is-ghost" disabled={busy} onClick={()=>followAction(paused?'resume':'pause')}>{paused?<><Play size={13}/>Resume follow-ups</>:<><Pause size={13}/>Pause follow-ups</>}</button>}<button type="button" className="pl-btn is-small is-ghost" onClick={onOpenAutomations}>Edit messages and timing</button></div></div>;
 }
 const firstLine=(text,values)=>{const filled=String(text||'').replace(/\{(\w+)\}/g,(m,k)=>values[k]??'');const line=filled.split(/\n/).map(l=>l.trim()).filter(Boolean).find(l=>!/^(hi|hello|dear)\b/i.test(l));if(!line)return '';const sentence=line.split(/(?<=[.!?])\s/)[0];return sentence.length>90?sentence.slice(0,sentence.lastIndexOf(' ',88))+'…':sentence;};
 
 // Offer nearby free dates in the client's project conversation, worded by the owner before it goes.
-function OfferDatesDialog({detail,signal,studio,act,busy,error,onClose,onDone}){
+function OfferDatesDialog({detail,signal,studio,request,act,busy,error,onClose,onDone}){
  const first=(detail.clientName||'there').split(/\s+/)[0],dates=(signal.alternatives||[]).map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}));
  const [text,setText]=useState(`Hi ${first},\n\nThank you for thinking of us. We are already fully booked on ${longDay(signal.eventDate)}, but we would love to help. We are free on ${listJoin(dates)}. If one of those could work, reply here and we will hold it for you.\n\n${studio.name}`);
  async function submit(e){e.preventDefault();const result=await act(`/api/projects/${detail.projectId}/messages?studio=${studio.id}`,'POST',{text});if(result)await onDone();}
  return <Modal open onOpenChange={v=>{if(!v)onClose();}} busy={busy} title="Offer other dates" description={`This posts in ${first}’s project space as you.`}>
+  {!signal.portalClient&&<NotJoinedNotice waiting={signal.waitingToJoin} studio={studio} request={request} projectId={detail.projectId} clientId={detail.clientId} what="this message"/>}
   {error&&<p role="alert">{error}</p>}
   <form onSubmit={submit}><label>Message<textarea rows="8" maxLength="5000" required value={text} onChange={e=>setText(e.target.value)}/></label><button className="crm-primary" disabled={busy||!text.trim()}><Send size={14}/>Send message</button></form>
  </Modal>;
@@ -218,7 +222,8 @@ function ProposalDialog({detail,signal,studio,request,act,busy,error,onClose,onD
  const estimate=project?.estimates?.at(-1),date=signal.eventDate;
  const reply=[isoIn(14),date&&date>isoIn(0)?date:null].filter(Boolean).sort()[0];
  async function submit(e){e.preventDefault();const raw=Object.fromEntries(new FormData(e.currentTarget));const result=await act(`/api/projects/${detail.projectId}/proposals?studio=${studio.id}`,'POST',{...raw,briefRevision:project.briefRevision,previousId:project.proposals?.at(-1)?.id||null,estimateId:estimate.id});if(result)await onDone();}
- return <Modal open onOpenChange={v=>{if(!v)onClose();}} busy={busy} title="Send proposal" description={`${detail.clientName} can accept it in their project space.${date?' The date is held until they reply.':''}`}>
+ return <Modal open onOpenChange={v=>{if(!v)onClose();}} busy={busy} title="Send proposal" description={signal.portalClient?`${detail.clientName} can accept it in their project space.${date?' The date is held until they reply.':''}`:`The proposal is saved to ${detail.clientName}’s project space, ready for when they join.${date?' The date is held until they reply.':''}`}>
+  {!signal.portalClient&&<NotJoinedNotice waiting={signal.waitingToJoin} studio={studio} request={request} projectId={detail.projectId} clientId={detail.clientId} what="the proposal"/>}
   {(error||loadError)&&<p role="alert">{error||loadError}</p>}
   {project&&estimate?<form onSubmit={submit}>
    <label>Title<input name="title" required maxLength="200" defaultValue={detail.title}/></label>

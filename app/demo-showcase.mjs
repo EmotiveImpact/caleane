@@ -37,7 +37,7 @@ export async function seedShowcase({ server, db, origin }) {
   const inDays = days => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 
   const { defaults } = await call('/api/billing-defaults' + q);
-  await call('/api/billing-defaults' + q, 'POST', { ...defaults, sellerAddress: '14 Columbia Road, London E2 7RG', sellerContact: 'studio@example.test', paymentInstructions: 'Bank transfer to NAY Décor Ltd. Please use the invoice number as your reference.' });
+  await call('/api/billing-defaults' + q, 'POST', { ...defaults, sellerAddress: '14 Columbia Road, London E2 7RG', sellerContact: 'studio@example.test', vatRegistered: true, taxRate: 20, taxRegistration: 'GB 123 4567 89', paymentInstructions: 'Bank transfer to NAY Décor Ltd. Please use the invoice number as your reference.' });
   const billing = (project, address) => ({ supplyDate: project.brief.date, customerAddress: address });
 
   // Amelia: estimate confirmed by the client, deposit paid, balance waiting.

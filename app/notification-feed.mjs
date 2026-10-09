@@ -103,6 +103,18 @@ export function recordEnquiry(db,{studioId,projectId}){
   projectId,clientId:opportunity?.client_id,opportunityId:opportunity?.id,createdAt:project.createdAt});
 }
 
+/** A consultation booked, moved or cancelled from the public booking page. Only studio owners are told. */
+export function recordConsultation(db,{studioId,consultationId,change='booked'}){
+ if(!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='notification_events'").get())return 0;
+ const row=db.prepare('SELECT * FROM consultations WHERE id=? AND studio_id=?').get(consultationId,studioId);
+ if(!row)return 0;
+ const data=JSON.parse(row.data),zone=data.timezone||'Europe/London',start=new Date(row.start_at);
+ const at=`${start.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:zone})}, ${start.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:zone})}`;
+ const title={booked:`${data.name} booked a ${data.title}`,rescheduled:`${data.name} moved their ${data.title}`,cancelled:`${data.name} cancelled their ${data.title}`}[change];
+ return deliver(db,owners(db,studioId),null,{studioId,kind:'enquiry',sourceKey:`consultation:${row.id}:${change}:${(data.history||[]).length}`,actorName:data.name,title,
+  detail:change==='cancelled'?`Was ${at}`:`${at} · ${data.email}`,projectId:data.projectId,clientId:data.clientId,opportunityId:data.opportunityId});
+}
+
 /** A task handed to someone else. Repeated assignments notify again; self-assignment does not. */
 export function recordTaskAssignment(db,{studioId,taskKind,taskId,projectId=null,title,assigneeId,actor}){
  if(!assigneeId)return 0;

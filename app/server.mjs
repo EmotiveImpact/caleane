@@ -3,6 +3,7 @@ import {installDataGovernance,dataGovernance,changeGovernance,streamStudioExport
 import {handleCalendarSync,syncAllCalendars} from './calendar-sync.mjs';
 import {handleBookingIntegrations,safeCalendarBusy,completeBookingIntegrations,syncBookingIntegrations} from './booking-integrations.mjs';
 import {operationalReadiness} from './operational-readiness.mjs';
+import {invoicePdf,pdfFileName} from './invoice-pdf.mjs';
 import {installDocuments,listDocuments,changeDocument,downloadDocument,syncProjectArchives} from './documents.mjs';
 import {installTaskCollaboration,handleTaskCollaboration} from './task-collaboration.mjs';
 import {assertQuota,cleanupUnattachedUploads} from './uploads.mjs';
@@ -12,6 +13,7 @@ import {handleConversationOrganiser} from './conversation-organiser.mjs';
 import {handleScheduledMessages,sendDueScheduled} from './conversation-scheduled.mjs';
 import {createAccountSecurity} from './account-security.mjs';
 import {installEngagements,getEngagements,changeEngagements,projectCalendar} from './engagements.mjs';
+import {findPlaceholders,placeholderMessage} from './src/lib/merge-fields.js';
 import http from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
@@ -21,7 +23,7 @@ import Stripe from 'stripe';
 import {openStore,STAFF_ACCESS,id,now,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
 import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask,deleteTask} from './crm.mjs';
 import {clientErasurePreview,eraseClient} from './client-erasure.mjs';
-import {bindInvitedContact,conversationAccess,ensurePrimaryContact,listClientContacts,listStakeholders,projectAccess,projectClientId} from './relationships.mjs';
+import {bindInvitedContact,conversationAccess,ensurePrimaryContact,listClientContacts,listStakeholders,joinStatus,projectAccess,projectClientId} from './relationships.mjs';
 import {installStripePayments,activeStripeCheckout,createStripeCheckout,expireStripeCheckout,verifyStripeEvent,applyInvoiceCheckoutEvent,listStripeCheckoutAttempts} from './stripe-payments.mjs';
 import {installBookingPayments,isBookingEvent,applyBookingEvent,startBookingCheckout,releaseBooking} from './booking-payments.mjs';
 import {installPlanAutopay,isAutopayEvent,applyAutopayEvent,autopayView,cardPaymentSettings,saveCardPaymentSettings,startAutopaySetup,stopAutopay,runAutopay} from './plan-autopay.mjs';
@@ -37,6 +39,7 @@ import {DEFAULT_WORKFLOW,isWorkflowId,projectTypesFor,briefFieldsFor} from './sr
 import {validateIntakeQuestions,captureIntakeAnswers,updateIntakeAnswers,normalizeIntakeAnswers} from './intake-questions.mjs';
 import {searchWorkspace} from './workspace-search.mjs';
 import {seedShowcase} from './demo-showcase.mjs';
+import {defaultTaxRate,isVatDocument,isVatRegistered} from './src/lib/vat.js';
 import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
@@ -44,12 +47,12 @@ import {setTip,waiveLateFee} from './invoice-extras.mjs';
 import {discountFor,invoiceFigures} from './src/lib/invoice-charges.js';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {handleCustomFields} from './custom-fields.mjs';
-import {handlePipeline,syncAllPipelines,syncPipeline} from './pipeline-automation.mjs';
-import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus} from './consultations.mjs';
+import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
+import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus,manageBooking,bookingEmail,issueManageToken} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
 import {installXero,handleXero,syncAllXero} from './xero.mjs';
 import {installFinances,handleFinances} from './finances.mjs';
-import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced} from './payment-plans.mjs';
+import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced,linkIssuedDeposits} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function fail(status,message){throw Object.assign(new Error(message),{status});}
@@ -97,14 +100,18 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const projectNote=(studioId,projectId,text)=>{const row=db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(projectId,studioId);if(row){const p=JSON.parse(row.data);event(p,{name:'Stripe'},text);saveProject(db,p);}};
  const money=(minor,currency)=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(minor/100);}catch{return `${(minor/100).toFixed(2)} ${currency}`;}};
  const autopayHooks={
-  onPaid:(charge,invoice)=>projectNote(charge.studio_id,charge.project_id,`Autopay collected ${money(charge.amount_minor,charge.currency)} for invoice ${invoice.number}`),
+  onPaid:(charge,invoice)=>{projectNote(charge.studio_id,charge.project_id,`Autopay collected ${money(charge.amount_minor,charge.currency)} for invoice ${invoice.number}`);automate(charge.studio_id,charge.project_id);},
   onFailed:charge=>{const invoice=db.prepare('SELECT number FROM invoices WHERE id=?').get(charge.invoice_id);projectNote(charge.studio_id,charge.project_id,`Autopay could not take ${money(charge.amount_minor,charge.currency)} for invoice ${invoice?.number||''}. The invoice is still open`);},
   onSaved:(row,label)=>projectNote(row.studio_id,row.project_id,`Autopay switched on with ${label}`)};
  const collectAutopay=async()=>{if(!cardPaymentsReady)return [];try{return await runAutopay(db,stripe,autopayHooks);}catch(error){console.error('Autopay run failed:',error?.stack||error);return [];}};
  const outbox=notificationKey?createNotificationOutbox(db,{encryptionKey:notificationKey,origin}):null;
+ // Pipeline rules run for a project as soon as something happens on it, not only when Pipeline opens.
+ const automate=(studioId,projectId)=>syncProjectPipeline(db,studioId,projectId,{outbox});
  // Account mail has its own key when CALEANE_ACCOUNT_MAIL_KEY is set; the shared notification key still opens older queued mail.
  const accountSecurity=createAccountSecurity(db,{origin,encryptionKey:accountMailKey||notificationKey,previousKeys:[notificationKey]});
  const queueProjectEvent=(studioId,projectId,actorUserId,eventId)=>{if(!eventId)return;recordProjectEvent(db,{studioId,projectId,actorUserId,eventId});if(outbox)outbox.enqueueProjectActivity({studioId,projectId,actorUserId,eventId});};
+ // Booking confirmations wait in the outbox like every other email, so nothing is sent until email delivery is switched on.
+ const queueBookingEmail=(studio,consultationId,change)=>{if(!outbox||!consultationId)return;try{const row=db.prepare('SELECT data FROM consultations WHERE id=?').get(consultationId),sequence=(JSON.parse(row.data).history||[]).length;const manageUrl=`${origin}/book/${studio.slug}/manage#${issueManageToken(db,consultationId)}`;outbox.enqueueConsultation({studioId:studio.id,consultationId,change,sequence,...bookingEmail(db,{studio,consultationId,change,manageUrl})});}catch(error){console.error('Booking email could not be queued:',error.message);}};
  // Messages reach the bell at once; their email waits in the outbox and is dropped if the message is read first.
  const queueMessage=(studioId,c,actorUserId,messageId)=>{if(!messageId)return;recordMessage(db,{studioId,conversationId:c.id,messageId,actorUserId});if(outbox)try{outbox.enqueueMessage({studioId,conversationId:c.id,messageId,actorUserId});}catch(error){console.error('Message email could not be queued:',error.message);}};
  // With TRUST_PROXY=N, N reverse proxies each append the peer they saw to X-Forwarded-For; the client is the right-most entry they did not add.
@@ -141,7 +148,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     const chunks=[];let bytes=0;
     for await(const chunk of req){bytes+=chunk.length;if(bytes>1048576)fail(413,'Stripe webhook is too large.');chunks.push(chunk);}
     const stripeEvent=verifyStripeEvent(stripe,{rawBody:Buffer.concat(chunks),signature:req.headers['stripe-signature'],webhookSecret:stripeWebhookSecret});
-    if(isBookingEvent(stripeEvent))return reply(200,{ok:true,...applyBookingEvent(db,stripeEvent)});
+    if(isBookingEvent(stripeEvent)){const result=applyBookingEvent(db,stripeEvent);if(result.result==='booked'&&!result.duplicate&&result.bookingId){const bookingStudio=db.prepare('SELECT s.* FROM studios s JOIN consultations c ON c.studio_id=s.id WHERE c.id=?').get(result.bookingId);if(bookingStudio)queueBookingEmail(bookingStudio,result.bookingId,'booked');}return reply(200,{ok:true,...result});}
     if(isAutopayEvent(stripeEvent))return reply(200,{ok:true,...await applyAutopayEvent(db,stripe,stripeEvent,autopayHooks)});
     const result=transaction(db,()=>{
      const outcome=applyInvoiceCheckoutEvent(db,stripeEvent);
@@ -152,6 +159,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      }
      return outcome;
     });
+    if(result.result==='paid'&&!result.duplicate){const paid=db.prepare('SELECT studio_id,project_id FROM invoices WHERE id=?').get(result.invoiceId);if(paid)automate(paid.studio_id,paid.project_id);}
     return reply(200,{ok:true,...result});
    }
    if(previewEnabled&&!(route==='/api/health'&&req.method==='GET')&&!previewAuthorized(req.headers.authorization,previewUserDigest,previewPassDigest)){
@@ -191,7 +199,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(route==='/xero/callback'&&req.method==='GET'){const back=new URLSearchParams({view:'settings',settingsTab:'integrations',xero_callback:'1'});for(const key of ['code','state','error'])if(url.searchParams.get(key))back.set(key,url.searchParams.get(key).slice(0,4000));res.writeHead(302,{Location:'/?'+back,'Cache-Control':'no-store'});return res.end();}
    const brandAssetMatch=route.match(/^\/api\/brand-assets\/([a-f0-9-]{36})$/);
    if(brandAssetMatch&&req.method==='GET')return serveBrandAsset(db,res,brandAssetMatch[1]);
-   const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)(?:\/(status|release))?$/);
+   const bookingMatch=route.match(/^\/api\/booking\/([a-z0-9-]+)(?:\/(status|release|manage))?$/);
    if(bookingMatch){
     const bookingStudio=db.prepare('SELECT * FROM studios WHERE slug=?').get(bookingMatch[1]);if(!bookingStudio)fail(404,'Studio not found.');
     // Busy times from the owner's connected calendar, when they have chosen one; never in the hosted sample.
@@ -205,11 +213,14 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      return reply(200,status);
     }
     if(bookingMatch[2]==='release'&&req.method==='POST'){rate(req,'booking',20);if(stripe)await releaseBooking(db,stripe,{studio:bookingStudio,bookingId:body.bookingId});return reply(200,publicBookingStatus(db,bookingStudio,body.bookingId));}
+    // The client's private link: view, move or cancel. The token travels in the body, never the URL.
+    if(bookingMatch[2]==='manage'&&req.method==='POST'){rate(req,'booking',30);const {changed,...result}=manageBooking(db,{studio:bookingStudio,body,busy:body.action==='view'?await busyFor():await busyFor(30000)});if(changed)queueBookingEmail(bookingStudio,result.bookingId,changed);return reply(200,result);}
     if(bookingMatch[2])fail(405,'Method not allowed.');
     if(req.method==='GET'){try{return reply(200,publicBooking(db,bookingStudio,{busy:await busyFor(),takePayment:takesBookingPayment(bookingStudio)}));}catch(error){if(error.status!==404)throw error;return reply(404,{error:error.message,studio:{name:bookingStudio.name,slug:bookingStudio.slug,accent:bookingStudio.accent}});}}
     if(req.method==='POST'){
      rate(req,'booking',20);const result=bookConsultation(db,{studio:bookingStudio,body,key:req.headers['idempotency-key'],busy:await busyFor(30000),takePayment:takesBookingPayment(bookingStudio)});
      // Make the video link and calendar event now, so the client sees the link on the confirmation screen.
+     if(result.status===201&&result.data.status==='Booked')queueBookingEmail(bookingStudio,result.data.bookingId,'booked');
      if(result.status===201&&calendarIntervalMs){const consultationId=db.prepare('SELECT consultation_id FROM consultation_receipts WHERE studio_id=? AND key=?').get(bookingStudio.id,req.headers['idempotency-key'])?.consultation_id;const meetingUrl=await linkBooking(consultationId);if(meetingUrl)result.data.location={...result.data.location,detail:meetingUrl};}
      
      // A held booking (new, or a retried request) goes on to Stripe Checkout.
@@ -258,7 +269,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     const branding=sid=>JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(sid)?.data||'{}');
     const decorate=p=>{if(bookkeeper)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Bookkeeper',brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,workflowType:p.brief.workflowType},clientId:projectClientId(db,p.studioId,p.id),createdAt:p.createdAt,updatedAt:p.updatedAt};if(staffViewer)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Studio viewer',canContribute:!!db.prepare('SELECT 1 FROM studio_project_collaborators WHERE studio_id=? AND project_id=? AND user_id=?').get(p.studioId,p.id,user.id),briefRevision:p.briefRevision,brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,venue:p.brief.venue,vision:p.brief.vision,workflowType:p.brief.workflowType},designs:p.designs.map(d=>({id:d.id,version:d.version,title:d.title,status:d.status,at:d.at})),tasks:(p.tasks||[]).map(t=>({id:t.id,title:t.title,due:t.due,assignee:t.assignee,completed:t.completed})),createdAt:p.createdAt,updatedAt:p.updatedAt};const c=db.prepare('SELECT * FROM conversations WHERE project_id=?').get(p.id),accessRole=owner?'Owner':projectAccess(db,p.studioId,p.id,user.id),latest=accessRole==='Owner'||accessRole==='Approver'?db.prepare(`SELECT i.* FROM invoices i WHERE i.studio_id=? AND i.project_id=? ORDER BY
      CASE WHEN i.cancelled_at IS NULL AND i.amount_minor>COALESCE((SELECT SUM(ip.amount_minor) FROM invoice_payments ip WHERE ip.studio_id=i.studio_id AND ip.invoice_id=i.id),0) THEN 0 ELSE 1 END,
-     i.issued_at DESC,i.number DESC LIMIT 1`).get(p.studioId,p.id):null;const invoice=latest?invoiceDTO(db,latest):null;const moneyHidden=accessRole!=='Owner'&&accessRole!=='Approver';return {...p,...(owner?{}:{tags:undefined,customFields:undefined}),...(moneyHidden?{estimates:[],proposals:[],moneyHidden:true,activity:(p.activity||[]).filter(entry=>!MONEY_ACTIVITY.test(entry.text||entry.title||''))}:{}),viewerId:user.id,enquiryReviewedAt:owner?db.prepare('SELECT r.reviewed_at FROM crm_enquiry_reviews r JOIN crm_opportunities o ON o.id=r.opportunity_id AND o.studio_id=r.studio_id WHERE o.project_id=? AND o.studio_id=?').get(p.id,p.studioId)?.reviewed_at:undefined,operations:owner?p.operations:undefined,documentOpens:owner?documentOpens(db,p.studioId,p.id):undefined,estimateDraft:owner?p.estimateDraft:undefined,clientId:projectClientId(db,p.studioId,p.id),accessRole,conversationId:c?.id,unreadMessages:c?conversationUnreadCount(db,c,user):0,latestInvoice:invoice?{id:invoice.id,number:invoice.number,kind:invoice.kind,currency:invoice.currency,amountMinor:invoice.amountMinor,paidMinor:invoice.paidMinor,dueDate:invoice.dueDate,status:invoice.status}:null};};
+     i.issued_at DESC,i.number DESC LIMIT 1`).get(p.studioId,p.id):null;const invoice=latest?invoiceDTO(db,latest):null;const moneyHidden=accessRole!=='Owner'&&accessRole!=='Approver';return {...p,...(owner?{}:{tags:undefined,customFields:undefined}),...(moneyHidden?{estimates:[],proposals:[],moneyHidden:true,activity:(p.activity||[]).filter(entry=>!MONEY_ACTIVITY.test(entry.text||entry.title||''))}:{}),viewerId:user.id,enquiryReviewedAt:owner?db.prepare('SELECT r.reviewed_at FROM crm_enquiry_reviews r JOIN crm_opportunities o ON o.id=r.opportunity_id AND o.studio_id=r.studio_id WHERE o.project_id=? AND o.studio_id=?').get(p.id,p.studioId)?.reviewed_at:undefined,operations:owner?p.operations:undefined,documentOpens:owner?documentOpens(db,p.studioId,p.id):undefined,waitingToJoin:owner?joinStatus(db,p.studioId,{projectId:p.id}).waiting:undefined,estimateDraft:owner?p.estimateDraft:undefined,clientId:projectClientId(db,p.studioId,p.id),accessRole,conversationId:c?.id,unreadMessages:c?conversationUnreadCount(db,c,user):0,latestInvoice:invoice?{id:invoice.id,number:invoice.number,kind:invoice.kind,currency:invoice.currency,amountMinor:invoice.amountMinor,paidMinor:invoice.paidMinor,dueDate:invoice.dueDate,status:invoice.status}:null};};
     const memberships=[...db.prepare('SELECT s.*,m.role FROM studios s JOIN memberships m ON m.studio_id=s.id WHERE m.user_id=?').all(user.id),...db.prepare("SELECT s.*,CASE st.access WHEN 'bookkeeper' THEN 'staff_bookkeeper' ELSE 'staff_viewer' END AS role FROM studios s JOIN studio_staff st ON st.studio_id=s.id WHERE st.user_id=? AND st.access IN ('viewer','bookkeeper')").all(user.id)];
     if(route==='/api/me'&&req.method==='GET')return reply(200,{user:{id:user.id,name:user.name,email:user.email},studios:memberships.map(s=>({...s,origins:JSON.parse(s.origins),branding:branding(s.id)}))});
     if(route==='/api/stripe/connect/refresh'&&req.method==='GET'){
@@ -274,7 +285,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     const studio=memberships.find(s=>s.id===url.searchParams.get('studio'));if(!studio)fail(403,'You do not have access to this studio.');const owner=studio.role==='owner',staffViewer=studio.role==='staff_viewer',bookkeeper=studio.role==='staff_bookkeeper';
     // Bookkeepers read the money and nothing else: no project content, messages, files, settings or changes of any kind.
-    if(bookkeeper&&!(req.method==='GET'&&(['/api/invoices','/api/projects',`/api/studios/${studio.id}/stripe-status`,'/api/expenses','/api/finance-report'].includes(route)||/^\/api\/projects\/[a-f0-9-]+\/invoices(?:\/(?:plan|[a-f0-9-]+))?$/.test(route)||/^\/api\/expenses\/[a-f0-9-]{36}\/receipt$/.test(route))))fail(403,'Bookkeeper access is read-only and limited to finances.');const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
+    if(bookkeeper&&!(req.method==='GET'&&(['/api/invoices','/api/projects',`/api/studios/${studio.id}/stripe-status`,'/api/expenses','/api/finance-report'].includes(route)||/^\/api\/projects\/[a-f0-9-]+\/invoices(?:\/(?:plan|[a-f0-9-]+(?:\/pdf|\/credit-notes\/[a-f0-9-]{36}\/pdf)?))?$/.test(route)||/^\/api\/expenses\/[a-f0-9-]{36}\/receipt$/.test(route))))fail(403,'Bookkeeper access is read-only and limited to finances.');const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
     if(req.method==='POST'&&((route.startsWith('/api/conversations/')&&route.endsWith('/files'))||(route.startsWith('/api/task-workspace/')&&body.action==='file')||(route==='/api/expenses'&&body.receipt)))rate(req,'upload',40);
     const formRoute=route.match(/^\/api\/forms(?:\/([a-f0-9-]+)(?:\/(responses|export))?)?$/);
     if(formRoute){requireOwner();const formId=formRoute[1],action=formRoute[2];
@@ -375,7 +386,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       if(body.revision!==project.briefRevision)fail(409,'The brief changed. Refresh before saving.');
       if(!body.brief||typeof body.brief!=='object'||Array.isArray(body.brief))fail(400,'Check the brief.');
       const next=brief({...project.brief,...body.brief,email:project.clientEmail,budget:project.brief.budget,workflowType:project.brief.workflowType,intakeAnswers:updateIntakeAnswers(project.brief.intakeAnswers,body.brief.intakeAnswers)});
-      project.briefHistory.unshift({revision:project.briefRevision,brief:project.brief,at:now(),by:user.name});project.brief=next;project.briefRevision++;event(project,user,'Updated the brief');
+      project.briefHistory.unshift({revision:project.briefRevision,brief:project.brief,at:now(),by:user.name,author:project.briefAuthor,authoredAt:project.briefAuthoredAt});project.brief=next;project.briefRevision++;project.briefAuthor=user.name;project.briefAuthoredAt=now();event(project,user,'Updated the brief');
      }else if(action==='tasks'){
       project.tasks||=[];
       if(body.taskId){const task=project.tasks.find(item=>item.id===body.taskId);if(!task)fail(404,'Task not found.');if(task.assignee!=='studio'||typeof body.completed!=='boolean')fail(403,'Only studio tasks can be completed here.');task.completed=body.completed;task.completedBy=body.completed?user.name:'';task.completedAt=body.completed?now():'';event(project,user,(task.completed?'Completed':'Reopened')+' task: '+task.title);}
@@ -608,7 +619,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      return reply(200,{stripe:{configured:stripeReady,connected:!!connected,chargesEnabled}});
     }
     const engagementMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/engagements(?:\/([a-z-]+))?$/);
-    if(engagementMatch){const args={studioId:studio.id,projectId:engagementMatch[1],userId:user.id};if(req.method==='GET'&&!engagementMatch[2])return reply(200,getEngagements(db,args));if(req.method==='POST'&&engagementMatch[2]){const result=changeEngagements(db,{...args,action:engagementMatch[2],body});await syncProjectArchives(db,args);return reply(200,result);}fail(405,'Method not allowed.');}
+    if(engagementMatch){const args={studioId:studio.id,projectId:engagementMatch[1],userId:user.id};if(req.method==='GET'&&!engagementMatch[2])return reply(200,getEngagements(db,args));if(req.method==='POST'&&engagementMatch[2]){const {eventId,...result}=changeEngagements(db,{...args,action:engagementMatch[2],body});queueProjectEvent(studio.id,args.projectId,user.id,eventId);await syncProjectArchives(db,args);automate(studio.id,args.projectId);return reply(200,result);}fail(405,'Method not allowed.');}
     const calendarMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/calendar\.ics$/);
     if(calendarMatch&&req.method==='GET'){const calendar=projectCalendar(db,{studioId:studio.id,projectId:calendarMatch[1],userId:user.id});res.writeHead(200,{'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'attachment; filename="caleane-project.ics"','Cache-Control':'private, no-store'});return res.end(calendar);}
     const documentMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/documents(?:\/([a-f0-9-]+)\/pdf)?$/);
@@ -617,10 +628,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(operationsMatch){
      const args={studioId:studio.id,projectId:operationsMatch[1],userId:user.id};
      if(req.method==='GET'&&!operationsMatch[2])return reply(200,{operations:getProjectOperations(db,args)});
-     if(req.method==='POST'&&operationsMatch[2]){const result=transaction(db,()=>{const changed=changeProjectOperations(db,{...args,action:operationsMatch[2],body});queueProjectEvent(studio.id,changed.project.id,user.id,changed.project.activity?.[0]?.id);return changed;});return reply(200,{project:decorate(result.project),operations:result.operations});}
+     if(req.method==='POST'&&operationsMatch[2]){transaction(db,()=>{const changed=changeProjectOperations(db,{...args,action:operationsMatch[2],body});queueProjectEvent(studio.id,changed.project.id,user.id,changed.project.activity?.[0]?.id);return changed;});automate(studio.id,args.projectId);return reply(200,{project:decorate(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(args.projectId).data)),operations:getProjectOperations(db,args)});}
      fail(405,'Method not allowed.');
     }
-    const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/(plan|[a-f0-9-]+)(?:\/(payments|cancel|credit-notes|refunds|tip|late-fee|checkout(?:\/expire)?|attempts))?)?$/);
+    const invoiceMatch=route.match(/^\/api\/projects\/([a-f0-9-]+)\/invoices(?:\/(plan|[a-f0-9-]+)(?:\/(payments|cancel|credit-notes(?:\/[a-f0-9-]{36}\/pdf)?|refunds|tip|late-fee|checkout(?:\/expire)?|attempts|pdf))?)?$/);
     if(invoiceMatch){
      const projectRow=db.prepare('SELECT * FROM projects WHERE id=? AND studio_id=?').get(invoiceMatch[1],studio.id);
      const accessRole=projectRow&&(owner?'Owner':bookkeeper?'Bookkeeper':projectAccess(db,studio.id,projectRow.id,user.id));
@@ -642,7 +653,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       if(kind==='Deposit'){amountMinor=body.amountMinor;if(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remainingMinor)fail(400,'Enter an amount smaller than the remaining estimate total.');}
       const saved=billingDefaults(db,studio.id),dueDate=date(body.dueDate,'invoice due date'),supplyDate=date(body.supplyDate||project.brief?.date||'','service date'),paymentInstructions=str(body.paymentInstructions||saved.paymentInstructions||'',1000),note=str(body.note||'',3000);
       const sellerAddress=str(body.sellerAddress||saved.sellerAddress||'',500),sellerContact=str(body.sellerContact||saved.sellerContact||'',300),customerAddress=str(body.customerAddress||'',500),taxRegistration=str(body.taxRegistration||saved.taxRegistration||'',100);
-      if(!dueDate||!supplyDate||!sellerAddress||!sellerContact||!customerAddress||!paymentInstructions)fail(400,'Add the billing addresses, contact, service date, due date and payment instructions.');
+      const missing=[[sellerAddress,'your studio address'],[customerAddress,'the client billing address'],[sellerContact,'your studio contact'],[supplyDate,'the service date'],[dueDate,'the due date'],[paymentInstructions,'payment instructions']].filter(([value])=>!value).map(([,label])=>label);
+      if(missing.length)fail(400,`Add ${missing.length>1?missing.slice(0,-1).join(', ')+' and '+missing.at(-1):missing[0]}.`);
       if(dueDate<now().slice(0,10))fail(400,'Choose an invoice due date today or later.');
       return transaction(db,()=>{
        const year=Number(now().slice(0,4));db.prepare('INSERT OR IGNORE INTO invoice_counters VALUES(?,?,1)').run(studio.id,year);
@@ -658,7 +670,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
        // Late fee terms and tips are fixed on the invoice when it is issued, so the client sees them from the start.
        const lateFeeRule=saved.lateFee?.enabled&&body.lateFee!==false?JSON.stringify({type:saved.lateFee.type,amountMinor:saved.lateFee.amountMinor,percent:saved.lateFee.percent,afterDays:saved.lateFee.afterDays}):'';
        const tipsAllowed=saved.tips?.enabled&&kind!=='Deposit'&&body.tips!==false?1:0;
-       const snapshot={sellerName:studio.name,sellerAddress,sellerContact,taxRegistration,billToName:project.brief?.name||'',billToEmail:project.clientEmail,customerAddress,supplyDate,projectTitle:project.title,estimate:{id:estimate.id,version:estimate.version,title:estimate.title,note:estimate.note,items:structuredClone(estimate.items),currency:estimate.currency,taxRate:estimate.taxRate,subtotal:estimate.subtotal,tax:estimate.tax,total:estimate.total,briefRevision:estimate.briefRevision,decidedAt:estimate.decidedAt||'',decidedBy:estimate.decidedBy||''}};
+       const snapshot={sellerName:studio.name,sellerAddress,sellerContact,taxRegistration,vatRegistered:isVatDocument({vatRegistered:estimate.vatRegistered,taxRegistration},estimate.currency),billToName:project.brief?.name||'',billToEmail:project.clientEmail,customerAddress,supplyDate,projectTitle:project.title,estimate:{id:estimate.id,version:estimate.version,title:estimate.title,note:estimate.note,items:structuredClone(estimate.items),currency:estimate.currency,taxRate:estimate.taxRate,vatRegistered:estimate.vatRegistered,subtotal:estimate.subtotal,tax:estimate.tax,total:estimate.total,briefRevision:estimate.briefRevision,decidedAt:estimate.decidedAt||'',decidedBy:estimate.decidedBy||''}};
        const invoiceId=id(),issuedAt=now();
        db.prepare(`INSERT INTO invoices(id,studio_id,project_id,number,estimate_id,estimate_version,kind,currency,amount_minor,net_minor,tax_minor,tax_rate,due_date,note,payment_instructions,snapshot,issued_at,issued_by)
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(invoiceId,studio.id,project.id,number,estimate.id,estimate.version,kind,estimate.currency,amountMinor,netMinor,taxMinor,estimate.taxRate,dueDate,note,paymentInstructions,JSON.stringify(snapshot),issuedAt,user.name);
@@ -682,7 +694,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       else if(body.action==='delete')transaction(db,()=>deletePlan(db,{studioId:studio.id,project}));
       else if(body.action==='issue'){
        const issued=transaction(db,()=>{const {step,body:planned}=stepInvoice(db,{studioId:studio.id,project,stepId:body.stepId});return issueInvoice(project,{...body,...planned},invoiceId=>markStepInvoiced(db,{studioId:studio.id,projectId:project.id,stepId:step.id,invoiceId}));});
-       await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});
+       await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});automate(studio.id,project.id);
        return reply(201,{plan:view(),invoice:invoiceDTO(db,issued)});
       }else fail(400,'Choose a payment plan action.');
       return reply(200,{plan:view()});
@@ -691,6 +703,14 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(invoiceId&&!invoice)fail(404,'Invoice not found.');
      if(req.method==='GET'&&!invoiceId)return reply(200,{invoices:invoiceRows(db,studio.id,project.id).map(row=>invoiceDTO(db,row)),design:invoiceDesign(db,studio.id),brandKit:brandKit(db,studio.id)});
      if(req.method==='GET'&&invoiceId&&!subaction)return reply(200,{invoice:invoiceDTO(db,invoice)});
+     // A real PDF file of the invoice or one of its credit notes, for the studio, its bookkeeper and the project approver.
+     if(req.method==='GET'&&(subaction==='pdf'||subaction?.startsWith('credit-notes/'))){
+      const current=invoiceDTO(db,invoice),creditId=subaction==='pdf'?'':subaction.split('/')[1],credit=creditId?current.credits.find(item=>item.id===creditId):null;
+      if(creditId&&!credit)fail(404,'Credit note not found.');
+      const file=await invoicePdf(current,{db,studio,design:invoiceDesign(db,studio.id),brandKit:brandKit(db,studio.id),estimate:project.estimates?.find(item=>item.id===invoice.estimate_id)||current.snapshot.estimate,creditNote:credit});
+      res.writeHead(200,{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="${pdfFileName(credit?'Credit note':'Invoice',credit?credit.number:invoice.number)}"`,'Content-Length':file.length,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"});
+      return res.end(file);
+     }
      if(req.method==='GET'&&subaction==='attempts'){requireOwner();return reply(200,{attempts:listStripeCheckoutAttempts(db,{studioId:studio.id,invoiceId})});}
      if(req.method==='POST'&&subaction==='checkout'){
       if(!stripeReady)fail(503,'Stripe Checkout and its signed webhook must be configured together.');
@@ -717,8 +737,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       return reply(200,{invoice:invoiceDTO(db,db.prepare('SELECT * FROM invoices WHERE id=? AND studio_id=?').get(invoice.id,studio.id))});
      }
      if(!invoiceId){
-      const issued=issueInvoice(project,body);
-      await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});return reply(201,{invoice:invoiceDTO(db,issued)});
+      const issued=issueInvoice(project,body,()=>linkIssuedDeposits(db,{studioId:studio.id,projectId:project.id}));
+      await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});automate(studio.id,project.id);return reply(201,{invoice:invoiceDTO(db,issued)});
      }
      if(subaction==='credit-notes'||subaction==='refunds'){
       // The adjustment and its project event commit together, or neither does.
@@ -762,6 +782,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
        event(project,user,`Recorded an external payment for invoice ${invoice.number}`);saveProject(db,project);
        return invoice;
       });
+      automate(studio.id,project.id);
       return reply(200,{invoice:invoiceDTO(db,result)});
      }
      fail(404,'Not found.');
@@ -846,6 +867,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      const estimate=p.estimates?.at(-1);if(!estimate||estimate.id!==body.estimateId||estimate.briefRevision!==p.briefRevision||!['Awaiting review','Budget confirmed'].includes(estimate.status))fail(409,'Create or confirm a current estimate before sharing a proposal.');
      const title=str(body.title,200),scope=str(body.scope,10000),exclusions=str(body.exclusions||'',5000),delivery=str(body.delivery,5000),expiresOn=date(body.expiresOn,'reply date');if(!title||!scope||!delivery||!expiresOn||expiresOn<now().slice(0,10))fail(400,'Add a title, scope, delivery plan and a future reply date.');
      const richDocument=body.documentHtml===undefined?{}:(await import('./engagements.mjs')).agreementDocument({termsHtml:body.documentHtml});
+     const gaps=findPlaceholders(title,scope,exclusions,delivery,richDocument.termsHtml||'');if(gaps.length)fail(400,placeholderMessage(gaps,'this proposal'));
      p.proposals.forEach(q=>{if(q.status==='Awaiting response')q.status='Superseded';});p.proposals.push({id:id(),version:p.proposals.length+1,title,scope,exclusions,delivery,expiresOn,...(richDocument.termsHtml?{documentHtml:richDocument.termsHtml,documentFormat:richDocument.documentFormat}:{}),estimate:structuredClone(estimate),briefRevision:p.briefRevision,status:'Awaiting response',by:user.name,createdAt:now()});event(p,user,'Shared proposal version '+p.proposals.length);
     }else if(action==='proposal-response'){
      if(owner)fail(403,'A client approver responds to the proposal.');const q=p.proposals?.at(-1);if(!q||q.id!==body.proposalId||q.status!=='Awaiting response'||q.briefRevision!==p.briefRevision||q.expiresOn<now().slice(0,10))fail(409,'This proposal changed or expired. Ask the studio for an update.');if(!['accept','changes'].includes(body.decision))fail(400,'Choose accept or request changes.');const feedback=str(body.feedback||'',3000);if(body.decision==='accept'&&body.acknowledged!==true)fail(400,'Confirm that you reviewed the scope and investment.');if(body.decision==='changes'&&!feedback)fail(400,'Describe the changes you need.');q.status=body.decision==='accept'?'Scope accepted':'Changes requested';q.feedback=feedback;q.decidedBy=user.name;q.decidedByUserId=user.id;q.decidedAt=now();event(p,user,q.status+' · proposal version '+q.version);
@@ -854,9 +876,9 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }else if(action==='estimates'){
      requireOwner();p.estimates||=[];if(body.discardDraft===true){delete p.estimateDraft;event(p,user,'Discarded an estimate draft');}else{if(!Array.isArray(body.items)||body.items.length<1||body.items.length>30||!['GBP','EUR','USD'].includes(body.currency))fail(400,'Add estimate items and a supported currency.');
      const items=body.items.map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))fail(400,'Check each estimate item.');const title=str(item.title,200);if(!title||!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>10000||!Number.isInteger(item.unitAmount)||item.unitAmount<0||item.unitAmount>100000000)fail(400,'Check item descriptions, quantities and amounts.');return {title,quantity:item.quantity,unitAmount:item.unitAmount};});
-     const taxRate=body.taxRate??0;if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
+     const usual=billingDefaults(db,studio.id),vatRegistered=isVatRegistered(usual),taxRate=body.taxRate??defaultTaxRate(usual);if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
      const subtotal=items.reduce((sum,i)=>sum+i.quantity*i.unitAmount,0),tax=Math.round(subtotal*taxRate/100);if(subtotal>100000000)fail(400,'The estimate total is too large.');
-     if(body.saveAs==='draft'){p.estimateDraft={title:str(body.title||'Project estimate',200),note:str(body.note||'',3000),currency:body.currency,items,taxRate,subtotal,tax,total:subtotal+tax,updatedAt:now(),by:user.name};event(p,user,'Saved an estimate draft');}else{p.estimates.forEach(q=>{if(q.status==='Awaiting review')q.status='Superseded';});p.estimates.push({id:id(),version:p.estimates.length+1,briefRevision:p.briefRevision,title:str(body.title||'Project estimate',200),note:str(body.note||'',3000),currency:body.currency,items,taxRate,subtotal,tax,total:subtotal+tax,status:'Awaiting review',at:now(),by:user.name});delete p.estimateDraft;event(p,user,'Shared a project estimate');}}
+     if(body.saveAs==='draft'){p.estimateDraft={title:str(body.title||'Project estimate',200),note:str(body.note||'',3000),currency:body.currency,items,taxRate,vatRegistered,subtotal,tax,total:subtotal+tax,updatedAt:now(),by:user.name};event(p,user,'Saved an estimate draft');}else{p.estimates.forEach(q=>{if(q.status==='Awaiting review')q.status='Superseded';});p.estimates.push({id:id(),version:p.estimates.length+1,briefRevision:p.briefRevision,title:str(body.title||'Project estimate',200),note:str(body.note||'',3000),currency:body.currency,items,taxRate,vatRegistered,subtotal,tax,total:subtotal+tax,status:'Awaiting review',at:now(),by:user.name});delete p.estimateDraft;event(p,user,'Shared a project estimate');}}
     }else if(action==='estimate-decision'){
      if(owner)fail(403,'The client confirms their budget direction.');const q=p.estimates?.find(q=>q.id===body.estimateId);if(!q||q.id!==p.estimates.at(-1)?.id||q.status!=='Awaiting review'||q.briefRevision!==p.briefRevision)fail(409,'This estimate needs updating before a decision.');if(!['confirm','changes'].includes(body.decision))fail(400,'Choose confirm or request changes.');const feedback=str(body.feedback||'',3000);if(body.decision==='changes'&&!feedback)fail(400,'Tell your studio what needs to change.');q.status=body.decision==='confirm'?'Budget confirmed':'Changes requested';q.feedback=feedback;q.decidedBy=user.name;q.decidedAt=now();event(p,user,q.status+' · estimate version '+q.version);
     }else if(action==='comments'){
@@ -867,7 +889,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      else {const text=str(body.text,3000);if(!text)fail(400,'Write your feedback first.');const primary=d.fileId||'primary';let assetId=body.assetId===undefined?primary:str(body.assetId,80);if(assetId==='primary')assetId=primary;const valid=new Set([primary,...(d.assets||[]).map(a=>a.fileId)]);if(!valid.has(assetId))fail(400,'Choose an asset from this design version.');let parentId=null;if(body.parentId){const parent=d.comments.find(c=>c.id===body.parentId);if(!parent||parent.parentId)fail(400,'Choose a top-level comment in this version.');if((parent.assetId||primary)!==assetId)fail(400,'Replies must stay with the same asset.');parentId=parent.id;}let point=null;if(body.point){if(parentId)fail(400,'Add a pin to a new comment, not a reply.');if(![body.point.x,body.point.y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=100))fail(400,'Choose a point inside the image.');const asset=(d.assets||[]).find(a=>a.fileId===assetId);if(asset&&!asset.mime?.startsWith('image/'))fail(400,'Pins are available on images only.');point={x:body.point.x,y:body.point.y};}d.comments.push({id:id(),text,point,assetId,parentId,by:user.name,byUserId:user.id,role:studio.role,at:now(),resolved:false});event(p,user,`Commented on design version ${d.version}`);}
     }else if(action==='brief'){
      if(body.revision!==p.briefRevision)fail(409,'The brief changed while you were editing. Refresh before saving.');const b=brief({...body.brief,email:p.clientEmail,workflowType:owner?body.brief.workflowType||p.brief.workflowType:p.brief.workflowType,intakeAnswers:updateIntakeAnswers(p.brief.intakeAnswers,body.brief.intakeAnswers)});if(p.briefLocked){p.changeRequests.unshift({id:id(),brief:b,baseRevision:p.briefRevision,note:str(body.note||'Requested an update to the agreed brief.',1000),status:'Pending',by:user.name,at:now()});event(p,user,'Requested a change to the approved brief');}
-     else{p.briefHistory.unshift({revision:p.briefRevision,brief:p.brief,at:now(),by:user.name});p.brief=b;p.briefRevision++;event(p,user,'Updated the brief');}
+     else{p.briefHistory.unshift({revision:p.briefRevision,brief:p.brief,at:now(),by:user.name,author:p.briefAuthor,authoredAt:p.briefAuthoredAt});p.brief=b;p.briefRevision++;p.briefAuthor=user.name;p.briefAuthoredAt=now();event(p,user,'Updated the brief');}
     }else if(action==='messages'){const text=str(body.text,5000);if(!text)fail(400,'Write a message first.');transaction(db,()=>{const c=materializeProjectConversation(db,p),messageId=appendConversationMessage(db,c,user,studio.role,text,body.clientMessageId?str(body.clientMessageId,120):null);queueMessage(studio.id,c,user.id,messageId);});return reply(200,{project:decorate(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(p.id).data))});
     }else if(action==='inspiration'){const title=str(body.title,200),note=str(body.note||'',3000),link=safeURL(body.url||'');if(!title)fail(400,'Add a title.');if(!link&&!note)fail(400,'Add a link or a note.');p.inspiration.unshift({id:id(),title,note,url:link,category:str(body.category||'',80),source:str(body.source||'',300),comments:[],by:user.name,byUserId:user.id,at:now()});event(p,user,'Added inspiration');
     }else if(action==='reference-layout'){
@@ -880,11 +902,14 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      rate(req,'upload',40);const name=str(body.name,180),data=Buffer.from(str(body.content,8400000),'base64');if(!name||data.length>6000000||data.length<12)fail(400,'Choose a file smaller than 6 MB.');let mime='';if(data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))mime='image/png';else if(data[0]===255&&data[1]===216&&data[2]===255)mime='image/jpeg';else if(data.toString('ascii',0,4)==='RIFF'&&data.toString('ascii',8,12)==='WEBP')mime='image/webp';else if(data.toString('ascii',0,5)==='%PDF-')mime='application/pdf';else fail(400,'Use a PNG, JPG, WebP or PDF file.');assertQuota(db,studio.id,data.length);const fid=id();db.prepare('INSERT INTO files VALUES(?,?,?,?,?)').run(fid,p.id,name,mime,data);p.inspiration.unshift({id:id(),title:str(body.title||name,200),note:str(body.note||'',3000),category:str(body.category||'',80),source:str(body.source||'',300),comments:[],fileId:fid,mime,by:user.name,byUserId:user.id,at:now()});event(p,user,'Added a file');
     }else if(action==='designs'){requireOwner();const title=str(body.title,200),description=str(body.description||'',5000),fileId=str(body.fileId||'',100);if(!title||!description)fail(400,'Add a design title and description.');if(fileId&&!db.prepare('SELECT id FROM files WHERE id=? AND project_id=?').get(fileId,p.id))fail(400,'Choose a file from this project.');p.designs.forEach(d=>{if(d.status==='Awaiting approval')d.status='Superseded';});p.designs.push({id:id(),version:p.designs.length+1,briefRevision:p.briefRevision,briefSnapshot:structuredClone(p.brief),title,description,fileId,status:'Awaiting approval',at:now(),feedback:''});p.status='Design';event(p,user,`Shared design version ${p.designs.length}`);
     }else if(action==='approval'){if(owner)fail(403,'Design approval belongs to the client.');const d=p.designs.find(d=>d.id===body.designId);if(!d||d.id!==p.designs.at(-1)?.id||d.status!=='Awaiting approval')fail(409,'This version is no longer awaiting a decision. Refresh to see the latest design.');if(d.briefRevision!==p.briefRevision)fail(409,'The brief changed after this design was shared. Ask the studio to share a fresh version.');if(!['approve','changes'].includes(body.decision))fail(400,'Choose an approval or request changes.');d.feedback=str(body.feedback||'',3000);if(body.decision==='changes'&&!d.feedback)fail(400,'Tell the studio what you would like changed.');d.status=body.decision==='approve'?'Approved':'Changes requested';d.decidedAt=now();d.decidedBy=user.name;if(body.decision==='approve'){p.briefLocked=true;p.status='Approved';}event(p,user,`${d.status} · design version ${d.version}`);
-    }else if(action==='changes'){requireOwner();const change=p.changeRequests.find(c=>c.id===body.changeId);if(!change||change.status!=='Pending')fail(409,'This change has already been reviewed.');if(!['accept','decline'].includes(body.decision))fail(400,'Choose accept or decline.');if(body.decision==='accept'){if(change.baseRevision!==p.briefRevision)fail(409,'A newer brief exists. Review and decline this outdated request.');p.briefHistory.unshift({revision:p.briefRevision,brief:p.brief,at:now(),by:user.name});p.brief=change.brief;p.briefRevision++;p.briefLocked=false;p.status='Design';}change.status=body.decision==='accept'?'Accepted':'Declined';event(p,user,`${change.status} a brief change request`);
+    }else if(action==='changes'){requireOwner();const change=p.changeRequests.find(c=>c.id===body.changeId);if(!change||change.status!=='Pending')fail(409,'This change has already been reviewed.');if(!['accept','decline'].includes(body.decision))fail(400,'Choose accept or decline.');if(body.decision==='accept'){if(change.baseRevision!==p.briefRevision)fail(409,'A newer brief exists. Review and decline this outdated request.');p.briefHistory.unshift({revision:p.briefRevision,brief:p.brief,at:now(),by:user.name,author:p.briefAuthor,authoredAt:p.briefAuthoredAt});p.brief=change.brief;p.briefRevision++;p.briefAuthor=change.by;p.briefAuthoredAt=now();p.briefLocked=false;p.status='Design';}change.status=body.decision==='accept'?'Accepted':'Declined';event(p,user,`${change.status} a brief change request`);
     }else if(action==='status'){requireOwner();if(!['Enquiry','Planning','Design','Complete','Archived'].includes(body.status))fail(400,'Choose a valid stage.');p.status=body.status;event(p,user,`Moved project to ${p.status.toLowerCase()}`);
     }else if(action==='invite'){const primary=db.prepare(`SELECT ct.email FROM crm_project_stakeholders ps JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE ps.project_id=? AND ps.studio_id=? AND ps.primary_contact=1`).get(p.id,studio.id);return reply(201,createInvitation(primary?.email||p.clientEmail));
     }else fail(404,'Not found.');
-    transaction(db,()=>{saveProject(db,p);for(const fid of removedFileIds)db.prepare('DELETE FROM files WHERE id=? AND project_id=?').run(fid,p.id);queueProjectEvent(studio.id,p.id,user.id,p.activity?.[0]?.id);});if(action==='proposals')await syncProjectArchives(db,{studioId:studio.id,projectId:p.id});return reply(200,{project:decorate(p)});
+    transaction(db,()=>{saveProject(db,p);for(const fid of removedFileIds)db.prepare('DELETE FROM files WHERE id=? AND project_id=?').run(fid,p.id);queueProjectEvent(studio.id,p.id,user.id,p.activity?.[0]?.id);});if(action==='proposals')await syncProjectArchives(db,{studioId:studio.id,projectId:p.id});
+    // Answering a quote or proposal, or setting the date, moves the enquiry on at once; the reply carries what the automation changed.
+    if(['estimates','estimate-decision','proposals','proposal-response','proposal-withdraw','brief','changes'].includes(action)){automate(studio.id,p.id);return reply(200,{project:decorate(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(p.id).data))});}
+    return reply(200,{project:decorate(p)});
    }
    if(req.method!=='GET'&&req.method!=='HEAD')fail(405,'Method not allowed.');
    if(route==='/embed.js'){res.setHeader('Content-Type','text/javascript');res.setHeader('Cache-Control','no-cache');return res.end(await readFile(path.join(root,'public/embed.js')));}
@@ -893,7 +918,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(asset){const file=asset[1];const ext=path.extname(file);res.setHeader('Content-Type',({'.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.txt':'text/plain'})[ext]||'application/octet-stream');return res.end(await readFile(path.join(root,'dist',file)));}
    const intakeSlug=route.match(/^\/intake\/([a-z0-9-]+)(?:\/[a-z0-9-]+)?$/)?.[1];
    if(intakeSlug){const s=db.prepare('SELECT origins FROM studios WHERE slug=?').get(intakeSlug);if(!s)fail(404,'Studio not found.');res.setHeader('Content-Security-Policy',`${appCSP}; frame-ancestors 'self' ${JSON.parse(s.origins).join(' ')}`);}else res.setHeader('Content-Security-Policy',`${appCSP}; frame-ancestors 'none'`);
-   if(!['/','/join','/join-studio','/login','/embed-demo','/recover','/reset-password','/verify-email','/confirm-email','/account'].includes(route)&&!intakeSlug&&!/^\/book\/[a-z0-9-]+$/.test(route))fail(404,'Not found.');res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(await readFile(path.join(root,'dist/index.html')));
+   if(!['/','/join','/join-studio','/login','/embed-demo','/recover','/reset-password','/verify-email','/confirm-email','/account'].includes(route)&&!intakeSlug&&!/^\/book\/[a-z0-9-]+(\/manage)?$/.test(route))fail(404,'Not found.');res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(await readFile(path.join(root,'dist/index.html')));
   }catch(error){if(!error?.status)console.error(`Unexpected error on ${req.method} ${route??'(invalid address)'}:`,error?.stack||error);if(res.headersSent)return res.end();reply(error.status||500,{error:error.status?error.message:'Something went wrong. Please try again.'});}
  });
  // Bound slow clients: headers within 20 s, a whole request (including an 8.5 MB upload) within 2 minutes.

@@ -1,5 +1,6 @@
 import {id,now,transaction} from './store.mjs';
 import {invoiceFonts,invoiceLayouts,normaliseInvoiceDesign} from './src/lib/invoice-design.js';
+import {DEFAULT_VAT_RATE,isVatRegistered} from './src/lib/vat.js';
 import {defaultLateFee,defaultTips,validateLateFee,validateTips} from './invoice-extras.mjs';
 
 // Studio-level libraries the owner reuses across projects: a price list,
@@ -17,7 +18,7 @@ export const defaultTemplates=[
  {name:'Thank you',category:'Follow-up',body:'Hi {client_first_name},\n\nThank you for trusting us with {project_title}. It was a pleasure working with you. If you have a moment, we would love to hear how you found the experience.\n\n{studio_name}'}
 ];
 
-export const defaultBillingDefaults={sellerAddress:'',sellerContact:'',taxRegistration:'',paymentInstructions:'',paymentTermsDays:14,currency:'GBP',taxRate:0,lateFee:defaultLateFee,tips:defaultTips,
+export const defaultBillingDefaults={sellerAddress:'',sellerContact:'',taxRegistration:'',vatRegistered:false,paymentInstructions:'',paymentTermsDays:14,currency:'GBP',taxRate:0,lateFee:defaultLateFee,tips:defaultTips,
  plan:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}]};
 
 export function installStudioCommerce(db){db.exec(`
@@ -93,11 +94,13 @@ export function validatePlanTemplate(steps){
  if(Math.abs(result.reduce((sum,step)=>sum+step.percent,0)-100)>0.001)fail(400,'The payments in a plan must add up to 100%.');
  return result;
 }
-export function billingDefaults(db,studioId){const saved=readSetting(db,studioId,'billing_defaults',{});return {...structuredClone(defaultBillingDefaults),...saved,lateFee:{...defaultLateFee,...(saved.lateFee||{})},tips:{...defaultTips,...(saved.tips||{})}};}
+// vatRegistered is worked out for settings saved before the switch existed, so their rate keeps showing.
+export function billingDefaults(db,studioId){const saved=readSetting(db,studioId,'billing_defaults',{});return {...structuredClone(defaultBillingDefaults),...saved,vatRegistered:isVatRegistered(saved),lateFee:{...defaultLateFee,...(saved.lateFee||{})},tips:{...defaultTips,...(saved.tips||{})}};}
 export function saveBillingDefaults(db,studioId,body){
  const terms=body.paymentTermsDays??14;if(!Number.isInteger(terms)||terms<0||terms>120)fail(400,'Use payment terms between 0 and 120 days.');
- const currency=body.currency??'GBP',taxRate=body.taxRate??0;if(!['GBP','EUR','USD'].includes(currency))fail(400,'Choose GBP, EUR or USD.');if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
- return writeSetting(db,studioId,'billing_defaults',{currency,taxRate,sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan),lateFee:validateLateFee(body.lateFee),tips:validateTips(body.tips)});
+ const vatRegistered=typeof body.vatRegistered==='boolean'?body.vatRegistered:isVatRegistered(body);if(body.vatRegistered!=null&&typeof body.vatRegistered!=='boolean')fail(400,'Choose whether the studio is VAT registered.');
+ const currency=body.currency??'GBP',taxRate=body.taxRate??(vatRegistered?DEFAULT_VAT_RATE:0);if(!['GBP','EUR','USD'].includes(currency))fail(400,'Choose GBP, EUR or USD.');if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
+ return writeSetting(db,studioId,'billing_defaults',{currency,vatRegistered,taxRate,sellerAddress:text(body.sellerAddress,500,'the studio address'),sellerContact:text(body.sellerContact,300,'the studio contact'),taxRegistration:text(body.taxRegistration,100,'the tax registration'),paymentInstructions:text(body.paymentInstructions,1000,'the payment instructions'),paymentTermsDays:terms,plan:validatePlanTemplate(body.plan),lateFee:validateLateFee(body.lateFee),tips:validateTips(body.tips)});
 }
 
 export function invoiceDesign(db,studioId){return normaliseInvoiceDesign(readSetting(db,studioId,'invoice_design',{}));}

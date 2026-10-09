@@ -46,9 +46,10 @@ function currentScope(project){
  const proposal=project.proposals?.at(-1);
  return proposal?.status==='Scope accepted'&&proposal.briefRevision===project.briefRevision?proposal:null;
 }
+// Deposits count against the accepted proposal's estimate or, before any proposal, the latest estimate, however they were issued.
 function depositInvoices(db,project,proposal){
- if(!proposal)return [];
- const estimateId=proposal.estimate?.id;
+ const estimateId=proposal?proposal.estimate?.id:project.estimates?.at(-1)?.id;
+ if(!estimateId)return [];
  installInvoiceAdjustments(db);
  return db.prepare("SELECT id,estimate_id,currency,amount_minor,cancelled_at FROM invoices WHERE studio_id=? AND project_id=? AND kind='Deposit' ORDER BY issued_at,id").all(project.studioId,project.id)
   .filter(invoice=>!invoice.cancelled_at)

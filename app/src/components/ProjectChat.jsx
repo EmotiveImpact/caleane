@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {MessageSquare,Send,Users,X,Reply,Paperclip,AtSign,FileText,Pin,PinOff,ListChecks,MailWarning,CheckCircle2,Clock,ChevronDown,PenLine,Undo2} from 'lucide-react';
 import './project-chat.css';
+import {NotJoinedNotice} from './NotJoinedNotice';
 import {WorkspaceButton,WorkspaceSearch,WorkspaceAvatar,WorkspacePopover,WorkspaceMenu} from './workspace/WorkspaceUI';
 import {TemplatePicker} from './TemplatePicker';
 import {loadDraft,saveDraft} from '../lib/message-drafts';
@@ -95,6 +96,7 @@ export function ProjectChat({p,studio,user,owner,request,conversationId,fileHref
     <Clock size={14} aria-hidden="true"/><span><strong>{item.state==='failed'?'Not sent':'Sends '+sendTime(item.sendAt)}</strong><small>{clip(item.text,90)||'Attached files'}{item.error?' · '+item.error:''}</small></span>
     <button type="button" disabled={!!working} onClick={()=>{nearBottom.current=true;act('scheduled/'+item.id,{action:'send'},'scheduled-'+item.id);}}>Send now</button><button type="button" disabled={!!working} onClick={()=>editScheduled(item)}>Edit</button><button type="button" disabled={!!working} aria-label="Cancel scheduled message" onClick={()=>act('scheduled/'+item.id,{action:'cancel'},'scheduled-'+item.id)}><X size={14}/></button>
    </div>)}</div>}
+    {owner&&<NotJoinedNotice className="project-talk-not-joined" waiting={thread.waitingToJoin} studio={studio} request={request} projectId={thread.projectId} clientId={thread.clientId} what="messages here"/>}
     <form className="project-talk-composer" onSubmit={send}>
     {reply&&<div className="project-talk-quote"><div><strong>Replying to {reply.userId===user.id?'your message':reply.by}</strong><p>{clip(reply.text,200)||'Attached files'}</p></div><button type="button" aria-label="Cancel reply" onClick={()=>setReply(null)}><X size={16}/></button></div>}
     {drafted&&<div className="project-talk-drafted" role="status"><PenLine size={13} aria-hidden="true"/><span>Drafted by Caleane. Check it before sending.</span><button type="button" onClick={undoDraft}><Undo2 size={13} aria-hidden="true"/>Undo</button></div>}

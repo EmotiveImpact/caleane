@@ -1,9 +1,10 @@
-import {id,now,transaction,materializeProjectConversation,appendConversationMessage,saveProject} from './store.mjs';
+import {id,now,event,transaction,materializeProjectConversation,appendConversationMessage,saveProject} from './store.mjs';
 import {readSetting,writeSetting,currencies,installStudioCommerce,billingDefaults} from './studio-commerce.mjs';
 import {installConsultations} from './consultations.mjs';
 import {getProjectOperations,changeProjectOperations} from './studio-operations.mjs';
-import {createPlan,getPlan,installPaymentPlans} from './payment-plans.mjs';
+import {createPlan,getPlan,installPaymentPlans,linkIssuedDeposits} from './payment-plans.mjs';
 import {firstOpenedAt,documentOpens} from './document-opens.mjs';
+import {hasJoinedClient,joinStatus} from './relationships.mjs';
 
 // The pipeline reads what already happened on the linked project (quotes,
 // proposals, date holds, deposits, client replies) and keeps each enquiry in
@@ -91,7 +92,6 @@ function nudgeOpened(db,{studioId,opp,owner,p,item,kind,asOf,days}){
  });
  return true;
 }
-function hasPortalClient(db,studioId,projectId){return !!db.prepare('SELECT 1 FROM crm_project_stakeholders WHERE studio_id=? AND project_id=? AND portal_access=1').get(studioId,projectId);}
 
 // Move forward only, once per trigger. Returns true when the stage changed.
 function advance(db,{studioId,opp,owner,to,key,reason}){
@@ -110,6 +110,29 @@ function syncValue(db,{studioId,opp,owner,estimate}){
  db.prepare('UPDATE crm_opportunities SET amount_minor=?,currency=?,revision=revision+1,updated_at=? WHERE id=? AND studio_id=?').run(estimate.total,estimate.currency,now(),opp.id,studioId);
  activity(db,studioId,opp,owner,'Value updated from the quote',`Estimate version ${estimate.version}`);
  opp.amount_minor=estimate.total;opp.currency=estimate.currency;opp.revision++;
+}
+
+// Once a deposit invoice is issued, the automatic task to issue it is done. Once
+// it is paid, the client and their project move on from enquiry. Each happens
+// once per invoice, so a later change by hand stands.
+function afterDeposit(db,{studioId,opp,owner,p,booking,settings,log}){
+ const issued=db.prepare("SELECT id FROM invoices WHERE studio_id=? AND project_id=? AND kind='Deposit' AND cancelled_at IS NULL ORDER BY issued_at,id LIMIT 1").get(studioId,p.id);
+ if(issued)transaction(db,()=>linkIssuedDeposits(db,{studioId,projectId:p.id}));
+ if(issued&&!fired(db,studioId,'deposit-issued:'+issued.id))transaction(db,()=>{
+  mark(db,studioId,'deposit-issued:'+issued.id,opp.id);
+  const done=db.prepare("UPDATE crm_tasks SET completed=1,completed_at=? WHERE studio_id=? AND opportunity_id=? AND title='Issue the deposit invoice' AND created_by='Caleane automation' AND completed=0").run(now(),studioId,opp.id).changes;
+  if(done)activity(db,studioId,opp,owner,'Deposit invoice task completed','Automatic: the deposit invoice was issued.');
+ });
+ const deposit=booking?.deposit;
+ if(!settings.autoStages||deposit?.status!=='Paid'||fired(db,studioId,'deposit-paid:'+deposit.invoiceId))return;
+ transaction(db,()=>{
+  mark(db,studioId,'deposit-paid:'+deposit.invoiceId,opp.id);
+  const moved=[],fresh=projectOf(db,studioId,p.id);
+  if(fresh?.status==='Enquiry'){fresh.status='Planning';event(fresh,{name:'Caleane automation'},'Started project planning when the deposit was paid');saveProject(db,fresh);moved.push('project to planning');}
+  const client=db.prepare('SELECT data FROM clients WHERE id=? AND studio_id=?').get(opp.client_id,studioId),data=client&&JSON.parse(client.data);
+  if(data?.stage==='Lead'){data.stage='Active';data.updatedAt=now();db.prepare('UPDATE clients SET data=? WHERE id=? AND studio_id=?').run(JSON.stringify(data),opp.client_id,studioId);moved.push('client to active');}
+  if(moved.length){activity(db,studioId,opp,owner,'Deposit paid',`Automatic: moved the ${moved.join(' and the ')}.`);log.push({opportunityId:opp.id,action:'Deposit paid'});}
+ });
 }
 
 function fill(template,values){return template.replace(/\{(\w+)\}/g,(match,key)=>values[key]??match);}
@@ -137,19 +160,23 @@ export function followUpAction(db,studioId,{opportunityId,action,outbox=null}){
  if(action==='pause'){if(!fired(db,studioId,'pause:'+proposal.id))transaction(db,()=>{mark(db,studioId,'pause:'+proposal.id,opp.id);activity(db,studioId,opp,owner,'Follow-ups paused');});return;}
  if(action==='resume'){transaction(db,()=>{db.prepare('DELETE FROM crm_pipeline_triggers WHERE studio_id=? AND key=?').run(studioId,'pause:'+proposal.id);activity(db,studioId,opp,owner,'Follow-ups resumed');});return;}
  if(action!=='send')fail(400,'Choose a follow-up action.');
- if(!hasPortalClient(db,studioId,p.id))fail(409,'Invite the client to their project space before sending follow-ups.');
+ if(!hasJoinedClient(db,studioId,p.id))fail(409,'Invite the client to their project space before sending follow-ups.');
  const index=nextFollowUpIndex(db,studioId,proposal,settings);if(index<0)fail(409,'Every follow-up for this proposal has been sent.');
  sendFollowUp(db,{studioId,opp,p,proposal,owner,studio,settings,index,outbox,reason:'Sent early by the studio.'});
 }
 
-export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}){
+export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null,projectId=null}={}){
  installPipeline(db);
  const settings=pipelineSettings(db,studioId),owner=ownerOf(db,studioId),log=[];
  if(!owner)return log;
  const studio=db.prepare('SELECT name FROM studios WHERE id=?').get(studioId);
- const opps=db.prepare("SELECT * FROM crm_opportunities WHERE studio_id=? AND stage NOT IN ('Won','Lost') ORDER BY created_at").all(studioId);
+ const opps=projectId?db.prepare("SELECT * FROM crm_opportunities WHERE studio_id=? AND project_id=? AND stage<>'Lost' ORDER BY created_at").all(studioId,projectId):db.prepare("SELECT * FROM crm_opportunities WHERE studio_id=? AND stage<>'Lost' ORDER BY created_at").all(studioId);
  for(const opp of opps){
   try{
+   // A won enquiry only catches up with its deposit.
+   if(opp.stage==='Won'){
+    const waiting=db.prepare("SELECT id FROM invoices WHERE studio_id=? AND project_id=? AND kind='Deposit' AND cancelled_at IS NULL").all(studioId,opp.project_id).some(row=>!fired(db,studioId,'deposit-paid:'+row.id));
+    const p=waiting&&projectOf(db,studioId,opp.project_id);if(p)afterDeposit(db,{studioId,opp,owner,p,booking:getProjectOperations(db,{studioId,projectId:p.id,userId:owner.id,asOf}).booking,settings,log});continue;}
    if(settings.autoStages){
     const booked=db.prepare("SELECT id FROM consultations WHERE studio_id=? AND status IN ('Booked','Completed') AND json_extract(data,'$.clientId')=? AND created_at>=? ORDER BY created_at LIMIT 1").get(studioId,opp.client_id,opp.created_at.slice(0,10));
     if(booked&&transaction(db,()=>advance(db,{studioId,opp,owner,to:'Qualified',key:`consultation:${booked.id}:${opp.id}`,reason:'the client booked a consultation'})))log.push({opportunityId:opp.id,action:'Qualified'});
@@ -213,10 +240,11 @@ export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}
    if(settings.autoStages){
     const b=ops.booking;
     if(b.hold?.status==='Confirmed'&&transaction(db,()=>advance(db,{studioId,opp,owner,to:'Won',key:'won:'+b.hold.id,reason:'the date is confirmed'})))log.push({opportunityId:opp.id,action:'Won'});
-    else if(b.scopeAccepted&&b.deposit?.status==='Paid'&&transaction(db,()=>advance(db,{studioId,opp,owner,to:'Won',key:'deposit:'+b.deposit.invoiceId,reason:'the deposit was paid'})))log.push({opportunityId:opp.id,action:'Won'});
+    else if(b.deposit?.status==='Paid'&&transaction(db,()=>advance(db,{studioId,opp,owner,to:'Won',key:'deposit:'+b.deposit.invoiceId,reason:'the deposit was paid'})))log.push({opportunityId:opp.id,action:'Won'});
    }
+   afterDeposit(db,{studioId,opp,owner,p,booking:ops.booking,settings,log});
    // Follow-ups stop the moment the client writes back, the proposal is answered or the owner pauses them.
-   if(settings.followUps&&proposal?.status==='Awaiting response'&&proposal.expiresOn>=asOf&&hasPortalClient(db,studioId,p.id)&&!fired(db,studioId,'pause:'+proposal.id)){
+   if(settings.followUps&&proposal?.status==='Awaiting response'&&proposal.expiresOn>=asOf&&hasJoinedClient(db,studioId,p.id)&&!fired(db,studioId,'pause:'+proposal.id)){
     const replied=lastClientMessage(db,p.id);
     if(!replied||replied<proposal.createdAt){
      const index=nextFollowUpIndex(db,studioId,proposal,settings);
@@ -244,6 +272,14 @@ export function syncPipeline(db,studioId,{asOf=now().slice(0,10),outbox=null}={}
   }catch(error){console.error('Pipeline sync failed for an enquiry:',error.message);}
  }
  return log;
+}
+
+// The same rules for one project, straight after something happens on it (a
+// quote or proposal shared or answered, a contract signed, an invoice issued or
+// paid, a date confirmed), so nobody waits for Pipeline to open. The hourly
+// sweep stays as a safety net. It never fails the action that triggered it.
+export function syncProjectPipeline(db,studioId,projectId,{outbox=null,asOf}={}){
+ try{return projectId?syncPipeline(db,studioId,{outbox,asOf,projectId}):[];}catch(error){console.error('Pipeline sync failed for a project:',error.message);return [];}
 }
 
 export function syncAllPipelines(db,{outbox=null,asOf}={}){
@@ -314,10 +350,12 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
     const out=dayNumber(asOf)-dayNumber(proposal.createdAt),silent=!replied||replied<proposal.createdAt,left=dayNumber(proposal.expiresOn)-dayNumber(asOf),opened=firstOpenedAt(db,studioId,'proposal',proposal.id);
     if(left<0)flags.push({kind:'proposal-expired',tone:'bad',label:'Proposal expired',rank:1});
     else if(left<=3)flags.push({kind:'proposal-ending',tone:'warn',label:`Proposal closes ${shortDay(proposal.expiresOn)}`,rank:2});
-    if(silent&&out>=settings.silentDays)flags.push({kind:'silent',tone:'warn',label:`No reply for ${out} days`,rank:3});
+    // A lead who has not joined cannot see the proposal, so it is not out with them yet.
+    if(!hasJoinedClient(db,studioId,p.id))flags.push({kind:'not-joined',tone:'warn',label:'Not joined yet',rank:2});
+    else if(silent&&out>=settings.silentDays)flags.push({kind:'silent',tone:'warn',label:`No reply for ${out} days`,rank:3});
     else flags.push({kind:'waiting',tone:'info',label:out?`Proposal out ${out} day${out===1?'':'s'}`:'Proposal sent today',rank:6});
     if(opened)flags.push({kind:'opened',tone:'info',label:`Opened ${shortDay(opened)}`,rank:5});
-    else if(out>=2&&hasPortalClient(db,studioId,p.id))flags.push({kind:'unopened',tone:'warn',label:'Not opened yet',rank:3});
+    else if(out>=2&&hasJoinedClient(db,studioId,p.id))flags.push({kind:'unopened',tone:'warn',label:'Not opened yet',rank:3});
    }else if(proposal.status==='Changes requested')flags.push({kind:'changes',tone:'warn',label:'Changes requested',rank:1});
    else if(proposal.status==='Scope accepted'&&booking?.deposit?.status!=='Paid')flags.push({kind:'deposit',tone:'good',label:'Accepted · deposit due',rank:2});
   }else if(open&&estimate?.status==='Changes requested')flags.push({kind:'changes',tone:'warn',label:'Quote changes requested',rank:1});
@@ -334,7 +372,7 @@ export function pipelineOverview(db,studioId,{asOf=now().slice(0,10)}={}){
    proposal:proposal?{id:proposal.id,version:proposal.version,title:proposal.title,status:proposal.status,expiresOn:proposal.expiresOn,sharedAt:proposal.createdAt,openedAt:firstOpenedAt(db,studioId,'proposal',proposal.id)}:null,
    hold:hold?{id:hold.id,status:hold.status,startDate:hold.startDate,holdUntil:hold.holdUntil}:null,
    deposit:booking?.deposit&&!['No deposit invoice','Private'].includes(booking.deposit.status)?booking.deposit:null,
-   productionStatus:booking?.productionStatus||null,portalClient:p?hasPortalClient(db,studioId,p.id):false,
+   productionStatus:booking?.productionStatus||null,portalClient:p?hasJoinedClient(db,studioId,p.id):false,waitingToJoin:p?joinStatus(db,studioId,{projectId:p.id}).waiting:[],
    lastClientMessageAt:replied,opened,followUpsSent:followed,nextFollowUp:paused?null:nextFollow,followUpsPaused:paused,alternatives,fit,flags:flags.sort((a,b)=>a.rank-b.rank)};
  }
  return {settings,asOf,dates,signals,planTemplate:billingDefaults(db,studioId).plan,insights:insights(db,studioId,opps,projects,asOf),handled:handledFor(db,studioId,asOf),replySpeed:replySpeed(db,studioId,opps,asOf)};

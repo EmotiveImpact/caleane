@@ -40,7 +40,7 @@ test('report counts money when received, nets refunds, and works out profit per 
  assert.equal(gbp.outstanding.late60Minor,50000);
  assert.equal(gbp.outstanding.openCount,1);
  assert.deepEqual(report.enquiries.map(r=>[r.source,r.enquiries,r.booked,r.bookingRate]),[['Instagram',2,1,50],['Unspecified',1,0,0]]);
- assert.match(expensesCSV([{spentOn:'2026-09-12',description:'=cmd',supplier:'',category:'Other',projectId:'',currency:'GBP',amountMinor:1234,receipt:null}]),/"'=cmd".*"Studio overhead","GBP","12.34","No"/);
+ assert.match(expensesCSV([{spentOn:'2026-09-12',description:'=cmd',supplier:'',category:'Other',projectId:'',currency:'GBP',amountMinor:1234,receipt:null}]),/"'=cmd".*"Studio overhead","GBP","12.34","0.00","No"/);
 });
 
 test('owners record costs with receipts; clients cannot see them',async()=>{
