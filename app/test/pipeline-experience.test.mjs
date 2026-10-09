@@ -36,6 +36,7 @@ function fixture({stale=false,count=1,intake=null,pipeline=null}={}){
   if(path.startsWith('/api/task-workspace'))return {assignments:{'crm:t1':'Sophie'}};
   if(pipeline&&method==='POST'&&path.startsWith('/api/pipeline')){writes.push({path,body});return pipeline;}
   if(pipeline&&path.startsWith('/api/pipeline'))return pipeline;
+  if(pipeline&&path.startsWith('/api/billing-defaults'))return {defaults:{currency:'GBP',vatRegistered:true,taxRate:20}};
   if(pipeline&&path.startsWith('/api/catalogue'))return {items:[{id:'i1',name:'Bridal bouquet',unitAmount:28500,currency:'GBP',unit:'each',archived:false}]};
   if(pipeline&&method==='POST'&&path.startsWith('/api/projects/p1/estimates')){writes.push({path,body});return {project:{id:'p1'}};}
   if(pipeline&&method==='POST'&&path.startsWith('/api/projects/p1/messages')){writes.push({path,body});return {project:{id:'p1'}};}
@@ -150,10 +151,11 @@ test('board keeps every stage reachable on small screens and the enquiry drives 
  await input.selectOptions(await screen.findByRole('combobox',{name:'Add from your price list'}),'i1');
  await input.click(screen.getByRole('button',{name:'Add line'}));
  assert.equal(screen.getByRole('textbox',{name:'Line 1 description'}).value,'Bridal bouquet');
+ await waitFor(()=>assert.match(document.querySelector('.pl-totals').textContent,/Total £342\.00£285\.00 plus VAT \(20%\) £57\.00/),'the quote total includes VAT');
  await input.click(screen.getByRole('button',{name:'Share quote'}));
  await waitFor(()=>assert.ok(writes.some(w=>w.path.startsWith('/api/projects/p1/estimates'))));
  const quote=writes.find(w=>w.path.startsWith('/api/projects/p1/estimates')).body;
- assert.deepEqual(quote.items,[{title:'Bridal bouquet',quantity:1,unitAmount:28500}]);assert.equal(quote.currency,'GBP');
+ assert.deepEqual(quote.items,[{title:'Bridal bouquet',quantity:1,unitAmount:28500}]);assert.equal(quote.currency,'GBP');assert.equal(quote.taxRate,20);
 });
 
 test('follow-ups can be sent early or paused, full dates offer alternatives and the client preview shows the deposit',async()=>{
