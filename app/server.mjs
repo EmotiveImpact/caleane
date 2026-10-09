@@ -20,6 +20,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import Stripe from 'stripe';
+import {caleaneEnv} from './env-names.mjs';
 import {openStore,STAFF_ACCESS,id,now,earliestOpenDay,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
 import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask,deleteTask} from './crm.mjs';
 import {clientErasurePreview,eraseClient} from './client-erasure.mjs';
@@ -82,7 +83,7 @@ function previewAuthorized(header,userDigest,passDigest){
  const userMatches=timingSafeEqual(suppliedUser,userDigest),passMatches=timingSafeEqual(suppliedPass,passDigest);
  return userMatches&&passMatches;
 }
-export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,showcase=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,trustProxy=process.env.TRUST_PROXY||0,emailDelivery=null,emailIntervalMs=60000,scheduledIntervalMs=60000,assistant,webhookIntervalMs=disableExternalServices?0:15000,calendarIntervalMs=disableExternalServices?0:300000}={}){
+export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,showcase=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=caleaneEnv('STRIPE_COLLECTION_ENABLED')==='1',notificationKey=caleaneEnv('NOTIFICATION_KEY'),accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,trustProxy=process.env.TRUST_PROXY||0,emailDelivery=null,emailIntervalMs=60000,scheduledIntervalMs=60000,assistant,webhookIntervalMs=disableExternalServices?0:15000,calendarIntervalMs=disableExternalServices?0:300000}={}){
  const helper=disableExternalServices?null:assistant===undefined?createAssistant():assistant;
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
@@ -927,7 +928,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  // Email stays off until CALEANE_EMAIL_ENABLED=1 and the Resend key and sender are set. The demo never sends.
  let deliver=emailDelivery;
  if(!deliver&&process.env.CALEANE_EMAIL_ENABLED==='1'&&!disableExternalServices&&!demo){
-  const missing=['CALENNE_NOTIFICATION_KEY','RESEND_API_KEY','RESEND_FROM'].filter(key=>!process.env[key]);
+  const missing=[...(caleaneEnv('NOTIFICATION_KEY')?[]:['CALEANE_NOTIFICATION_KEY']),...['RESEND_API_KEY','RESEND_FROM'].filter(key=>!process.env[key])];
   if(missing.length)console.warn('Email is switched on but not configured, so nothing will be sent. Set '+missing.join(', ')+'.');
   else deliver=createResendDelivery({apiKey:process.env.RESEND_API_KEY,from:process.env.RESEND_FROM});
  }

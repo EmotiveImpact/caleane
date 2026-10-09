@@ -61,7 +61,7 @@ test('onboarding binds an Express account and single-use links to the authentica
   assert.equal(stripe.created[0].params.email,'owner@example.test');
   assert.equal(stripe.created[0].params.capabilities.card_payments.requested,true);
   assert.equal(stripe.created[0].params.capabilities.transfers.requested,true);
-  assert.match(stripe.created[0].options.idempotencyKey,/^calenne-connect-account-/);
+  assert.match(stripe.created[0].options.idempotencyKey,/^caleane-connect-account-/);
   assert.equal(stripe.links.length,1);
   assert.equal(new URL(stripe.links[0].params.return_url).origin,origin);
   const refreshState=stateFrom(stripe.links[0].params.refresh_url),returnState=stateFrom(stripe.links[0].params.return_url);
