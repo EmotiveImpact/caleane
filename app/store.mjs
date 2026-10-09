@@ -228,16 +228,26 @@ export function conversationDTO(db,c,user){
 }
 
 // The project's messages in the shape project views have always used. latestOnly suits lists.
-export function projectMessages(db,c,{latestOnly=false}={}){
- if(!c)return [];
- const rows=latestOnly?db.prepare('SELECT * FROM conversation_messages WHERE conversation_id=? ORDER BY seq DESC LIMIT 1').all(c.id):db.prepare('SELECT * FROM conversation_messages WHERE conversation_id=? ORDER BY seq').all(c.id);
- return rows.map(m=>({id:m.id,userId:m.user_id,by:m.author_name,role:m.role,text:m.text,at:m.created_at,...messageDetails(db,m.id)}));
+const projectMessage=(db,m)=>({id:m.id,userId:m.user_id,by:m.author_name,role:m.role,text:m.text,at:m.created_at,...messageDetails(db,m.id)});
+export function projectMessages(db,c){return c?db.prepare('SELECT * FROM conversation_messages WHERE conversation_id=? ORDER BY seq').all(c.id).map(m=>projectMessage(db,m)):[];}
+// The project list shows only each project's latest message: one conversation's, or the whole studio's at once.
+export function latestProjectMessage(db,c){const m=c&&db.prepare('SELECT * FROM conversation_messages WHERE conversation_id=? ORDER BY seq DESC LIMIT 1').get(c.id);return m?[projectMessage(db,m)]:[];}
+export function latestProjectMessages(db,studioId){
+ const rows=db.prepare(`SELECT m.* FROM conversation_messages m JOIN conversations c ON c.id=m.conversation_id
+  WHERE c.studio_id=? AND c.project_id IS NOT NULL AND m.seq=(SELECT MAX(seq) FROM conversation_messages WHERE conversation_id=m.conversation_id)`).all(studioId);
+ return new Map(rows.map(m=>[m.conversation_id,[projectMessage(db,m)]]));
 }
 
 // Project list badges should not load full conversation histories into memory.
 export function conversationUnreadCount(db,c,user){return db.prepare(`SELECT COUNT(*) AS count FROM conversation_messages
  WHERE conversation_id=? AND seq>COALESCE((SELECT message_seq FROM conversation_reads WHERE user_id=? AND conversation_id=?),0)
  AND ((user_id IS NOT NULL AND user_id<>?) OR (user_id IS NULL AND author_name<>?))`).get(c.id,user.id,c.id,user.id,user.name).count;}
+
+// conversationUnreadCount for every project conversation in a studio, keyed by conversation id.
+export function studioUnreadCounts(db,studioId,user){return new Map(db.prepare(`SELECT m.conversation_id,COUNT(*) AS count FROM conversation_messages m
+ JOIN conversations c ON c.id=m.conversation_id LEFT JOIN conversation_reads r ON r.conversation_id=m.conversation_id AND r.user_id=?
+ WHERE c.studio_id=? AND c.project_id IS NOT NULL AND m.seq>COALESCE(r.message_seq,0)
+ AND ((m.user_id IS NOT NULL AND m.user_id<>?) OR (m.user_id IS NULL AND m.author_name<>?)) GROUP BY m.conversation_id`).all(user.id,studioId,user.id,user.name).map(row=>[row.conversation_id,row.count]));}
 
 export function markConversationSeen(db,c,user,lastMessageId){
  const last=db.prepare('SELECT seq,created_at FROM conversation_messages WHERE conversation_id=? AND id=?').get(c.id,lastMessageId);
