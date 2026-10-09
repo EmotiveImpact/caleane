@@ -40,6 +40,27 @@ test('workspace search finds owned records without crossing tenant or client bou
   assert.equal(taskSearch.status,200);
   assert.ok(taskSearch.data.groups.flatMap(group=>group.items).some(item=>item.id==='project:'+created.data.project.id+':'+task.id));
   assert.ok(taskSearch.data.groups.every(group=>group.items.every(item=>item.type==='task')));
+  // A project's name should find the project, not flood the list with every task inside it.
+  const byName=await call('/api/search'+q+'&q=quinn%20moss','GET',undefined,'owner');
+  assert.ok(byName.data.groups.some(group=>group.label==='Projects'));
+  assert.ok(!byName.data.groups.some(group=>group.label==='Tasks'));
+  const quinn=(await call('/api/search'+q+'&q=quinn&scope=clients','GET',undefined,'owner')).data.groups[0].items.find(item=>item.type==='client');
+  const before=await call('/api/conversations'+q,'GET',undefined,'owner');
+  assert.ok(before.data.tag);
+  const same=await call('/api/conversations'+q+'&since='+before.data.tag,'GET',undefined,'owner');
+  assert.deepEqual(same.data,{unchanged:true,tag:before.data.tag});
+  const started=await call('/api/conversations'+q,'POST',{clientId:quinn.id,subject:'Hanging day',text:'The lanterns arrive on Thursday morning, before the frames.'},'owner');
+  assert.equal(started.status,201);
+  const after=await call('/api/conversations'+q+'&since='+before.data.tag,'GET',undefined,'owner');
+  assert.ok(Array.isArray(after.data.conversations));
+  assert.notEqual(after.data.tag,before.data.tag);
+  const messageSearch=await call('/api/search'+q+'&q=lanterns%20arrive','GET',undefined,'owner');
+  const found=messageSearch.data.groups.find(group=>group.label==='Messages')?.items[0];
+  assert.equal(found?.type,'message');
+  assert.equal(found.clientId,quinn.id);
+  assert.match(found.subtitle,/Hanging day/);
+  const inboxScope=await call('/api/search'+q+'&q=lanterns&scope=inbox','GET',undefined,'owner');
+  assert.ok(inboxScope.data.groups.every(group=>group.items.every(item=>item.type==='message')));
   response=await call('/api/search'+q+'&q=ocean%20archive','GET',undefined,'owner');
   assert.ok(response.data.groups.find(group=>group.label==='Projects')?.items.some(item=>item.id===created.data.project.id));
   assert.equal((await call('/api/signup','POST',{name:'Other',email:'other-search@example.test',studio:'Other Studio',slug:'other-studio-search',password:'OtherSearch2026!'},'other')).status,201);

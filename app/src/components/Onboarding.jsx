@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import {Check,ChevronRight,FileCheck2,MessageSquare,FolderClosed} from 'lucide-react';
 import {WorkspaceButton,WorkspaceDialog} from './workspace/WorkspaceUI';
 import './onboarding.css';
@@ -26,12 +26,12 @@ export function StudioSetup({studio,request,onStep}){
 
 // Shown once to an invited client, in the studio's own words.
 export function ClientWelcome({studio,request,onOpenProject}){
- const [welcome,setWelcome]=useState(null),[open,setOpen]=useState(false);
+ const [welcome,setWelcome]=useState(null),[open,setOpen]=useState(false),primary=useRef(null);
  useEffect(()=>{let live=true;request('/api/onboarding?studio='+studio.id).then(data=>{if(live&&data.clientWelcome?.show){setWelcome(data.clientWelcome);setOpen(true);}}).catch(()=>{});return()=>{live=false;};},[studio.id,request]);
  function finish(project){setOpen(false);request('/api/onboarding?studio='+studio.id,'POST',{action:'welcome-seen'}).catch(()=>{});if(project)onOpenProject(project);}
  if(!welcome)return null;
  const project=welcome.projects.length===1?welcome.projects[0]:null;
- return <WorkspaceDialog open={open} onOpenChange={value=>{if(!value)finish(null);}} title={`Welcome to ${welcome.studioName}`} description={welcome.welcome} className="client-welcome">
+ return <WorkspaceDialog open={open} onOpenChange={value=>{if(!value)finish(null);}} title={`Welcome to ${welcome.studioName}`} description={welcome.welcome} className="client-welcome" initialFocusRef={primary}>
   {welcome.logoUrl&&<img className="client-welcome-logo" src={welcome.logoUrl} alt=""/>}
   <ul className="client-welcome-points">
    <li><FolderClosed size={18} aria-hidden="true"/><span><strong>Your project in one place</strong>The brief, inspiration, designs and documents the studio shares with you.</span></li>
@@ -40,7 +40,7 @@ export function ClientWelcome({studio,request,onOpenProject}){
   </ul>
   <div className="client-welcome-actions">
    <WorkspaceButton variant="secondary" onClick={()=>finish(null)}>Look around</WorkspaceButton>
-   {project?<WorkspaceButton onClick={()=>finish(project)}>Open {project.title}</WorkspaceButton>:<WorkspaceButton onClick={()=>finish(null)}>Get started</WorkspaceButton>}
+   {project?<WorkspaceButton ref={primary} onClick={()=>finish(project)}>Open {project.title}</WorkspaceButton>:<WorkspaceButton ref={primary} onClick={()=>finish(null)}>Get started</WorkspaceButton>}
   </div>
  </WorkspaceDialog>;
 }

@@ -16,7 +16,7 @@ import http from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {randomBytes,timingSafeEqual} from 'node:crypto';
+import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import Stripe from 'stripe';
 import {openStore,STAFF_ACCESS,id,now,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
 import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask,deleteTask} from './crm.mjs';
@@ -36,6 +36,7 @@ import {MONEY_ACTIVITY} from './src/lib/notifications.js';
 import {DEFAULT_WORKFLOW,isWorkflowId,projectTypesFor,briefFieldsFor} from './src/lib/workflows.js';
 import {validateIntakeQuestions,captureIntakeAnswers,updateIntakeAnswers,normalizeIntakeAnswers} from './intake-questions.mjs';
 import {searchWorkspace} from './workspace-search.mjs';
+import {seedShowcase} from './demo-showcase.mjs';
 import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
@@ -78,7 +79,7 @@ function previewAuthorized(header,userDigest,passDigest){
  const userMatches=timingSafeEqual(suppliedUser,userDigest),passMatches=timingSafeEqual(suppliedPass,passDigest);
  return userMatches&&passMatches;
 }
-export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,trustProxy=process.env.TRUST_PROXY||0,emailDelivery=null,emailIntervalMs=60000,scheduledIntervalMs=60000,assistant,webhookIntervalMs=disableExternalServices?0:15000,calendarIntervalMs=disableExternalServices?0:300000}={}){
+export async function createWorkspace({dbFile=path.join(root,'data/workspace.sqlite'),origin='http://127.0.0.1:4320',demo=false,showcase=false,dev=false,stripeClient=null,stripeWebhookSecret=process.env.STRIPE_WEBHOOK_SECRET||'',enableStripeCollection=process.env.CALENNE_STRIPE_COLLECTION_ENABLED==='1',notificationKey=process.env.CALENNE_NOTIFICATION_KEY||'',accountMailKey=process.env.CALEANE_ACCOUNT_MAIL_KEY||'',disableExternalServices=false,reminderIntervalMs=disableExternalServices?0:3600000,uploadCleanupIntervalMs=reminderIntervalMs,trustProxy=process.env.TRUST_PROXY||0,emailDelivery=null,emailIntervalMs=60000,scheduledIntervalMs=60000,assistant,webhookIntervalMs=disableExternalServices?0:15000,calendarIntervalMs=disableExternalServices?0:300000}={}){
  const helper=disableExternalServices?null:assistant===undefined?createAssistant():assistant;
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
@@ -113,14 +114,16 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const trustedHops=Math.max(0,Math.floor(Number(trustProxy))||0);
  const clientIP=req=>{const peer=req.socket?.remoteAddress||'';if(!trustedHops)return peer;const hops=String(req.headers['x-forwarded-for']||'').split(',').map(s=>s.trim()).filter(Boolean);return hops[Math.max(0,hops.length-trustedHops)]||peer;};
  function rate(req,bucket,max=30,subject=clientIP(req)){const key=bucket+':'+subject;const time=Date.now();for(const [k,v] of limits)if(v.until<time)limits.delete(k);const v=limits.get(key)||{n:0,until:time+600000};if(++v.n>max)fail(429,'Please wait a few minutes before trying again.');limits.set(key,v);}
+ let freshDemo=false;
  if(demo&&!db.prepare('SELECT id FROM studios WHERE slug=?').get('nay-decor')){
+  freshDemo=true;
   const studioId=id();db.prepare('INSERT INTO studios VALUES(?,?,?,?,?)').run(studioId,'nay-decor','NAY DÉCOR','#181925',JSON.stringify(['http://127.0.0.1:4318','http://127.0.0.1:4317',origin]));
   const owner={id:id(),name:'NAY Studio',email:'studio@example.test'},client={id:id(),name:'Amelia Taylor',email:'amelia@example.test'};
   for(const [u,role] of [[owner,'owner'],[client,'client']]){db.prepare('INSERT INTO users VALUES(?,?,?,?)').run(u.id,u.email,u.name,passwordHash('StudioDemo2026!'));db.prepare('INSERT INTO memberships VALUES(?,?,?)').run(u.id,studioId,role);}
   for(const [index,person] of ['Amelia Taylor','Noah Williams','Olivia Chen'].entries()){
    const b={name:person,email:index===0?client.email:`demo${index}@example.test`,occasion:['Wedding','Brand launch','Private dinner'][index],date:['2027-06-12','2027-02-20','2027-04-10'][index],venue:['A London townhouse','A gallery in Shoreditch','Private residence, Richmond'][index],vision:['An intimate celebration with sculptural ivory flowers, candlelight and a touch of sage. Elegant, personal and warm.','A quiet, architectural world for a new collection. Soft forms, strong silhouettes and space to explore.','A beautiful dinner for family and friends. Layers of flowers, linen and candlelight.'][index],colours:['Ivory','Sage'],customColours:'Champagne accents',pinterest:'',budget:''};
    const p=makeProject(studioId,b,index===0?client:{name:person});p.demo=true;p.status=['Design','Enquiry','Planning'][index];
-   if(index===0){p.inspiration.push({id:id(),title:'The atmosphere',url:'',sample:'/assets/candlelit-table.webp',note:'Warm candlelight, ivory flowers and a considered table.',by:'NAY Studio',at:now()});p.designs.push({id:id(),version:1,briefRevision:p.briefRevision,briefSnapshot:structuredClone(p.brief),title:'Ivory, softly',description:'An intimate table beneath sculptural florals. Ivory and sage, warm candlelight, soft champagne fabrics. This is a sample concept for the demo project.',sample:'/assets/blush-celebration.webp',fileId:'',status:'Awaiting approval',at:now(),feedback:''});p.messages.push({id:id(),by:'NAY Studio',role:'owner',text:'Welcome, Amelia. Your first concept is ready to explore in Designs. You can leave feedback or approve it when you are happy.',at:now()});event(p,owner,'Shared design version 1');}
+   if(index===0){p.inspiration.push({id:id(),title:'The atmosphere',url:'',sample:'/assets/sage-blush-florals.webp',note:'Soft roses with ivory and sage, layered and generous.',by:'NAY Studio',at:now()});p.designs.push({id:id(),version:1,briefRevision:p.briefRevision,briefSnapshot:structuredClone(p.brief),title:'Ivory, softly',description:'An intimate table beneath sculptural florals. Ivory and sage, warm candlelight, soft champagne fabrics. This is a sample concept for the demo project.',sample:'/assets/blush-celebration.webp',fileId:'',status:'Awaiting approval',at:now(),feedback:''});p.messages.push({id:id(),by:'NAY Studio',role:'owner',text:'Welcome, Amelia. Your first concept is ready to explore in Designs. You can leave feedback or approve it when you are happy.',at:now()});event(p,owner,'Shared design version 1');}
    if(index===0){p.decisions.push({id:id(),title:'Choose the table direction',description:'Which setting feels closer to the celebration you have in mind? We will refine the chosen direction together.',options:[{id:id(),label:'Sculptural ivory',detail:'Architectural florals, candlelight and a restrained palette.',url:''},{id:id(),label:'Soft garden',detail:'Low arrangements, layered greenery and a more relaxed table.',url:''}],status:'Awaiting choice',briefRevision:1,createdAt:now(),by:'NAY Studio'});p.tasks.push({id:id(),title:'Share any important table details',due:'2026-10-12',assignee:'client',completed:false,createdBy:'NAY Studio',at:now()});p.tasks.push({id:id(),title:'Refine the table layout',due:'2026-11-02',assignee:'studio',completed:false,createdBy:'NAY Studio',at:now()});}
    insertProject(db,p);
   }
@@ -503,7 +506,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       // Hosts that pause between requests may miss the timer, so anything due goes out before the list is read.
       sendDueScheduled(db,{afterSend:queueMessage});
       const rows=db.prepare('SELECT c.* FROM conversations c WHERE c.studio_id=? ORDER BY c.updated_at DESC,c.id').all(studio.id).filter(c=>owner||conversationAccess(db,c,user.id));
-      return reply(200,{conversations:rows.map(c=>conversationDTO(db,c,user))});
+      // A tag of the list lets open pages ask "anything new?" and skip downloading an unchanged list.
+      const conversations=rows.map(c=>conversationDTO(db,c,user)),tag=createHash('sha256').update(JSON.stringify(conversations)).digest('base64url').slice(0,22);
+      if(url.searchParams.get('since')===tag)return reply(200,{unchanged:true,tag});
+      return reply(200,{conversations,tag});
      }
      if(req.method==='POST'){
       requireOwner();const clientId=str(body.clientId,100),projectId=body.projectId?str(body.projectId,100):null,subject=str(body.subject,200),text=str(body.text||'',5000);
@@ -913,8 +919,9 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  let calendarRun=null;const tickCalendars=()=>{if(calendarRun)return;calendarRun=syncAllCalendars(db).then(()=>syncBookingIntegrations(db)).then(()=>syncAllXero(db)).catch(error=>console.error('Calendar sync failed:',error?.stack||error)).finally(()=>{calendarRun=null;});};
  const calendarTimer=calendarIntervalMs>0?setInterval(tickCalendars,calendarIntervalMs):null;calendarTimer?.unref();
   server.on('close',()=>{vite?.close();if(emailTimer)clearInterval(emailTimer);if(scheduledTimer)clearInterval(scheduledTimer);if(reminderTimer)clearInterval(reminderTimer);if(uploadTimer)clearInterval(uploadTimer);if(webhookTimer)clearInterval(webhookTimer);if(calendarTimer)clearInterval(calendarTimer);});
+  if(freshDemo&&showcase)await seedShowcase({server,db,origin});
   return {server,db,sendQueuedEmail,collectAutopay};
 }
 // The demo seeds accounts with a published password, so a production process needs an explicit opt-in to run it.
 export function assertSafeStartup(env=process.env){if(env.WORKSPACE_DEMO==='1'&&env.NODE_ENV==='production'&&env.ALLOW_PUBLIC_DEMO!=='1')throw new Error('WORKSPACE_DEMO=1 seeds accounts with a known password. Set ALLOW_PUBLIC_DEMO=1 to run the demo with NODE_ENV=production.');}
-if(process.argv[1]===fileURLToPath(import.meta.url)){assertSafeStartup();const port=Number(process.env.PORT||4320),host=process.env.HOST||'127.0.0.1';if(host==='0.0.0.0'&&!process.env.APP_ORIGIN)throw new Error('APP_ORIGIN is required when binding publicly.');const {server}=await createWorkspace({origin:process.env.APP_ORIGIN||`http://127.0.0.1:${port}`,demo:process.env.WORKSPACE_DEMO==='1',dev:process.argv.includes('--dev'),dbFile:process.env.DATABASE_PATH||undefined});server.listen(port,host,()=>console.log(`Caleane listening on ${host}:${port}`));}
+if(process.argv[1]===fileURLToPath(import.meta.url)){assertSafeStartup();const port=Number(process.env.PORT||4320),host=process.env.HOST||'127.0.0.1';if(host==='0.0.0.0'&&!process.env.APP_ORIGIN)throw new Error('APP_ORIGIN is required when binding publicly.');const {server}=await createWorkspace({origin:process.env.APP_ORIGIN||`http://127.0.0.1:${port}`,demo:process.env.WORKSPACE_DEMO==='1',showcase:process.env.WORKSPACE_DEMO==='1',dev:process.argv.includes('--dev'),dbFile:process.env.DATABASE_PATH||undefined});server.listen(port,host,()=>console.log(`Caleane listening on ${host}:${port}`));}

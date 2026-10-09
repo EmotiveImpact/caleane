@@ -35,7 +35,13 @@ test('the same demo switches between studio and client using the real access che
   await visitor('/api/login', 'POST', { email: 'studio@example.test', password: 'StudioDemo2026!' });
   const studioId = (await visitor('/api/me')).data.studios[0].id;
   const ownerProjects = await visitor(`/api/projects?studio=${studioId}`);
-  assert.equal(ownerProjects.data.projects.length, 3);
+  // Three sample projects plus the enquiry that arrived through the sample form.
+  assert.equal(ownerProjects.data.projects.length, 4);
+  const invoices = (await visitor(`/api/invoices?studio=${studioId}`)).data.invoices;
+  assert.deepEqual(invoices.map(invoice => invoice.kind).sort(), ['Balance', 'Deposit']);
+  assert.ok(invoices.some(invoice => invoice.kind === 'Deposit' && invoice.paidMinor === invoice.amountMinor));
+  assert.equal((await visitor(`/api/expenses?studio=${studioId}`)).data.expenses.length, 2);
+  assert.ok(ownerProjects.data.projects.some(project => project.decisions?.some(decision => decision.status === 'Preference shared')));
   await visitor('/api/logout', 'POST', {});
   assert.equal((await visitor('/api/me')).status, 401);
   await visitor('/api/login', 'POST', { email: 'amelia@example.test', password: 'StudioDemo2026!' });

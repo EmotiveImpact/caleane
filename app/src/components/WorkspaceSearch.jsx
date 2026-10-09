@@ -1,13 +1,13 @@
 import React,{useEffect,useId,useMemo,useRef,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import {Search,FolderClosed,UsersRound,TrendingUp,ListTodo,Receipt,Contact,Image} from 'lucide-react';
+import {Search,FolderClosed,UsersRound,TrendingUp,ListTodo,Receipt,Contact,Image,MessageSquare} from 'lucide-react';
 import {WorkspaceFilters} from './workspace/WorkspaceUI';
 
-const icons={project:FolderClosed,reference:Image,client:UsersRound,contact:Contact,opportunity:TrendingUp,task:ListTodo,invoice:Receipt};
+const icons={project:FolderClosed,reference:Image,client:UsersRound,contact:Contact,opportunity:TrendingUp,task:ListTodo,invoice:Receipt,message:MessageSquare};
 const PREVIEW=8;
 // Contacts open their client record; references open their project.
 const destination=item=>item.type==='contact'?{...item,type:'client',id:item.clientId,contactId:item.id}:item.type==='reference'?{...item,type:'project',id:item.projectId,tab:'Inspiration'}:item;
-const scopes={projects:'Projects',clients:'Clients',pipeline:'Pipeline',tasks:'Tasks',finances:'Invoices'};
+const scopes={projects:'Projects',clients:'Clients',pipeline:'Pipeline',tasks:'Tasks',finances:'Invoices',inbox:'Messages'};
 export function WorkspaceSearch({studio,section,request,onOpenResult}){
  const context=Object.hasOwn(scopes,section)?section:'all';
  const [open,setOpen]=useState(false),[scope,setScope]=useState(context),[query,setQuery]=useState(''),[data,setData]=useState(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[active,setActive]=useState(0);
@@ -52,7 +52,7 @@ export function WorkspaceSearch({studio,section,request,onOpenResult}){
    <div className="workspace-search-input"><Search size={19}/><input ref={input} autoFocus role="combobox" aria-autocomplete="list" aria-expanded={items.length>0} aria-controls={listId} aria-activedescendant={items.length&&!loading?optionId(active):undefined} aria-label="Search workspace records" placeholder={`Search ${scopeName}…`} value={query} onChange={event=>setQuery(event.target.value)} onKeyDown={keyDown}/><button type="button" aria-label="Close search" onClick={()=>setOpen(false)}>Esc</button></div>
    {context!=='all'&&<WorkspaceFilters className="workspace-search-scopes" label="Search scope" value={scope} items={[{value:context,label:scopes[context]},{value:'all',label:'All workspace'}]} onChange={value=>{setScope(value);input.current?.focus();}}/>}
    <div className="folio-sr-only" role="status">{loading?'Searching':data?`${data.total} ${data.total===1?'match':'matches'}${hidden>0?`, showing ${items.length}`:''}`:error}</div>
-   <div className="workspace-search-results" id={listId} role="listbox" aria-label="Search results">{error?<p className="workspace-search-empty" role="alert">{error}</p>:query.trim().length<2?<div className="workspace-search-empty">{scope==='all'?'Find projects, references, clients, contacts, opportunities, tasks and invoices.':`Find ${scopeName} across your studio.`}</div>:loading?<div className="workspace-search-empty">Searching…</div>:items.length===0?<div className="workspace-search-empty">No matches in {scopeName} for “{query.trim()}”.{scope!=='all'&&<button className="workspace-search-widen" onClick={()=>setScope('all')}>Search all workspace</button>}</div>:groups.map(group=>{
+   <div className="workspace-search-results" id={listId} role="listbox" aria-label="Search results">{error?<p className="workspace-search-empty" role="alert">{error}</p>:query.trim().length<2?<div className="workspace-search-empty">{scope==='all'?'Find projects, references, clients, contacts, opportunities, tasks, invoices and messages.':`Find ${scopeName} across your studio.`}</div>:loading?<div className="workspace-search-empty">Searching…</div>:items.length===0?<div className="workspace-search-empty">No matches in {scopeName} for “{query.trim()}”.{scope!=='all'&&<button className="workspace-search-widen" onClick={()=>setScope('all')}>Search all workspace</button>}</div>:groups.map(group=>{
     const start=offset;offset+=group.visible.length;const headingId=`${listId}-${group.label.replace(/\W/g,'')}`;
     return <div role="group" aria-labelledby={headingId} key={group.label}><h3 id={headingId} role="presentation">{group.label}</h3>{group.visible.map((item,index)=>{const ItemIcon=icons[item.type]||Search,position=start+index;return <div role="option" id={optionId(position)} aria-selected={active===position} className={'workspace-search-result'+(active===position?' is-active':'')} key={item.type+item.id} onMouseMove={()=>{if(active!==position)setActive(position);}} onMouseDown={event=>event.preventDefault()} onClick={()=>choose(item)}><span className="workspace-search-icon"><ItemIcon size={17}/></span><span className="workspace-search-result-text"><strong>{item.title}</strong><small>{item.subtitle}</small></span><span className="workspace-search-result-meta">{item.meta}</span></div>;})}</div>;
    })}</div>

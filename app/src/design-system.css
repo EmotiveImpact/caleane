@@ -65,3 +65,4 @@ body .billing-invoice-list button.selected{background:#f3f4f3;padding-left:12px}
 .workspace-search-trigger{padding:8px!important;border-radius:var(--ds-radius-control)}
 .workspace-search-trigger:hover{background:#eceeed}
 .workspace-search-trigger :is(span,kbd){display:none!important}
+.project-body[hidden]{display:none!important}
