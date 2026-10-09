@@ -16,4 +16,5 @@ test('attention identifies the right person and destination for each decision',(
  assert.equal(attentionFor({...project,status:'Complete',unreadMessages:4},true).length,0);
  assert.equal(attentionFor({...project,status:'Planning',unreadMessages:2},true)[0].tab,'Conversation');
  assert.equal(attentionFor({...project,changeRequests:[{status:'Pending'}]},true)[0].kind,'brief');
+ assert.equal(attentionFor({...project,status:'Design',teamDrafts:2},true).find(i=>i.kind==='team-draft').label,'2 design drafts from your team');
 });

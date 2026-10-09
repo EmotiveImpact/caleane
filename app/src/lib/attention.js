@@ -27,6 +27,7 @@ export function attentionFor(project,owner){
  else if(approver&&latest?.status==='Awaiting approval')add('approval','Your design is ready to review','Designs',latest.title,latest.at);
  else if(!owner&&latest?.status==='Awaiting approval')add('design-shared','A new design version is ready to see','Designs',project.accessRole==='Collaborator'?'Add any comments for the approver.':latest.title,latest.at);
  if(owner&&project.status==='Enquiry'&&!project.enquiryReviewedAt)add('enquiry','Review new enquiry','Brief','Read their brief and reply.',project.createdAt);
+ if(owner&&project.teamDrafts>0)add('team-draft',project.teamDrafts===1?'A design draft from your team':`${project.teamDrafts} design drafts from your team`,'Designs','Waiting for you to review and share.');
  if(owner&&latest?.comments?.some(c=>!c.resolved&&c.role==='client'))add('comment','Review design comments','Designs','Feedback is pinned to the design version.');
  return items;
 }
