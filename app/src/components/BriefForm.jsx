@@ -115,7 +115,7 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
  const onScreen=receipt||step.kind!=='question',chapters=chaptersOf(steps),answered=s=>filled(valueOf(s.field));
  const accent=d.accent||'#202326';
  const cls=['bf','palette-'+(theme.palette||'paper'),'shape-'+(theme.radius||'soft'),preview?'is-preview':'',!preview&&new URLSearchParams(location.search).get('embed')==='inline'?'is-inline':'',showBrief&&!onScreen?'has-brief':'',briefOpen?'brief-open':'',onScreen?'on-screen':'',media==='image-left'?'media-left':'',media==='image-right'?'media-right':'',media==='cover'?'media-cover':'',media?'mark-'+(media==='cover'?'light':tone):'',back?'going-back':''].filter(Boolean).join(' ');
- const brand=d.logoUrl?<img className="bf-logo" src={d.logoUrl} alt={studio.name}/>:<span>{studio.name}</span>;
+ const logo=d.logoUrl||studio.branding?.logoUrl,brand=logo?<img className="bf-logo" src={logo} alt={studio.name}/>:<span>{studio.name}</span>;
  const count=questions.filter(answered).length;
 
  let body;

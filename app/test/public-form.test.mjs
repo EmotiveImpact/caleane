@@ -84,3 +84,12 @@ test('the brief look checks emails and ends with the brief as sent',async()=>{
  await input.type(screen.getByRole('textbox',{name:/idea/i}),'Supper by candlelight');await input.click(screen.getByRole('button',{name:/Send brief/}));
  assert.ok(screen.getByRole('heading',{name:'Thank you'}));for(const text of ['Dinner','Inside','Ama Mensah','ama@example.com','Supper by candlelight'])assert.ok(screen.getByText(text));
 });
+test('forms show the Brand kit logo unless the form keeps its own',()=>{
+ const studio={slug:'test',name:'Test studio',branding:{logoUrl:'https://example.test/brand.png'}};
+ for(const look of ['classic','brief']){
+  const view=render(h(PublicForm,{studio,form:{slug:'test',definition:{...definition,theme:{look}}},preview:true}));
+  assert.deepEqual([...new Set(screen.getAllByRole('img',{name:'Test studio'}).map(i=>i.getAttribute('src')))],['https://example.test/brand.png'],look);view.unmount();
+  const own=render(h(PublicForm,{studio,form:{slug:'test',definition:{...definition,logoUrl:'https://example.test/own.png',theme:{look}}},preview:true}));
+  assert.deepEqual([...new Set(screen.getAllByRole('img',{name:'Test studio'}).map(i=>i.getAttribute('src')))],['https://example.test/own.png'],look);own.unmount();
+ }
+});
