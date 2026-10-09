@@ -45,3 +45,23 @@ test('studios can price and invoice in currencies beyond GBP, EUR and USD',async
  assert.equal(response.status,201);assert.equal(response.data.invoice.currency,'AUD');
  assert.equal((await call('/api/catalogue'+q,'POST',{action:'create',item:{name:'Styling hour',unitAmount:9000,currency:'NZD',unit:'hour',category:'Styling'}})).status<300,true);
 });
+
+test('a quick invoice bills its own lines without an estimate and leaves the estimate share alone',async t=>{
+ const {call,q,issue,confirmedEstimate,invoices}=await workspace(t);
+ const quick={...issue,quick:true,kind:'Full',label:'Rush fee',currency:'EUR',taxRate:20,items:[{title:'Styling hours',quantity:3,unitAmount:8000,unit:'hour'},{title:'Courier',quantity:1,unitAmount:4000}]};
+ assert.equal((await call(invoices+q,'POST',{...quick,label:''})).status,400);
+ assert.equal((await call(invoices+q,'POST',{...quick,items:[{title:'Nothing',quantity:1,unitAmount:0}]})).status,400);
+ assert.equal((await call(invoices+q,'POST',{...quick,kind:'Balance'})).status,400);
+ let response=await call(invoices+q,'POST',quick);
+ assert.equal(response.status,201);
+ const extra=response.data.invoice;
+ assert.deepEqual([extra.estimateId,extra.currency,extra.netMinor,extra.taxMinor,extra.amountMinor,extra.label],['','EUR',28000,5600,33600,'Rush fee']);
+ assert.deepEqual(extra.snapshot.lines.items[0],{title:'Styling hours',quantity:3,unitAmount:8000,unit:'hour'});
+ assert.equal(extra.snapshot.estimate,undefined);
+ // The estimate can still be invoiced in full afterwards, because the quick invoice is not part of it.
+ const estimate=await confirmedEstimate();
+ response=await call(invoices+q,'POST',{...issue,estimateId:estimate.id,kind:'Full'});
+ assert.equal(response.status,201);assert.equal(response.data.invoice.amountMinor,120000);
+ response=await call(`${invoices}/${extra.id}/pdf${q}`);
+ assert.equal(response.status,200);assert.equal(response.data.subarray(0,5).toString(),'%PDF-');
+});

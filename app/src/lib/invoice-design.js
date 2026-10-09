@@ -4,6 +4,7 @@
 import {brandStyle,readableOn} from './brand-kit.js';
 import {lateFeeTerms} from './invoice-charges.js';
 import {isVatDocument,isVatRegistered,showsTax,taxLabel,taxNumberLabel} from './vat.js';
+import {perUnit} from './price-units.js';
 
 export const invoiceLayouts=[
  ['atelier','Atelier','Centred logo, fine rules and generous space.'],
@@ -29,7 +30,7 @@ export function normaliseInvoiceDesign(design){
  return {layout:invoiceLayouts.some(([k])=>k===d.layout)?d.layout:'atelier',accent:hex(d.accent),font:invoiceFonts.some(([k])=>k===d.font)?d.font:'brand',showLogo:d.showLogo!==false,showItems:d.showItems!==false,thankYou:String(d.thankYou||'').slice(0,300),footer:String(d.footer||'').slice(0,500)};
 }
 
-function lineTitle(invoice){return invoice.label?`${invoice.label} towards project scope`:invoice.kind==='Deposit'?'Deposit towards project scope':invoice.kind==='Balance'?'Remaining project balance':'Agreed project scope';}
+function lineTitle(invoice){return invoice.snapshot?.lines?invoice.label:invoice.label?`${invoice.label} towards project scope`:invoice.kind==='Deposit'?'Deposit towards project scope':invoice.kind==='Balance'?'Remaining project balance':'Agreed project scope';}
 
 // Everything an invoice or credit note says, worked out once. The HTML page
 // and the downloadable PDF both draw from this, so their figures always agree.
@@ -58,12 +59,14 @@ export function invoiceModel(invoice,{studio={},design,brandKit,estimate,creditN
  const balance=invoice.balanceMinor??Math.max(0,(invoice.amountMinor||0)-credited-paid+refunded),refundDue=invoice.refundDueMinor||0;
  const cancelled=invoice.status==='Cancelled';
  const due=refundDue?['Refund owed to you',money(refundDue)]:[cancelled?'Cancelled':balance===0&&paid>0?'Paid in full':'Amount due',money(cancelled?0:balance)];
- const items=d.showItems&&Array.isArray(estimate?.items)&&estimate.items.length?estimate.items:null;
+ // A quick invoice always lists its own lines; an estimate invoice lists the estimate's when the design asks.
+ const own=Array.isArray(s.lines?.items)&&s.lines.items.length?s.lines.items:null;
+ const items=own||(d.showItems&&Array.isArray(estimate?.items)&&estimate.items.length?estimate.items:null);
  const shareMinor=invoice.shareMinor??invoice.amountMinor,discountNet=invoice.discountNetMinor||0;
- const isPart=!!(items&&estimate.total&&estimate.total!==shareMinor);
+ const isPart=!own&&!!(items&&estimate.total&&estimate.total!==shareMinor);
  const share=isPart?Math.round(shareMinor/estimate.total*1000)/10:100;
  const table=items
-  ?{head:[isPart?'Project scope':'Description','Qty','Unit','Amount'],rows:items.map(item=>[item.title,'',String(item.quantity),money(item.unitAmount),money(item.quantity*item.unitAmount)]),
+  ?{head:[isPart?'Project scope':'Description','Qty','Unit','Amount'],rows:items.map(item=>[item.title,perUnit(item.unit),String(item.quantity),money(item.unitAmount),money(item.quantity*item.unitAmount)]),
     part:isPart?{total:[`Project total${estimate.taxRate?` including ${estimate.taxRate}% ${vat?'VAT':'tax'}`:''}`,money(estimate.total)],line:[lineTitle(invoice),`${share}% of the project total`,money(invoice.amountMinor)]}:null}
   :{head:['Description','Amount'],rows:[[lineTitle(invoice),`${s.projectTitle||''}${invoice.estimateVersion?` · Estimate version ${invoice.estimateVersion}`:''}`,money(invoice.netMinor)]]};
  const charges=(invoice.charges||[]).filter(item=>!item.waivedAt);
@@ -89,7 +92,7 @@ export function invoicePageHtml(invoice,options={}){
  const party=p=>`<div class="party"><span class="label">${escape(p.label)}</span><strong>${escape(p.name)}</strong><p>${lines(p.address)}</p>${p.small.map(line=>`<small>${escape(line)}</small>`).join('')}</div>`;
  const from=party(m.from),to=party(m.to),t=m.table;
  const table=t.head.length===4
-  ?`<table class="items"><thead><tr>${t.head.map((h,i)=>`<th${i?' class="num"':''}>${escape(h)}</th>`).join('')}</tr></thead><tbody>${t.rows.map(([title,,qty,unit,amount])=>`<tr><td>${escape(title)}</td><td class="num">${escape(qty)}</td><td class="num">${escape(unit)}</td><td class="num">${escape(amount)}</td></tr>`).join('')}</tbody>${t.part?`<tfoot><tr><td colspan="3">${escape(t.part.total[0])}</td><td class="num">${escape(t.part.total[1])}</td></tr><tr class="this"><td colspan="3"><strong>${escape(t.part.line[0])}</strong><small>${escape(t.part.line[1])}</small></td><td class="num"><strong>${escape(t.part.line[2])}</strong></td></tr></tfoot>`:''}</table>`
+  ?`<table class="items"><thead><tr>${t.head.map((h,i)=>`<th${i?' class="num"':''}>${escape(h)}</th>`).join('')}</tr></thead><tbody>${t.rows.map(([title,detail,qty,unit,amount])=>`<tr><td>${escape(title)}${detail?`<small>${escape(detail)}</small>`:''}</td><td class="num">${escape(qty)}</td><td class="num">${escape(unit)}</td><td class="num">${escape(amount)}</td></tr>`).join('')}</tbody>${t.part?`<tfoot><tr><td colspan="3">${escape(t.part.total[0])}</td><td class="num">${escape(t.part.total[1])}</td></tr><tr class="this"><td colspan="3"><strong>${escape(t.part.line[0])}</strong><small>${escape(t.part.line[1])}</small></td><td class="num"><strong>${escape(t.part.line[2])}</strong></td></tr></tfoot>`:''}</table>`
   :`<table class="items"><thead><tr><th>Description</th><th class="num">Amount</th></tr></thead><tbody>${t.rows.map(([title,detail,amount])=>`<tr><td><strong>${escape(title)}</strong><small>${escape(detail)}</small></td><td class="num">${escape(amount)}</td></tr>`).join('')}</tbody></table>`;
  const totalsHtml=`<section class="totals">${m.totals.map(([k,v,c])=>`<div class="${c||''}"><span>${escape(k)}</span><span>${escape(v)}</span></div>`).join('')}<div class="due"><span>${due[0]}</span><strong>${due[1]}</strong></div></section>`;
  const pay=m.pay?`<div class="pay"><span class="label">How to pay</span><p>${lines(m.pay.text)}</p>${m.pay.by?`<p class="pay-by">${escape(m.pay.by)}</p>`:''}${m.pay.terms?`<p class="pay-by">${escape(m.pay.terms)}</p>`:''}</div>`:'';

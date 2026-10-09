@@ -4,14 +4,16 @@ import {invoicePageHtml} from '../lib/invoice-design';
 import {discountFor,invoiceFigures,lateFeeShort,lateFeeTerms,tipFor,tipPercents} from '../lib/invoice-charges';
 import {WorkspaceSwitch} from './workspace/WorkspaceUI';
 import React,{useEffect,useMemo,useState} from 'react';
-import {Check,Copy,Download,FileText,Plus,Printer} from 'lucide-react';
+import {Check,Copy,Download,FileText,Plus,Printer,Trash2} from 'lucide-react';
 import '../folio-billing.css';
 import '../studio-commerce.css';
 import {PaymentPlan} from './PaymentPlan';
 import {OpenedNote,useRecordOpen} from './OpenedNote';
 import {ProjectProfit,StudioCosts,StudioReports} from './FinanceViews';
 import {todayISO,daysFromToday} from '../lib/dates';
-import {isVatDocument,isVatRegistered,showsTax,taxLabel,taxNumberLabel} from '../lib/vat';
+import {defaultTaxRate,isVatDocument,isVatRegistered,showsTax,taxLabel,taxNumberLabel} from '../lib/vat';
+import {CURRENCIES} from '../lib/currencies.js';
+import {perUnit} from '../lib/price-units.js';
 
 const money=(minor,currency='GBP')=>{
  try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}
@@ -61,7 +63,7 @@ function IssueSummary({figures,currency,taxRate,vat,discount,lateFee,tips,waitin
  const row=(label,value,className)=><div className={className}><dt>{label}</dt><dd>{value}</dd></div>;
  return <aside className="billing-issue-summary" aria-label="Invoice summary" aria-live="polite">
   <h4>Summary</h4>
-  {waiting?<p className="billing-issue-summary-empty">Enter the deposit amount to see the figures.</p>:<>
+  {waiting?<p className="billing-issue-summary-empty">{typeof waiting==='string'?waiting:'Enter the deposit amount to see the figures.'}</p>:<>
   <dl>
    {row('Price before tax',money(figures.priceNetMinor,currency))}
    {discount&&row(discount.label,`− ${money(figures.discountNetMinor,currency)}`,'is-discount')}
@@ -82,15 +84,19 @@ function IssueSummary({figures,currency,taxRate,vat,discount,lateFee,tips,waitin
 function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  const latestEstimate=p.estimates?.at(-1);
  const confirmed=latestEstimate?.status==='Budget confirmed'&&latestEstimate.briefRevision===p.briefRevision?[latestEstimate]:[];
- const [estimateId,setEstimateId]=useState(confirmed.at(-1)?.id||'');
+ const estimateId=confirmed.at(-1)?.id||'';
  const estimate=confirmed.find(item=>item.id===estimateId);
- // A discounted invoice still uses up its full share of the estimate.
- const active=invoices.filter(item=>item.status!=='Cancelled'),alreadyInvoiced=active.reduce((total,item)=>total+(item.shareMinor??item.amountMinor),0);
+ // A discounted invoice still uses up its full share of the estimate. Quick invoices are not part of it.
+ const active=invoices.filter(item=>item.status!=='Cancelled'&&item.estimateId),alreadyInvoiced=active.reduce((total,item)=>total+(item.shareMinor??item.amountMinor),0);
  const remaining=Math.max(0,(estimate?.total||0)-alreadyInvoiced);
  const hasPrior=alreadyInvoiced>0;
- const hasOlderInvoice=invoices.some(item=>item.status!=='Cancelled'&&item.estimateId!==estimateId);
+ const hasOlderInvoice=active.some(item=>item.estimateId!==estimateId);
+ // Without a confirmed estimate to bill from, the form starts on a quick invoice with lines of its own.
+ const estimateReady=confirmed.length>0&&!hasOlderInvoice&&remaining>0;
+ const [basis,setBasis]=useState(estimateReady?'estimate':'quick'),quick=basis==='quick';
  const [kind,setKind]=useState(hasPrior?'Balance':'Deposit');
  const [amount,setAmount]=useState('');
+ const [quickLabel,setQuickLabel]=useState(''),[quickKind,setQuickKind]=useState('Full'),[quickLines,setQuickLines]=useState([{title:'',quantity:1,amount:''}]),[quickCurrency,setQuickCurrency]=useState(''),[quickTax,setQuickTax]=useState('');
  const [discountType,setDiscountType]=useState('none'),[discountValue,setDiscountValue]=useState(''),[discountReason,setDiscountReason]=useState('');
  const [lateFeeOn,setLateFeeOn]=useState(true),[tipsOn,setTipsOn]=useState(true);
  const [formError,setFormError]=useState(''),[saved,setSaved]=useState(null);
@@ -98,24 +104,36 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  // Saved studio details from Settings, Invoices & payment plans fill in the invoice.
  useEffect(()=>{let active=true;fetch(`/api/billing-defaults?studio=${p.studioId}`,{credentials:'same-origin'}).then(r=>r.ok?r.json():{defaults:{}}).then(d=>{if(active)setSaved(d.defaults||{});}).catch(()=>{if(active)setSaved({});});return()=>{active=false;};},[p.studioId]);
  const lastAddress=invoices.find(item=>item.snapshot?.customerAddress)?.snapshot.customerAddress||'';
- if(!confirmed.length)return <div className="billing-empty billing-empty-form"><FileText size={26}/><h3>Agree the latest budget direction first.</h3><p>Share an estimate based on the current brief and ask the client to confirm its budget direction. That estimate remains separate from the invoice and payment record.</p><button className="billing-text-button" onClick={onCancel}>Close</button></div>;
- if(hasOlderInvoice)return <div className="billing-empty billing-empty-form"><FileText size={26}/><h3>Review the earlier invoices first.</h3><p>Active invoices refer to a different estimate version. Settle or cancel those records before issuing against the new estimate.</p><button className="billing-text-button" onClick={onCancel}>Close</button></div>;
  if(!saved)return <p className="billing-loading" role="status">Preparing the invoice…</p>;
  const dueFromTerms=Number.isInteger(saved.paymentTermsDays)?daysFromToday(saved.paymentTermsDays):dueDefault();
- const shareMinor=kind==='Deposit'?minorFromInput(amount)||0:remaining;
- const shareNetMinor=!estimate?0:kind==='Full'?estimate.subtotal:kind==='Balance'?estimate.subtotal-active.reduce((total,item)=>total+(item.netMinor||0)+(item.discountNetMinor||0),0):Math.round(estimate.subtotal*shareMinor/(estimate.total||1));
+ const quickRate=quickTax===''?Number(latestEstimate?.taxRate??defaultTaxRate(saved))||0:Number(quickTax)||0;
+ const quickItems=quickLines.map(line=>({title:line.title.trim(),quantity:Number(line.quantity),unitAmount:minorFromInput(line.amount),...(line.unit?{unit:line.unit}:{})}));
+ const quickNet=quickItems.reduce((total,item)=>total+(Number.isInteger(item.quantity)&&item.quantity>0&&Number.isSafeInteger(item.unitAmount)&&item.unitAmount>0?item.quantity*item.unitAmount:0),0);
+ const shareMinor=quick?quickNet+Math.round(quickNet*quickRate/100):kind==='Deposit'?minorFromInput(amount)||0:remaining;
+ const shareNetMinor=quick?quickNet:!estimate?0:kind==='Full'?estimate.subtotal:kind==='Balance'?estimate.subtotal-active.reduce((total,item)=>total+(item.netMinor||0)+(item.discountNetMinor||0),0):Math.round(estimate.subtotal*shareMinor/(estimate.total||1));
  const discountInput=discountType==='percent'?{type:'percent',percent:Number(discountValue),reason:discountReason}:discountType==='amount'?{type:'amount',amountMinor:minorFromInput(discountValue),reason:discountReason}:null;
  let discount=null,discountError='';
  if(discountInput&&discountValue!==''&&shareMinor>0){try{discount=discountFor(discountInput,{shareMinor,shareNetMinor});}catch(error){discountError=error.message;}}
- const lateFeeRule=saved.lateFee?.enabled?saved.lateFee:null,tipsAvailable=!!saved.tips?.enabled&&kind!=='Deposit';
- const currency=estimate?.currency||'GBP',figures=invoiceFigures({shareMinor,shareNetMinor,discount});
+ const issueKind=quick?quickKind:kind;
+ const lateFeeRule=saved.lateFee?.enabled?saved.lateFee:null,tipsAvailable=!!saved.tips?.enabled&&issueKind!=='Deposit';
+ const currency=quick?quickCurrency||latestEstimate?.currency||saved.currency||'GBP':estimate?.currency||'GBP',figures=invoiceFigures({shareMinor,shareNetMinor,discount});
+ const setLine=(index,key,value)=>setQuickLines(lines=>lines.map((line,i)=>i===index?{...line,[key]:value}:line));
  return <form className="billing-issue-form" onSubmit={async event=>{
   event.preventDefault();setFormError('');
   const data=Object.fromEntries(new FormData(event.currentTarget));
   const amountMinor=minorFromInput(data.amount);
-  if(kind==='Deposit'&&(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remaining)){setFormError('Enter a deposit above zero and below the remaining estimate total.');return;}
-  const body={estimateId,kind,dueDate:data.dueDate,note:data.note,paymentInstructions:data.paymentInstructions,sellerAddress:data.sellerAddress,sellerContact:data.sellerContact,customerAddress:data.customerAddress,supplyDate:data.supplyDate,taxRegistration:data.taxRegistration};
-  if(kind==='Deposit')body.amountMinor=amountMinor;
+  const details={dueDate:data.dueDate,note:data.note,paymentInstructions:data.paymentInstructions,sellerAddress:data.sellerAddress,sellerContact:data.sellerContact,customerAddress:data.customerAddress,supplyDate:data.supplyDate,taxRegistration:data.taxRegistration};
+  let body;
+  if(quick){
+   if(!quickLabel.trim()){setFormError('Say what this invoice is for.');return;}
+   if(quickItems.some(item=>!item.title||!Number.isInteger(item.quantity)||item.quantity<1||!Number.isSafeInteger(item.unitAmount)||item.unitAmount<0)){setFormError('Give each line a description, a whole-number quantity and a price.');return;}
+   if(quickNet<=0){setFormError('Add an amount above zero.');return;}
+   body={quick:true,kind:quickKind,label:quickLabel.trim(),currency,taxRate:quickRate,items:quickItems,...details};
+  }else{
+   if(kind==='Deposit'&&(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remaining)){setFormError('Enter a deposit above zero and below the remaining estimate total.');return;}
+   body={estimateId,kind,...details};
+   if(kind==='Deposit')body.amountMinor=amountMinor;
+  }
   if(discountInput){if(discountValue===''||discountError||!discount){setFormError(discountError||'Enter the discount, or choose no discount.');return;}body.discount=discountInput;}
   if(lateFeeRule)body.lateFee=lateFeeOn;
   if(tipsAvailable)body.tips=tipsOn;
@@ -124,10 +142,20 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
  }}>
   <div className="billing-form-heading"><div><h3>Issue an invoice</h3><p>This appears in the client’s private project. No email or payment request is sent elsewhere.</p></div><button type="button" className="billing-text-button" onClick={onCancel}>Close</button></div>
   <div className="billing-issue-shell"><div className="billing-issue-layout"><div className="billing-issue-main">
-   <IssueSection title="Invoice" hint="Choose what this invoice asks for from the confirmed estimate.">
-    <div className="billing-form-grid billing-issue-choose"><label><span>Confirmed estimate</span><select name="estimateId" value={estimateId} onChange={event=>setEstimateId(event.target.value)}>{confirmed.map(item=><option key={item.id} value={item.id}>{item.title} · version {item.version}</option>)}</select></label><label><span>Invoice type</span><select name="kind" value={kind} onChange={event=>setKind(event.target.value)}>{!hasPrior&&<><option value="Deposit">Deposit</option><option value="Full">Full amount</option></>}{hasPrior&&remaining>0&&<><option value="Balance">Remaining balance</option><option value="Deposit">Further deposit</option></>}</select></label></div>
-    {estimate&&<div className="billing-scope-line"><span>Estimate total <strong>{money(estimate.total,estimate.currency)}</strong></span><span>Available to invoice <strong>{money(remaining,estimate.currency)}</strong></span></div>}
-    {kind==='Deposit'&&<label className="billing-amount-field"><span>Deposit amount ({currency})</span><input name="amount" type="number" min="0.01" max={Math.max(0,(remaining-1)/100).toFixed(2)} step="0.01" value={amount} onChange={event=>setAmount(event.target.value)} required placeholder="0.00"/></label>}
+   <IssueSection title="Invoice" hint={quick?'List what you are billing for. It is kept apart from the estimate, so the deposit and balance still add up to the agreed total.':'Choose what this invoice asks for from the confirmed estimate.'}>
+    <div className="billing-form-grid billing-issue-choose"><label><span>Bill for</span><select value={basis} onChange={event=>{setBasis(event.target.value);setFormError('');}}><option value="estimate" disabled={!estimateReady}>The confirmed estimate</option><option value="quick">Something else, such as extra hours</option></select></label>
+    {quick?<label><span>This is</span><select value={quickKind} onChange={event=>setQuickKind(event.target.value)}><option value="Full">A charge of its own</option><option value="Deposit">A deposit</option></select></label>
+    :<label><span>Invoice type</span><select name="kind" value={kind} onChange={event=>setKind(event.target.value)}>{!hasPrior&&<><option value="Deposit">Deposit</option><option value="Full">Full amount</option></>}{hasPrior&&remaining>0&&<><option value="Balance">Remaining balance</option><option value="Deposit">Further deposit</option></>}</select></label>}</div>
+    {quick&&!estimateReady&&<p className="billing-extras-note">{!confirmed.length?'There’s no confirmed estimate yet, so this invoice lists its own lines.':hasOlderInvoice?'Active invoices refer to an earlier estimate version. Settle or cancel those before invoicing the new estimate.':'The confirmed estimate is fully invoiced.'}</p>}
+    {quick?<>
+     <label><span>What it’s for</span><input maxLength="60" required value={quickLabel} onChange={event=>setQuickLabel(event.target.value)} placeholder="For example, extra styling hours or a rush fee"/></label>
+     <div className="billing-quick-lines">{quickLines.map((line,i)=><div className="billing-quick-line" key={i}><label><span>Line {i+1}</span><input required maxLength="200" value={line.title} onChange={event=>setLine(i,'title',event.target.value)}/></label><label><span>Quantity</span><input type="number" min="1" max="10000" step="1" required value={line.quantity} onChange={event=>setLine(i,'quantity',event.target.value)}/></label><label><span>Unit price ({currency})</span><input type="number" min="0" step="0.01" required value={line.amount} onChange={event=>setLine(i,'amount',event.target.value)} placeholder="0.00"/></label><button type="button" className="billing-text-button" disabled={quickLines.length===1} aria-label={`Remove line ${i+1}`} onClick={()=>setQuickLines(lines=>lines.filter((_,index)=>index!==i))}><Trash2 size={15}/></button></div>)}</div>
+     <button type="button" className="billing-text-button" disabled={quickLines.length>=20} onClick={()=>setQuickLines(lines=>[...lines,{title:'',quantity:1,amount:''}])}><Plus size={15}/> Add a line</button>
+     <div className="billing-form-grid"><label><span>Currency</span><select value={currency} onChange={event=>setQuickCurrency(event.target.value)}>{CURRENCIES.map(code=><option key={code}>{code}</option>)}</select></label>{(isVatRegistered(saved)||quickRate>0)&&<label><span>{isVatRegistered(saved)?'VAT rate (%)':'Tax rate (%)'}</span><input type="number" min="0" max="100" step="0.01" value={quickTax===''?String(quickRate):quickTax} onChange={event=>setQuickTax(event.target.value)}/></label>}</div>
+    </>:<>
+     {estimate&&<div className="billing-scope-line"><span>{estimate.title} <strong>version {estimate.version}</strong></span><span>Estimate total <strong>{money(estimate.total,estimate.currency)}</strong></span><span>Available to invoice <strong>{money(remaining,estimate.currency)}</strong></span></div>}
+     {kind==='Deposit'&&<label className="billing-amount-field"><span>Deposit amount ({currency})</span><input name="amount" type="number" min="0.01" max={Math.max(0,(remaining-1)/100).toFixed(2)} step="0.01" value={amount} onChange={event=>setAmount(event.target.value)} required placeholder="0.00"/></label>}
+    </>}
    </IssueSection>
    <IssueSection title="Discount" hint="Optional. It comes off the price before tax, so the tax goes down with it.">
     <div className="billing-discount-row"><label><span>Type</span><select value={discountType} onChange={event=>{setDiscountType(event.target.value);setDiscountValue('');}}><option value="none">No discount</option><option value="percent">Percentage</option><option value="amount">Fixed amount</option></select></label>
@@ -149,10 +177,10 @@ function IssueForm({p,invoices,mutate,busy,onIssued,onCancel}){
     <label><span>Instructions for the client</span><textarea name="paymentInstructions" rows="3" maxLength="1000" required placeholder="Include the bank or external payment details and the reference the client should use." defaultValue={saved.paymentInstructions||''}/></label>
    </IssueSection>
   </div>
-  <IssueSummary figures={figures} currency={currency} taxRate={estimate?.taxRate||0} vat={isVatRegistered(saved)} discount={discount} lateFee={lateFeeRule&&lateFeeOn?lateFeeRule:null} tips={tipsAvailable&&tipsOn} waiting={kind==='Deposit'&&!(shareMinor>0)}/>
+  <IssueSummary figures={figures} currency={currency} taxRate={quick?quickRate:estimate?.taxRate||0} vat={isVatRegistered(saved)} discount={discount} lateFee={lateFeeRule&&lateFeeOn?lateFeeRule:null} tips={tipsAvailable&&tipsOn} waiting={quick?(!(quickNet>0)&&'Add a line with a price to see the figures.'):kind==='Deposit'&&!(shareMinor>0)}/>
   </div></div>
   {formError&&<p className="billing-error" role="alert">{formError}</p>}
-  <div className="billing-form-foot"><button className="billing-primary" disabled={busy||remaining<=0}>Issue invoice </button><p>An invoice is a request for payment. Its status changes only when the studio records money received.</p></div>
+  <div className="billing-form-foot"><button className="billing-primary" disabled={busy||(!quick&&remaining<=0)}>Issue invoice </button><p>An invoice is a request for payment. Its status changes only when the studio records money received.</p></div>
  </form>;
 }
 
@@ -247,8 +275,9 @@ function InvoiceDetail({invoice,design,brandKit,p,studio,owner,request,run,busy,
   <div className="doc-actions"><button className="doc-quiet" aria-pressed={!documentView} onClick={()=>setDocumentView(false)}>Account details</button><button className="doc-quiet" aria-pressed={documentView} onClick={()=>setDocumentView(true)}>Invoice document</button></div>
   {documentView&&<InvoicePreview html={invoicePage} title={`Invoice ${invoice.number}`}/>}
   {!documentView&&<><div className="billing-document-parties"><div><span>FROM</span><strong>{snapshot.sellerName||studio.name}</strong><p>{snapshot.sellerAddress||'—'}</p>{snapshot.sellerContact&&<small>{snapshot.sellerContact}</small>}{snapshot.taxRegistration&&<small>{taxNumberLabel(isVatDocument(snapshot,invoice.currency))} {snapshot.taxRegistration}</small>}</div><div><span>BILL TO</span><strong>{snapshot.billToName||p.brief.name}</strong><p>{snapshot.customerAddress||'—'}</p>{snapshot.billToEmail&&<small>{snapshot.billToEmail}</small>}</div></div>
-  <div className="billing-document-grid"><div><span>ISSUED</span><strong>{date(invoice.issuedAt)}</strong></div><div><span>DUE</span><strong>{date(invoice.dueDate)}</strong>{lateFeeNote&&<small className="billing-due-terms">{lateFeeNote}</small>}</div><div><span>SERVICE / SUPPLY DATE</span><strong>{date(snapshot.supplyDate)}</strong></div><div><span>BASED ON</span><strong>Estimate version {invoice.estimateVersion}</strong></div></div>
-  <div className="billing-line"><div><strong>{invoice.label?`${invoice.label} towards project scope`:invoice.kind==='Deposit'?'Deposit towards project scope':invoice.kind==='Balance'?'Remaining project balance':'Agreed project scope'}</strong><small>{snapshot.projectTitle||p.title}</small></div><strong>{money(invoice.shareMinor??invoice.amountMinor,invoice.currency)}</strong></div>
+  <div className="billing-document-grid"><div><span>ISSUED</span><strong>{date(invoice.issuedAt)}</strong></div><div><span>DUE</span><strong>{date(invoice.dueDate)}</strong>{lateFeeNote&&<small className="billing-due-terms">{lateFeeNote}</small>}</div><div><span>SERVICE / SUPPLY DATE</span><strong>{date(snapshot.supplyDate)}</strong></div><div><span>BASED ON</span><strong>{invoice.estimateId?`Estimate version ${invoice.estimateVersion}`:'Its own lines'}</strong></div></div>
+  {snapshot.lines?.items?.map((item,i)=><div className="billing-line" key={i}><div><strong>{item.title}</strong><small>{item.quantity} × {money(item.unitAmount,invoice.currency)}{perUnit(item.unit)&&` ${perUnit(item.unit)}`}</small></div><strong>{money(item.quantity*item.unitAmount,invoice.currency)}</strong></div>)}
+  {!snapshot.lines&&<div className="billing-line"><div><strong>{invoice.label?`${invoice.label} towards project scope`:invoice.kind==='Deposit'?'Deposit towards project scope':invoice.kind==='Balance'?'Remaining project balance':'Agreed project scope'}</strong><small>{snapshot.projectTitle||p.title}</small></div><strong>{money(invoice.shareMinor??invoice.amountMinor,invoice.currency)}</strong></div>}
   {!owner&&invoice.tipsAllowed&&isOpen(invoice)&&!checkoutActive&&<section className="billing-tip"><div><h4>Add a tip</h4><p>Entirely optional. If you would like to say thank you, a tip is added to this invoice and goes to the studio.</p></div>
    <div className="billing-tip-options" role="group" aria-label="Tip amount">{tipPercents.map(percent=>{const value=tipFor(invoice.amountMinor,percent);return <button key={percent} type="button" aria-pressed={invoice.tipMinor===value} disabled={busy} onClick={()=>saveTip(value)}><strong>{percent}%</strong><span>{money(value,invoice.currency)}</span></button>;})}<button type="button" aria-pressed={tipping} disabled={busy} onClick={()=>setTipping(!tipping)}><strong>Other</strong><span>Your amount</span></button>{invoice.tipMinor>0&&<button type="button" className="billing-tip-clear" disabled={busy} onClick={()=>saveTip(0)}><strong>No tip</strong><span>Remove</span></button>}</div>
    {tipping&&<form className="billing-tip-custom" onSubmit={event=>{event.preventDefault();saveTip(minorFromInput(new FormData(event.currentTarget).get('tip')));}}><label><span>Tip ({invoice.currency})</span><input name="tip" type="number" min="0" step="0.01" max={(invoice.amountMinor/100).toFixed(2)} defaultValue={invoice.tipMinor?(invoice.tipMinor/100).toFixed(2):''} required/></label><button className="billing-outline" disabled={busy}>Add tip</button></form>}
@@ -294,7 +323,7 @@ export function Billing({p,studio,owner,request,run,mutate,busy,onNavigate,onInv
  <PaymentPlan p={p} studio={studio} owner={owner} request={request} run={run} busy={busy} invoices={invoices} onIssued={replaceInvoice}/>
  {issuing&&owner&&<IssueForm key={p.id} p={p} invoices={invoices} mutate={mutate} busy={busy} onCancel={()=>setIssuing(false)} onIssued={invoice=>{replaceInvoice(invoice);setIssuing(false);}}/>}
  {loadError&&<div className="billing-error billing-load-error" role="alert">Invoices could not be loaded: {loadError} <button onClick={()=>{setLoading(true);setLoadError('');request(`/api/projects/${p.id}/invoices?studio=${studio.id}`).then(data=>{setInvoices(data.invoices||[]);setLoading(false);}).catch(error=>{setLoadError(error.message);setLoading(false);});}}>Try again</button></div>}
- {loading?<p className="billing-loading" role="status">Loading invoices…</p>:!loadError&&(!sorted.length?<div className="billing-empty"><FileText size={27}/><h3>{owner?'Nothing has been invoiced yet.':'No invoices have been shared yet.'}</h3><p>{owner?'Start with a budget-confirmed estimate, then issue a deposit or full invoice when the scope is ready.':'Your studio will share an invoice here when payment is due.'}</p>{owner&&<button className="billing-text-button" onClick={()=>onNavigate?.('Estimate')}>Go to the estimate </button>}</div>:<><InvoiceList invoices={sorted} selected={selected?.id} onSelect={selectInvoice}/><InvoiceDetail key={selected.id} invoice={selected} design={design} brandKit={brandKit} p={p} studio={studio} owner={owner} request={request} run={run} busy={busy} onChanged={replaceInvoice} stripeReady={stripeReady} checkoutReturn={checkoutReturn} checkoutStalled={checkoutStalled} onCheckAgain={()=>setCheckRound(n=>n+1)}/></>)}
+ {loading?<p className="billing-loading" role="status">Loading invoices…</p>:!loadError&&(!sorted.length?<div className="billing-empty"><FileText size={27}/><h3>{owner?'Nothing has been invoiced yet.':'No invoices have been shared yet.'}</h3><p>{owner?'Issue a deposit or full invoice from a budget-confirmed estimate, or a quick invoice for something on its own, such as extra hours.':'Your studio will share an invoice here when payment is due.'}</p>{owner&&<button className="billing-text-button" onClick={()=>onNavigate?.('Estimate')}>Go to the estimate </button>}</div>:<><InvoiceList invoices={sorted} selected={selected?.id} onSelect={selectInvoice}/><InvoiceDetail key={selected.id} invoice={selected} design={design} brandKit={brandKit} p={p} studio={studio} owner={owner} request={request} run={run} busy={busy} onChanged={replaceInvoice} stripeReady={stripeReady} checkoutReturn={checkoutReturn} checkoutStalled={checkoutStalled} onCheckAgain={()=>setCheckRound(n=>n+1)}/></>)}
  </div><aside className="billing-aside"><section><p className="billing-kicker">PAYMENT AT A GLANCE</p>{sorted.length?<><div className="billing-aside-number"><strong>{sorted.filter(isOpen).length}</strong><span>open invoice{sorted.filter(isOpen).length===1?'':'s'}</span></div><p>Open invoices are requests for payment. They are not proof that a date has been booked.</p></>:<p>When an invoice is issued, its due date and payment details appear here for the client.</p>}</section><section><p className="billing-kicker">KEEP IT CLEAR</p><h3>Budget, invoice, payment.</h3><p>An accepted estimate agrees budget direction. An invoice requests payment. {stripeReady?'Stripe payments are verified automatically; the studio records payments made elsewhere after checking receipt.':'The studio records payments after checking receipt outside Caleane.'}</p></section>{(owner||bookkeeper)&&!loading&&!loadError&&<ProjectProfit p={p} studio={studio} request={request} invoices={invoices} readOnly={!owner}/>}{owner&&<section><p className="billing-kicker">THIS PROJECT</p><dl><div><dt>Client</dt><dd>{p.brief.name}</dd></div><div><dt>Project</dt><dd>{p.title}</dd></div>{owner&&<div><dt>Confirmed estimates</dt><dd>{(p.estimates||[]).filter(item=>item.status==='Budget confirmed').length}</dd></div>}</dl></section>}</aside></div>;
 }
 

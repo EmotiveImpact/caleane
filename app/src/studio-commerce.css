@@ -278,3 +278,8 @@
 .billing-issue-form .billing-extras label.billing-refund-choice { display: flex; }
 .billing-issue-form .billing-extras .billing-refund-choice input { width: auto; min-height: 0; padding: 0; flex: none; }
 .billing-issue-form .billing-extras .billing-refund-choice strong { font-size: 13px; font-weight: 560; color: #25292e; }
+/* Quick invoice lines: description, quantity, unit price and a remove button, like estimate lines. */
+.billing-quick-lines { display: grid; gap: 4px; margin-top: 4px; }
+.billing-quick-line { display: grid; grid-template-columns: minmax(0,1fr) 90px 130px 32px; gap: 0 12px; align-items: end; }
+.billing-quick-line > button { min-height: 40px; justify-content: center; margin-bottom: 14px; }
+@media (max-width: 760px) { .billing-quick-line { grid-template-columns: minmax(0,1fr) 64px 92px 28px; gap: 0 6px; } }

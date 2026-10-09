@@ -40,6 +40,16 @@ test('payment details only show while the client still owes money',()=>{
  }
 });
 
+test('a quick invoice lists its own lines, with how each is priced, in every design',()=>{
+ const {invoice}=sampleInvoice({name:'Studio'});
+ const quick={...invoice,kind:'Full',label:'Rush fee',estimateId:'',estimateVersion:0,snapshot:{...invoice.snapshot,lines:{items:[{title:'Styling hours',quantity:3,unitAmount:8000,unit:'hour'},{title:'Courier',quantity:1,unitAmount:4000,unit:'each'}],taxRate:20,subtotal:28000,tax:5600,total:33600}}};
+ for(const [layout] of invoiceLayouts){
+  const html=invoicePageHtml(quick,{design:{layout,showItems:false}});
+  assert.match(html,/Styling hours<small>per hour<\/small>/,layout);assert.match(html,/<td>Courier<\/td>/,layout);
+  assert.doesNotMatch(html,/towards project scope|of the project total/,layout);
+ }
+});
+
 test('invoice and credit note PDFs are real one-page files',async()=>{
  const {invoice,estimate}=sampleInvoice({name:'NAY DÉCOR'},{vatRegistered:true,taxRate:20,taxRegistration:'GB1'});
  const file=await invoicePdf({...invoice,note:'Deposit − thank you'},{studio:{name:'NAY DÉCOR',accent:'#7a3b2e'},estimate});

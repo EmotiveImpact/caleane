@@ -56,7 +56,7 @@ export function invoicePdf(invoice,{db,studio={},design,brandKit,estimate,credit
   y+=13;pdf.moveTo(X,y).lineTo(R,y).lineWidth(1).strokeColor(accent).stroke();y+=8;
   for(const row of t.rows){
    room(30);let rowBottom;
-   if(wide){const [title,,qty,unit,amount]=row;rowBottom=text(title,cols[0],y,{width:widths[0]});[qty,unit,amount].forEach((v,i)=>text(v,cols[i+1],y,{width:widths[i+1],align:'right'}));}
+   if(wide){const [title,detail,qty,unit,amount]=row;rowBottom=text(title,cols[0],y,{width:widths[0]});if(detail)rowBottom=text(detail,cols[0],rowBottom+1,{width:widths[0]},regular,8.5,muted);[qty,unit,amount].forEach((v,i)=>text(v,cols[i+1],y,{width:widths[i+1],align:'right'}));}
    else{const [title,detail,amount]=row;rowBottom=text(title,cols[0],y,{width:widths[0]},bold,10);if(detail)rowBottom=text(detail,cols[0],rowBottom+1,{width:widths[0]},regular,8.5,muted);text(amount,cols[1],y,{width:widths[1],align:'right'},regular,10);}
    y=rowBottom+7;pdf.moveTo(X,y).lineTo(R,y).lineWidth(.5).strokeColor(rule).stroke();y+=7;
   }

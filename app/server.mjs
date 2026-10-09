@@ -640,18 +640,35 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(!owner&&!bookkeeper&&accessRole!=='Approver')fail(403,'Only the project approver can see billing.');
      const project=JSON.parse(projectRow.data),invoiceId=invoiceMatch[2],subaction=invoiceMatch[3];
      const issueInvoice=(project,body,afterInsert)=>{
-      const estimate=project.estimates?.find(item=>item.id===body.estimateId);
-      if(!estimate||estimate.id!==project.estimates.at(-1)?.id||estimate.status!=='Budget confirmed'||estimate.briefRevision!==project.briefRevision)fail(409,'Ask the client to confirm the latest estimate before issuing an invoice.');
-      // A discounted invoice still covers its full share of the estimate.
-      const existing=db.prepare('SELECT estimate_id,amount_minor+discount_minor AS amount_minor,net_minor+discount_net_minor AS net_minor FROM invoices WHERE studio_id=? AND project_id=? AND cancelled_at IS NULL').all(studio.id,project.id);
-      if(existing.some(item=>item.estimate_id!==estimate.id))fail(409,'An earlier estimate has active invoices. Review those bills before invoicing a new version.');
-      const billedMinor=existing.reduce((sum,item)=>sum+item.amount_minor,0),remainingMinor=estimate.total-billedMinor;
-      if(!Number.isSafeInteger(remainingMinor)||remainingMinor<=0)fail(409,'This project has no uninvoiced estimate balance.');
-      const kind=body.kind;if(!['Deposit','Balance','Full'].includes(kind))fail(400,'Choose a deposit, balance or full invoice.');const label=str(body.label||'',60);
-      if(kind==='Full'&&existing.length)fail(409,'Issue a balance invoice for the remaining amount.');
-      if(kind==='Balance'&&!existing.length)fail(409,'Issue a full invoice or a deposit first.');
+      // A quick invoice bills lines of its own, such as extra hours or a rush fee. It needs no estimate and
+      // leaves the estimate's share untouched, so the deposit and balance still add up to the agreed total.
+      const quick=body.quick===true,kind=body.kind,label=str(body.label||'',60);
+      let estimate=null,existing=[],remainingMinor=0,lines=null;
+      if(quick){
+       if(!['Full','Deposit'].includes(kind))fail(400,'Choose a charge or a deposit.');
+       if(!label)fail(400,'Say what this invoice is for.');
+       if(!isCurrency(body.currency))fail(400,'Choose a supported currency.');
+       if(!Array.isArray(body.items)||body.items.length<1||body.items.length>20)fail(400,'Add between one and twenty lines.');
+       const items=body.items.map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))fail(400,'Check each line.');const title=str(item.title,200);if(!title||!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>10000||!Number.isInteger(item.unitAmount)||item.unitAmount<0||item.unitAmount>100000000)fail(400,'Check line descriptions, quantities and amounts.');return {title,quantity:item.quantity,unitAmount:item.unitAmount,...(item.unit?{unit:str(item.unit,20)}:{})};});
+       const usual=billingDefaults(db,studio.id),taxRate=body.taxRate??defaultTaxRate(usual);if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>100)fail(400,'Tax must be between 0 and 100.');
+       const subtotal=items.reduce((sum,item)=>sum+item.quantity*item.unitAmount,0),tax=Math.round(subtotal*taxRate/100);
+       if(subtotal<=0)fail(400,'Add an amount above zero.');if(subtotal>100000000)fail(400,'The invoice total is too large.');
+       lines={items,currency:body.currency,taxRate,vatRegistered:isVatRegistered(usual),subtotal,tax,total:subtotal+tax};remainingMinor=lines.total;
+      }else{
+       estimate=project.estimates?.find(item=>item.id===body.estimateId);
+       if(!estimate||estimate.id!==project.estimates.at(-1)?.id||estimate.status!=='Budget confirmed'||estimate.briefRevision!==project.briefRevision)fail(409,'Ask the client to confirm the latest estimate before issuing an invoice.');
+       // A discounted invoice still covers its full share of the estimate. Quick invoices are not part of it.
+       existing=db.prepare("SELECT estimate_id,amount_minor+discount_minor AS amount_minor,net_minor+discount_net_minor AS net_minor FROM invoices WHERE studio_id=? AND project_id=? AND cancelled_at IS NULL AND estimate_id<>''").all(studio.id,project.id);
+       if(existing.some(item=>item.estimate_id!==estimate.id))fail(409,'An earlier estimate has active invoices. Review those bills before invoicing a new version.');
+       const billedMinor=existing.reduce((sum,item)=>sum+item.amount_minor,0);remainingMinor=estimate.total-billedMinor;
+       if(!Number.isSafeInteger(remainingMinor)||remainingMinor<=0)fail(409,'This project has no uninvoiced estimate balance.');
+       if(!['Deposit','Balance','Full'].includes(kind))fail(400,'Choose a deposit, balance or full invoice.');
+       if(kind==='Full'&&existing.length)fail(409,'Issue a balance invoice for the remaining amount.');
+       if(kind==='Balance'&&!existing.length)fail(409,'Issue a full invoice or a deposit first.');
+      }
+      const basis=quick?lines:estimate;
       let amountMinor=remainingMinor;
-      if(kind==='Deposit'){amountMinor=body.amountMinor;if(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remainingMinor)fail(400,'Enter an amount smaller than the remaining estimate total.');}
+      if(kind==='Deposit'&&!quick){amountMinor=body.amountMinor;if(!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor>=remainingMinor)fail(400,'Enter an amount smaller than the remaining estimate total.');}
       const saved=billingDefaults(db,studio.id),dueDate=date(body.dueDate,'invoice due date'),supplyDate=date(body.supplyDate||project.brief?.date||'','service date'),paymentInstructions=str(body.paymentInstructions||saved.paymentInstructions||'',1000),note=str(body.note||'',3000);
       const sellerAddress=str(body.sellerAddress||saved.sellerAddress||'',500),sellerContact=str(body.sellerContact||saved.sellerContact||'',300),customerAddress=str(body.customerAddress||'',500),taxRegistration=str(body.taxRegistration||saved.taxRegistration||'',100);
       const missing=[[sellerAddress,'your studio address'],[customerAddress,'the client billing address'],[sellerContact,'your studio contact'],[supplyDate,'the service date'],[dueDate,'the due date'],[paymentInstructions,'payment instructions']].filter(([value])=>!value).map(([,label])=>label);
@@ -662,7 +679,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
        const next=db.prepare('SELECT next_number FROM invoice_counters WHERE studio_id=? AND year=?').get(studio.id,year).next_number;
        db.prepare('UPDATE invoice_counters SET next_number=next_number+1 WHERE studio_id=? AND year=?').run(studio.id,year);
        const number=`INV-${year}-${String(next).padStart(4,'0')}`;
-       const shareMinor=amountMinor,shareNetMinor=kind==='Balance'?estimate.subtotal-existing.reduce((sum,item)=>sum+item.net_minor,0):kind==='Full'?estimate.subtotal:Math.round(estimate.subtotal*amountMinor/estimate.total);
+       const shareMinor=amountMinor,shareNetMinor=quick?lines.subtotal:kind==='Balance'?estimate.subtotal-existing.reduce((sum,item)=>sum+item.net_minor,0):kind==='Full'?estimate.subtotal:Math.round(estimate.subtotal*amountMinor/estimate.total);
        if(shareNetMinor<0||shareMinor-shareNetMinor<0)fail(409,'The remaining tax breakdown needs review before invoicing.');
        const discount=discountFor(body.discount,{shareMinor,shareNetMinor});
        const figures=invoiceFigures({shareMinor,shareNetMinor,discount});amountMinor=figures.amountMinor;
@@ -671,10 +688,10 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
        // Late fee terms and tips are fixed on the invoice when it is issued, so the client sees them from the start.
        const lateFeeRule=saved.lateFee?.enabled&&body.lateFee!==false?JSON.stringify({type:saved.lateFee.type,amountMinor:saved.lateFee.amountMinor,percent:saved.lateFee.percent,afterDays:saved.lateFee.afterDays}):'';
        const tipsAllowed=saved.tips?.enabled&&kind!=='Deposit'&&body.tips!==false?1:0;
-       const snapshot={sellerName:studio.name,sellerAddress,sellerContact,taxRegistration,vatRegistered:isVatDocument({vatRegistered:estimate.vatRegistered,taxRegistration},estimate.currency),billToName:project.brief?.name||'',billToEmail:project.clientEmail,customerAddress,supplyDate,projectTitle:project.title,estimate:{id:estimate.id,version:estimate.version,title:estimate.title,note:estimate.note,items:structuredClone(estimate.items),currency:estimate.currency,taxRate:estimate.taxRate,vatRegistered:estimate.vatRegistered,subtotal:estimate.subtotal,tax:estimate.tax,total:estimate.total,briefRevision:estimate.briefRevision,decidedAt:estimate.decidedAt||'',decidedBy:estimate.decidedBy||''}};
+       const snapshot={sellerName:studio.name,sellerAddress,sellerContact,taxRegistration,vatRegistered:isVatDocument({vatRegistered:basis.vatRegistered,taxRegistration},basis.currency),billToName:project.brief?.name||'',billToEmail:project.clientEmail,customerAddress,supplyDate,projectTitle:project.title,...(quick?{lines}:{estimate:{id:estimate.id,version:estimate.version,title:estimate.title,note:estimate.note,items:structuredClone(estimate.items),currency:estimate.currency,taxRate:estimate.taxRate,vatRegistered:estimate.vatRegistered,subtotal:estimate.subtotal,tax:estimate.tax,total:estimate.total,briefRevision:estimate.briefRevision,decidedAt:estimate.decidedAt||'',decidedBy:estimate.decidedBy||''}})};
        const invoiceId=id(),issuedAt=now();
        db.prepare(`INSERT INTO invoices(id,studio_id,project_id,number,estimate_id,estimate_version,kind,currency,amount_minor,net_minor,tax_minor,tax_rate,due_date,note,payment_instructions,snapshot,issued_at,issued_by)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(invoiceId,studio.id,project.id,number,estimate.id,estimate.version,kind,estimate.currency,amountMinor,netMinor,taxMinor,estimate.taxRate,dueDate,note,paymentInstructions,JSON.stringify(snapshot),issuedAt,user.name);
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(invoiceId,studio.id,project.id,number,quick?'':estimate.id,quick?0:estimate.version,kind,basis.currency,amountMinor,netMinor,taxMinor,basis.taxRate,dueDate,note,paymentInstructions,JSON.stringify(snapshot),issuedAt,user.name);
        event(project,user,`Issued invoice ${number}`);saveProject(db,project);
        if(label)db.prepare('UPDATE invoices SET label=? WHERE id=? AND studio_id=?').run(label,invoiceId,studio.id);
        db.prepare('UPDATE invoices SET discount_minor=?,discount_net_minor=?,discount_label=?,late_fee_rule=?,tips_allowed=? WHERE id=? AND studio_id=?').run(discount?.grossMinor||0,discount?.netMinor||0,discount?.label||'',lateFeeRule,tipsAllowed,invoiceId,studio.id);
@@ -694,7 +711,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       else if(body.action==='update')transaction(db,()=>updatePlan(db,{studioId:studio.id,project,body}));
       else if(body.action==='delete')transaction(db,()=>deletePlan(db,{studioId:studio.id,project}));
       else if(body.action==='issue'){
-       const issued=transaction(db,()=>{const {step,body:planned}=stepInvoice(db,{studioId:studio.id,project,stepId:body.stepId});return issueInvoice(project,{...body,...planned},invoiceId=>markStepInvoiced(db,{studioId:studio.id,projectId:project.id,stepId:step.id,invoiceId}));});
+       const issued=transaction(db,()=>{const {step,body:planned}=stepInvoice(db,{studioId:studio.id,project,stepId:body.stepId});return issueInvoice(project,{...body,...planned,quick:false},invoiceId=>markStepInvoiced(db,{studioId:studio.id,projectId:project.id,stepId:step.id,invoiceId}));});
        await syncProjectArchives(db,{studioId:studio.id,projectId:project.id});automate(studio.id,project.id);
        return reply(201,{plan:view(),invoice:invoiceDTO(db,issued)});
       }else fail(400,'Choose a payment plan action.');

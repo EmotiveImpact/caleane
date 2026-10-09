@@ -2,6 +2,7 @@ import {id,now,transaction} from './store.mjs';
 import {invoiceFonts,invoiceLayouts,normaliseInvoiceDesign} from './src/lib/invoice-design.js';
 import {DEFAULT_VAT_RATE,isVatRegistered} from './src/lib/vat.js';
 import {CURRENCIES} from './src/lib/currencies.js';
+import {PRICE_UNITS} from './src/lib/price-units.js';
 import {defaultLateFee,defaultTips,validateLateFee,validateTips} from './invoice-extras.mjs';
 
 // Studio-level libraries the owner reuses across projects: a price list,
@@ -9,7 +10,7 @@ import {defaultLateFee,defaultTips,validateLateFee,validateTips} from './invoice
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const text=(value,max,label,required=false)=>{if(value==null)value='';if(typeof value!=='string'||value.length>max)fail(400,`Check ${label}.`);const result=value.trim();if(required&&!result)fail(400,`Add ${label}.`);return result;};
 export const currencies=CURRENCIES;
-export const catalogueUnits=['each','hour','day','person','item','set'];
+export const catalogueUnits=PRICE_UNITS;
 export const placeholderKeys=['client_first_name','client_name','project_title','project_date','studio_name','booking_link','portal_link'];
 
 export const defaultTemplates=[
