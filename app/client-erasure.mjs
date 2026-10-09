@@ -7,6 +7,25 @@ const columns=(db,table)=>db.prepare(`PRAGMA table_info(${table})`).all().map(c=
 const tables=db=>db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map(r=>r.name);
 const list=values=>values.map(()=>'?').join(',')||"''";
 const KEEP=new Set(['users','studios','sessions','studio_branding','studio_settings_kv','invoice_counters','credit_note_counters','stripe_webhook_events']);
+// What the person wrote stays with the studio's records; only their name on it is cleared below.
+const AUTHORED=new Set(['users','memberships','conversation_messages','crm_contacts']);
+// The erased client's own login. Linked to another studio, only this studio's link goes. Otherwise the account,
+// its sessions, tokens and settings go, and it is deleted outright unless something the studio keeps still points at it.
+function eraseAccount(db,{studioId,userId,drop}){
+ const linked=db.prepare('SELECT 1 FROM memberships WHERE user_id=? AND studio_id<>? UNION SELECT 1 FROM memberships WHERE user_id=? AND studio_id=? AND role<>? UNION SELECT 1 FROM studio_staff WHERE user_id=?').get(userId,studioId,userId,studioId,'client',userId);
+ drop('memberships',"user_id=? AND studio_id=? AND role='client'",[userId,studioId]);
+ if(linked){for(const table of tables(db)){const cols=columns(db,table);if(!AUTHORED.has(table)&&cols.includes('user_id')&&cols.includes('studio_id'))drop(table,'user_id=? AND studio_id=?',[userId,studioId]);}return 'unlinked';}
+ for(const table of tables(db)){if(AUTHORED.has(table))continue;const cols=columns(db,table);
+  if(cols.includes('user_id'))drop(table,'user_id=?',[userId]);
+  if(cols.includes('recipient_user_id'))drop(table,'recipient_user_id=?',[userId]);
+ }
+ for(const table of ['conversation_messages','crm_contacts'])db.prepare(`UPDATE ${table} SET user_id=NULL WHERE user_id=?`).run(userId);
+ const referenced=tables(db).some(table=>table!=='users'&&db.prepare(`PRAGMA foreign_key_list(${table})`).all().some(fk=>fk.table==='users'&&db.prepare(`SELECT 1 FROM ${table} WHERE "${fk.from}"=?`).get(userId)));
+ if(!referenced){drop('users','id=?',[userId]);return 'deleted';}
+ // A design upload or activity record still names this account: keep the row, but nothing that identifies or signs in.
+ db.prepare("UPDATE users SET email=?,name='Erased client',password='' WHERE id=?").run(`erased-${userId}@erased.invalid`,userId);
+ return 'anonymised';
+}
 export function clientErasurePreview(db,studioId,clientId){
  const client=db.prepare('SELECT * FROM clients WHERE id=? AND studio_id=?').get(clientId,studioId);if(!client)fail(404,'Client not found.');
  const projects=db.prepare('SELECT p.data FROM crm_project_relationships r JOIN projects p ON p.id=r.project_id AND p.studio_id=r.studio_id WHERE r.studio_id=? AND r.client_id=?').all(studioId,clientId).map(r=>JSON.parse(r.data));
@@ -20,11 +39,14 @@ export function eraseClient(db,{studioId,clientId,confirmName}){
  const projectIds=projects.map(p=>p.id);
  const contactIds=db.prepare('SELECT contact_id FROM crm_client_contacts WHERE studio_id=? AND client_id=?').all(studioId,clientId).map(r=>r.contact_id).filter(contactId=>!db.prepare(`SELECT 1 FROM crm_client_contacts WHERE studio_id=? AND contact_id=? AND client_id<>? UNION SELECT 1 FROM crm_project_stakeholders WHERE studio_id=? AND contact_id=? AND project_id NOT IN (${list(projectIds)})`).get(studioId,contactId,clientId,studioId,contactId,...projectIds));
  const contactUsers=contactIds.length?db.prepare(`SELECT user_id FROM crm_contacts WHERE studio_id=? AND id IN (${list(contactIds)}) AND user_id IS NOT NULL`).all(studioId,...contactIds).map(r=>r.user_id):[];
+ const emails=[...new Set([client.email,...(contactIds.length?db.prepare(`SELECT email FROM crm_contacts WHERE studio_id=? AND id IN (${list(contactIds)})`).all(studioId,...contactIds).map(r=>r.email):[])])];
+ // A login made from an invitation to this client, even where the contact link was never made.
+ const users=[...new Set([...contactUsers,...db.prepare(`SELECT u.id FROM users u JOIN memberships m ON m.user_id=u.id AND m.studio_id=? AND m.role='client' WHERE u.email IN (${list(emails)})`).all(studioId,...emails).map(r=>r.id)])];
  const conversationIds=db.prepare(`SELECT id FROM conversations WHERE studio_id=? AND (client_id=? OR project_id IN (${list(projectIds)}))`).all(studioId,clientId,...projectIds).map(r=>r.id);
  const messageIds=conversationIds.length?db.prepare(`SELECT id FROM conversation_messages WHERE conversation_id IN (${list(conversationIds)})`).all(...conversationIds).map(r=>r.id):[];
  const crmTaskIds=db.prepare('SELECT id FROM crm_tasks WHERE studio_id=? AND client_id=?').all(studioId,clientId).map(r=>r.id);
  const taskKeys=[...projects.flatMap(p=>(p.tasks||[]).map(t=>`project:${p.id}:${t.id}`)),...crmTaskIds.map(t=>'crm:'+t)];
- const counts={};
+ const counts={},accounts={deleted:0,anonymised:0,unlinked:0};
  transaction(db,()=>{
   db.exec('PRAGMA defer_foreign_keys=ON');
   const drop=(table,where,args)=>{const result=db.prepare(`DELETE FROM ${table} WHERE ${where}`).run(...args);if(result.changes)counts[table]=(counts[table]||0)+result.changes;};
@@ -44,8 +66,11 @@ export function eraseClient(db,{studioId,clientId,confirmName}){
   if(conversationIds.length)drop('conversations',`id IN (${list(conversationIds)})`,conversationIds);
   if(projectIds.length){drop('files',`project_id IN (${list(projectIds)})`,projectIds);drop('projects',`studio_id=? AND id IN (${list(projectIds)})`,[studioId,...projectIds]);}
   if(contactIds.length)drop('crm_contacts',`studio_id=? AND id IN (${list(contactIds)})`,[studioId,...contactIds]);
-  for(const userId of contactUsers)if(!db.prepare('SELECT 1 FROM crm_contacts WHERE studio_id=? AND user_id=?').get(studioId,userId))drop('memberships',"user_id=? AND studio_id=? AND role='client'",[userId,studioId]);
+  // Invitations hold their email and could still create a login, and queued emails would still reach them.
+  drop('invitations',`studio_id=? AND email IN (${list(emails)})`,[studioId,...emails]);
+  if(tables(db).includes('notification_outbox'))drop('notification_outbox',`studio_id=? AND recipient_email IN (${list(emails)})`,[studioId,...emails]);
+  for(const userId of users)if(!db.prepare('SELECT 1 FROM crm_contacts WHERE studio_id=? AND user_id=?').get(studioId,userId))accounts[eraseAccount(db,{studioId,userId,drop})]++;
   drop('clients','id=? AND studio_id=?',[clientId,studioId]);
  });
- return {erasedAt:now(),client:{id:client.id,name:client.name},projects:projectIds.length,records:counts};
+ return {erasedAt:now(),client:{id:client.id,name:client.name},projects:projectIds.length,records:counts,accounts};
 }
