@@ -44,6 +44,14 @@ function uploadAsset(db,studioId,body){
  return assetDTO(row);
 }
 
+// The primary logo in the brand kit is the logo clients see on the portal, forms and booking pages.
+// It is a full address because forms can be embedded on the studio's own website.
+function syncPortalLogo(db,studioId,origin){
+ const row=db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(studioId),brand=JSON.parse(row?.data||'{}'),primary=brandKit(db,studioId).logos?.primary||'';
+ const next=primary?origin+assetUrl(primary):(String(brand.logoUrl||'').includes('/api/brand-assets/')?'':brand.logoUrl||'');
+ if(next===(brand.logoUrl||''))return;
+ db.prepare('INSERT INTO studio_branding VALUES(?,?) ON CONFLICT(studio_id) DO UPDATE SET data=excluded.data').run(studioId,JSON.stringify({...brand,logoUrl:next}));
+}
 function saveKit(db,studioId,kit){
  if(!kit||typeof kit!=='object')fail(400,'Check your brand kit.');
  const owned=new Map(db.prepare('SELECT id,kind FROM brand_assets WHERE studio_id=?').all(studioId).map(r=>[r.id,r.kind]));
@@ -72,14 +80,14 @@ export function serveBrandAsset(db,res,assetId){
  res.end(Buffer.from(row.content));return true;
 }
 
-export function handleBrandKit({db,req,route,body,studio,owner,reply}){
+export function handleBrandKit({db,req,route,body,studio,owner,reply,origin=''}){
  if(route!=='/api/brand-kit')return false;
  installBrandKit(db);
  if(req.method==='GET')return reply(200,brandKitView(db,studio.id)),true;
  if(req.method!=='POST')fail(405,'Method not allowed.');
  if(!owner)fail(403,'Only the studio owner can change the brand kit.');
  if(body.action==='upload'){const asset=uploadAsset(db,studio.id,body);return reply(201,{...brandKitView(db,studio.id),asset}),true;}
- if(body.action==='save'){saveKit(db,studio.id,body.kit);return reply(200,brandKitView(db,studio.id)),true;}
- if(body.action==='remove'){removeAsset(db,studio.id,String(body.assetId||''));return reply(200,brandKitView(db,studio.id)),true;}
+ if(body.action==='save'){saveKit(db,studio.id,body.kit);syncPortalLogo(db,studio.id,origin);return reply(200,brandKitView(db,studio.id)),true;}
+ if(body.action==='remove'){removeAsset(db,studio.id,String(body.assetId||''));syncPortalLogo(db,studio.id,origin);return reply(200,brandKitView(db,studio.id)),true;}
  fail(400,'Unknown brand kit action.');
 }

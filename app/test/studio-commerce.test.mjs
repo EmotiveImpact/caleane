@@ -226,6 +226,11 @@ test('brand kit accepts real logos and fonts only, serves them inertly and feeds
  r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{logos:{primary:font.id}}},'owner');assert.equal(r.status,400);
  r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{logos:{primary:logo.id},colours:{primary:'#5a2d4c',secondary:'#f3e9ee'},fonts:{heading:{type:'upload',assetId:font.id,family:'Brand Serif'},body:{type:'preset',preset:'dm-sans'}}}},'owner');assert.equal(r.status,200);
  assert.equal(r.data.kit.logos.primary,logo.id);assert.equal(r.data.kit.fonts.heading.family,'Brand Serif');
+ // The primary logo becomes the studio logo clients see, as a full address for embedded forms.
+ let me=await call('/api/me','GET',undefined,'owner');assert.match(me.data.studios[0].branding.logoUrl,new RegExp(logo.url+'$'));assert.match(me.data.studios[0].branding.logoUrl,/^http/);
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{...r.data.kit,logos:{primary:''}}},'owner');assert.equal(r.status,200);
+ me=await call('/api/me','GET',undefined,'owner');assert.equal(me.data.studios[0].branding.logoUrl,'');
+ r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{...r.data.kit,logos:{primary:logo.id}}},'owner');assert.equal(r.status,200);
  const base=`http://127.0.0.1:${ws.server.address().port}`,file=await fetch(base+logo.url);assert.equal(file.status,200);assert.equal(file.headers.get('content-type'),'image/png');assert.match(file.headers.get('content-security-policy'),/sandbox/);assert.equal(file.headers.get('x-content-type-options'),'nosniff');
  r=await call(`/api/projects/${project.id}/invoices${suffix}`,'GET',undefined,'client');assert.equal(r.data.brandKit.colours.primary,'#5a2d4c');assert.equal(r.data.brandKit.logos.primary,logo.id);
  const {invoicePageHtml}=await import('../src/lib/invoice-design.js');
