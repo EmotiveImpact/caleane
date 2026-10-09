@@ -51,6 +51,7 @@ export function whyFor(o,signal,issue){
   else if(f.kind==='unopened')parts.push('They have not opened the proposal yet. Check the invitation reached them.');
   else if(f.kind==='fit')parts.push('The date is free and the budget and area fit.');
  }
+ if(!parts.length&&['Planning','Design','Complete'].includes(o.projectStatus))parts.push(`The project is already in ${o.projectStatus.toLowerCase()}. It counts as booked once the date or deposit is confirmed.`);
  if(issue?.kind==='review')parts.unshift('New enquiry. Review their request and reply.');
  else if(issue&&!parts.length)parts.push(issue.label+'.');
  if(!parts.length)parts.push(o.projectId&&!s.estimate&&['Qualified','Proposal'].includes(o.stage)?'Ready for a quote.':'Set a next step to keep this enquiry moving.');
