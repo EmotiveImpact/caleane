@@ -175,7 +175,7 @@ test('follow-ups can be sent early or paused, full dates offer alternatives and 
  const signal={opportunityId:'o1',projectId:'p1',eventDate:'2027-06-12',venue:'Bath',portalClient:true,followUpsSent:0,nextFollowUp:'2026-10-04',alternatives:['2027-06-05','2027-06-19'],
   estimate:{id:'e1',version:1,status:'Awaiting review',total:100000,currency:'GBP',items:1},proposal:{id:'q1',version:1,title:'Wedding flowers',status:'Awaiting response',expiresOn:'2026-10-20',sharedAt:'2026-10-01T10:00:00Z'},
   hold:{id:'h1',status:'Held',startDate:'2027-06-12',holdUntil:'2026-10-20'},fit:[],flags:[{kind:'clash',tone:'bad',label:'Date full',rank:1}]};
- const pipeline={settings:{dailyCapacity:1,followUps:true,followUpDays:[3,7,12],followUpMessages:['Hi','Hi','Hi']},dates:[],insights:null,signals:{o1:signal},planTemplate:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}],project:{id:'p1',estimates:[estimate],proposals:[{id:'q1',title:'Wedding flowers',scope:'Bouquets'}]}};
+ const pipeline={settings:{dailyCapacity:1,followUps:true,followUpDays:[3,7,12],followUpMessages:['Hi','Hi','Hi']},dates:[],insights:null,signals:{o1:signal},planTemplate:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}],project:{id:'p1',estimates:[estimate],proposals:[{id:'q1',version:1,title:'Wedding flowers',scope:'Bouquets',status:'Awaiting response',expiresOn:'2026-10-20',estimate}]}};
  const input=user(),{writes}=fixture({pipeline});
  await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));
  const deal=await screen.findByRole('region',{name:'Quote and booking'});
@@ -194,7 +194,9 @@ test('follow-ups can be sent early or paused, full dates offer alternatives and 
  assert.ok(await screen.findByText('Deposit £300.00, to confirm the date'));
  await input.click(screen.getByRole('button',{name:'See it as the client'}));
  const preview=await screen.findByRole('dialog',{name:'Wedding flowers'});
- assert.match(preview.textContent,/£300.00 deposit/);assert.match(preview.textContent,/Balance £700.00 14 days before the event/);
+ assert.match(preview.textContent,/Accept scope/);assert.match(preview.textContent,/Request changes/);
+ assert.match(preview.textContent,/send the £300.00 deposit invoice from Billing/,'the deposit is shown as the studio’s next step, not a client button');
+ assert.doesNotMatch(preview.textContent,/Accept proposal/);
 });
 
 test('Today, All enquiries and Board show who opened the latest proposal, in place of the Opened chip',async()=>{
