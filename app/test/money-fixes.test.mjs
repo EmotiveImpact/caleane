@@ -4,6 +4,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {createWorkspace} from '../server.mjs';
+import {getProjectOperations} from '../studio-operations.mjs';
 
 const origin='http://127.0.0.1:4320';
 const today=()=>new Date().toISOString().slice(0,10);
@@ -64,4 +65,16 @@ test('a quick invoice bills its own lines without an estimate and leaves the est
  assert.equal(response.status,201);assert.equal(response.data.invoice.amountMinor,120000);
  response=await call(`${invoices}/${extra.id}/pdf${q}`);
  assert.equal(response.status,200);assert.equal(response.data.subarray(0,5).toString(),'%PDF-');
+});
+
+test('Delivery sees a paid deposit on a project that has no estimate',async t=>{
+ const {ws,call,studio,q,project,issue,invoices}=await workspace(t);
+ const owner=ws.db.prepare("SELECT id FROM users WHERE email='studio@example.test'").get().id;
+ const deposit=()=>getProjectOperations(ws.db,{studioId:studio,projectId:project.id,userId:owner}).booking.deposit;
+ assert.equal((project.estimates||[]).length,0);
+ assert.equal(deposit().status,'No deposit invoice');
+ const invoice=(await call(invoices+q,'POST',{...issue,quick:true,kind:'Deposit',label:'Booking deposit',currency:'GBP',taxRate:0,items:[{title:'Deposit to hold the date',quantity:1,unitAmount:50000}]})).data.invoice;
+ assert.equal(deposit().status,'Unpaid');
+ await call(`${invoices}/${invoice.id}/payments${q}`,'POST',{amountMinor:50000,method:'bank_transfer',reference:'DEP',receivedAt:today()});
+ assert.deepEqual([deposit().status,deposit().invoiceId,deposit().paidMinor],['Paid',invoice.id,50000]);
 });
