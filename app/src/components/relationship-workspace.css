@@ -88,3 +88,4 @@
  .ws-inbox.conversation-open>.ws-heading{display:none}
  .ws-inbox.conversation-open .project-chat .project-talk-composer footer{margin-top:4px}
 }
+.studio-client-preview .studio-client-company{margin:-6px 0 12px;font-size:14px;color:var(--studio-muted)}
