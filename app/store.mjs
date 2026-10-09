@@ -232,6 +232,9 @@ export function markConversationSeen(db,c,user,lastMessageId){
  transaction(db,()=>{
   db.prepare('INSERT INTO conversation_reads VALUES(?,?,?) ON CONFLICT(user_id,conversation_id) DO UPDATE SET message_seq=MAX(message_seq,excluded.message_seq)').run(user.id,c.id,last.seq);
   if(c.project_id)db.prepare('INSERT INTO project_reads VALUES(?,?,?) ON CONFLICT(user_id,project_id) DO UPDATE SET seen=MAX(seen,excluded.seen)').run(user.id,c.project_id,last.created_at);
+  // Reading the conversation also clears the bell's matching message notifications.
+  if(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='notification_events'").get())db.prepare(`UPDATE notification_events SET read_at=? WHERE user_id=? AND kind='message' AND conversation_id=? AND read_at IS NULL
+   AND source_key IN (SELECT 'message:'||id FROM conversation_messages WHERE conversation_id=? AND seq<=?)`).run(now(),user.id,c.id,c.id,last.seq);
  });return true;
 }
 
