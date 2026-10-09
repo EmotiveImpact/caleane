@@ -124,7 +124,7 @@ function SiteHeader({ snapshot }) {
     }
     if (Object.hasOwn(node.props, 'data-site-menu')) {
       const { 'aria-expanded': expanded, ...props } = node.props;
-      return <Popover.Trigger asChild key={key}>{element({ ...node, props }, { ref: trigger, 'aria-controls': 'site-navigation' }, open ? 'Close' : 'Menu')}</Popover.Trigger>;
+      return <Popover.Trigger asChild key={key}>{element({ ...node, props }, { ref: trigger, 'aria-controls': 'site-navigation', 'aria-label': open ? 'Close menu' : 'Open menu' }, <span className="cal-burger" aria-hidden="true"><i /><i /><i /></span>)}</Popover.Trigger>;
     }
   }
   return <Popover.Root open={mobile && open} onOpenChange={setOpen} modal>
