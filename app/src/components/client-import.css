@@ -1,0 +1,58 @@
+/* Import clients from a CSV. Boxed like the rest of the workspace: white, 1px studio rule, 8px radius. */
+.ws-dialog.client-import{width:min(760px,calc(100vw - 32px));max-height:90dvh}
+.client-import h3{margin:0 0 12px;font-size:15px;font-weight:560;color:var(--studio-ink)}
+.client-import small{display:block;color:var(--studio-muted);font-size:12px;line-height:1.45}
+.client-import-drop{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px 20px;border:1px dashed var(--studio-rule);border-radius:8px;background:var(--studio-surface);color:var(--studio-ink);text-align:center}
+.client-import-drop.is-dragging{border-color:var(--studio-accent);border-style:solid}
+.client-import-drop>svg{color:var(--studio-muted)}
+.client-import-drop>strong{font-size:15px;font-weight:560}
+.client-import-drop>span{color:var(--studio-muted);font-size:12px}
+.client-import-help{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 0;padding:0;list-style:none}
+.client-import-help>li{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border:1px solid var(--studio-rule);border-radius:8px;font-size:13px;line-height:1.45}
+.client-import-help>li>span{color:var(--studio-muted);font-size:12px}
+.client-import-note{margin:16px 0 10px;color:var(--studio-muted);font-size:13px;line-height:1.55}
+.client-import-template{display:inline-flex;align-items:center;gap:6px;color:var(--studio-ink);font-size:13px;font-weight:550;text-underline-offset:3px}
+.client-import-error{margin:12px 0 0;color:var(--studio-danger,#b42318);font-size:13px;line-height:1.5}
+.client-import-match{display:flex;flex-direction:column;gap:24px}
+.client-import-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.client-import-field{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--studio-rule);border-radius:8px;background:var(--studio-paper);min-width:0}
+.client-import-field strong{font-size:13px;font-weight:560}
+.client-import-field em{font-style:normal;color:var(--studio-muted);font-weight:400;font-size:12px}
+.client-import-field .ws-select{width:100%}
+.client-import .client-import-sample{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.client-import-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.client-import-setting{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--studio-rule);border-radius:8px}
+.client-import-setting>span{font-size:13px;font-weight:560;color:var(--studio-ink)}
+.client-import-setting .ws-select,.client-import-setting>input{width:100%;box-sizing:border-box}
+.client-import-setting>input{min-height:var(--ws-control-height,38px);padding:9px 12px;border:1px solid var(--studio-rule);border-radius:var(--ws-radius,5px);background:var(--studio-paper);color:var(--studio-ink);font:inherit;font-size:13px}
+.client-import-counts{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 10px;font-size:13px}
+.client-import-counts>span{color:var(--studio-muted)}
+.client-import-rows{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.client-import-rows>li{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--studio-rule);border-radius:8px;font-size:13px}
+.client-import-rows>li>span:nth-child(2){min-width:0}
+.client-import-rows strong,.client-import-rows small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.client-import-rows .client-import-row-note{white-space:normal;color:var(--studio-warning,#93611b)}
+.client-import-row-number{color:var(--studio-muted);font-size:12px}
+.client-import-row-state{font-size:12px;color:var(--studio-success,#2f6f4e);text-align:right}
+.client-import-rows>li.is-skipped .client-import-row-state{color:var(--studio-muted)}
+.client-import-rows>li.is-skipped strong{color:var(--studio-muted)}
+.client-import-more{margin:8px 0 0;color:var(--studio-muted);font-size:12px}
+.client-import-skipped{margin-top:12px;padding:10px 14px;border:1px solid var(--studio-rule);border-radius:8px;font-size:13px}
+.client-import-skipped>summary{cursor:pointer;font-weight:550}
+.client-import-skipped>ul{display:flex;flex-direction:column;gap:6px;margin:10px 0 0;padding:0;list-style:none;max-height:220px;overflow:auto}
+.client-import-skipped li{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:12px;color:var(--studio-ink)}
+.client-import-skipped li>span:first-child,.client-import-skipped li>span:last-child{color:var(--studio-muted)}
+.client-import-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.client-import-done{display:flex;flex-direction:column;gap:16px}
+.client-import-summary{display:flex;align-items:flex-start;gap:10px;margin:0;padding:14px 16px;border:1px solid var(--studio-rule);border-radius:8px;font-size:14px;line-height:1.5}
+.client-import-summary>svg{flex:none;color:var(--studio-success,#2f6f4e)}
+@media(max-width:640px){
+ .ws-dialog.client-import{padding:20px 16px}
+ .client-import-help,.client-import-fields,.client-import-settings{grid-template-columns:minmax(0,1fr)}
+ .client-import-rows>li{grid-template-columns:minmax(0,1fr);gap:4px}
+ .client-import-row-number{display:none}
+ .client-import-row-state{text-align:left}
+ .client-import-skipped li{grid-template-columns:52px minmax(0,1fr)}
+ .client-import-skipped li>span:last-child{grid-column:2}
+ .client-import-actions>.ws-button{flex:1 1 auto}
+}
