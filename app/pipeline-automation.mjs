@@ -5,6 +5,8 @@ import {getProjectOperations,changeProjectOperations} from './studio-operations.
 import {createPlan,getPlan,installPaymentPlans,linkIssuedDeposits} from './payment-plans.mjs';
 import {firstOpenedAt,documentOpens} from './document-opens.mjs';
 import {hasJoinedClient,joinStatus} from './relationships.mjs';
+import {clientProjectTitle} from './src/lib/message-templates.js';
+import {lostReasonGroup} from './src/lib/pipeline.mjs';
 
 // The pipeline reads what already happened on the linked project (quotes,
 // proposals, date holds, deposits, client replies) and keeps each enquiry in
@@ -139,7 +141,7 @@ function fill(template,values){return template.replace(/\{(\w+)\}/g,(match,key)=
 
 function nextFollowUpIndex(db,studioId,proposal,settings){return settings.followUpDays.findIndex((d,i)=>!fired(db,studioId,`follow:${proposal.id}:${i}`));}
 function sendFollowUp(db,{studioId,opp,p,proposal,owner,studio,settings,index,outbox,reason}){
- const text=fill(settings.followUpMessages[index]||defaultFollowUpMessages[index],{client_first_name:(p.brief?.name||'there').split(' ')[0],client_name:p.brief?.name||'',project_title:p.title,proposal_title:proposal.title,expires_on:longDate(proposal.expiresOn),project_date:p.brief?.date?longDate(p.brief.date):'',studio_name:studio?.name||''});
+ const text=fill(settings.followUpMessages[index]||defaultFollowUpMessages[index],{client_first_name:(p.brief?.name||'there').split(' ')[0],client_name:p.brief?.name||'',project_title:clientProjectTitle(p.title,p.brief?.name),proposal_title:proposal.title,expires_on:longDate(proposal.expiresOn),project_date:p.brief?.date?longDate(p.brief.date):'',studio_name:studio?.name||''});
  let messageId=null;
  transaction(db,()=>{
   messageId=appendConversationMessage(db,materializeProjectConversation(db,p),owner,'owner',text);
@@ -419,7 +421,7 @@ function insights(db,studioId,opps,projects,asOf){
  }
  const stageDays=['Discovery','Qualified','Proposal','Negotiation'].map(stage=>{const row=spent.get(stage);return {stage,days:row?Math.round(row.total/row.count*10)/10:null,count:row?.count||0};});
  const decided=closed.map(o=>(Date.parse(o.updated_at)-Date.parse(o.created_at))/DAY);
- const lost=new Map();for(const o of closed.filter(o=>o.stage==='Lost')){const key=(o.lost_reason||'No reason recorded').trim();lost.set(key,(lost.get(key)||0)+1);}
+ const lost=new Map();for(const o of closed.filter(o=>o.stage==='Lost')){const key=lostReasonGroup(o.lost_reason);lost.set(key,(lost.get(key)||0)+1);}
  const won=closed.filter(o=>o.stage==='Won').length;
  return {currency,winRate,byMonth,stageDays,lostReasons:[...lost.entries()].map(([reason,count])=>({reason,count})).sort((a,b)=>b.count-a.count).slice(0,8),
   overall:{won,lost:closed.length-won,rate:closed.length?Math.round(won/closed.length*100):null,decisionDays:decided.length?Math.round(decided.reduce((a,b)=>a+b,0)/decided.length):null}};

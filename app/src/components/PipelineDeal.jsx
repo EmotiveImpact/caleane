@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {CalendarDays,Eye,FileText,MessageSquare,Pause,Play,Plus,Receipt,Send,Trash2,X} from 'lucide-react';
 import {NotJoinedNotice} from './NotJoinedNotice';
+import {clientProjectTitle} from '../lib/message-templates';
 
 // The enquiry's quote, proposal, date hold, deposit and follow-ups, read from the
 // linked project and driven from the enquiry so the owner never has to leave it.
@@ -179,7 +180,7 @@ export function DealFollowUps({detail,signal,settings,onOpenAutomations,studio,r
  if(!settings?.followUps)return <div className="pl-follow"><div className="pl-callout is-info"><span>Automatic follow-ups are off. When they are on, Caleane posts each message in {first}’s project space and stops as soon as they reply or accept.</span><div className="pl-acts"><button type="button" className="pl-btn is-small" onClick={onOpenAutomations}>Set up follow-ups</button></div></div></div>;
  if(!proposal||proposal.status!=='Awaiting response')return <div className="pl-follow"><div className="pl-callout is-info"><span>Posts in {first}’s project space as you, and stops as soon as they reply or accept.</span></div><p className="pl-muted">{proposal?.status==='Scope accepted'?'The proposal is accepted, so follow-ups have stopped.':'Follow-ups start when you send the proposal.'}</p></div>;
  const replied=s.lastClientMessageAt&&s.lastClientMessageAt>proposal.sharedAt,sent=s.followUpsSent||0,days=settings.followUpDays||[],paused=!!s.followUpsPaused,canSend=!replied&&s.portalClient&&sent<days.length;
- const steps=[{when:'Day 0',title:'Proposal sent',state:'sent',note:day(proposal.sharedAt)},...days.map((d,i)=>({when:'Day '+d,title:firstLine(settings.followUpMessages?.[i],{client_first_name:first,client_name:detail.clientName,project_title:detail.title,proposal_title:proposal.title,expires_on:day(proposal.expiresOn),studio_name:studio?.name||''})||'Follow-up '+(i+1),state:i<sent?'sent':!replied&&i===sent?'next':'',note:i<sent?'sent':!replied&&i===sent?(paused?'paused':s.nextFollowUp?'sends automatically on '+day(s.nextFollowUp):'next'):''}))];
+ const steps=[{when:'Day 0',title:'Proposal sent',state:'sent',note:day(proposal.sharedAt)},...days.map((d,i)=>({when:'Day '+d,title:firstLine(settings.followUpMessages?.[i],{client_first_name:first,client_name:detail.clientName,project_title:clientProjectTitle(detail.title,detail.clientName),proposal_title:proposal.title,expires_on:day(proposal.expiresOn),studio_name:studio?.name||''})||'Follow-up '+(i+1),state:i<sent?'sent':!replied&&i===sent?'next':'',note:i<sent?'sent':!replied&&i===sent?(paused?'paused':s.nextFollowUp?'sends automatically on '+day(s.nextFollowUp):'next'):''}))];
  return <div className="pl-follow"><div className="pl-callout is-info"><span>{replied?`${first} has replied since the proposal was shared, so follow-ups have stopped.`:paused?'Follow-ups are paused for this proposal. Nothing more is sent until you resume them.':`Posts in ${first}’s project space as you. Stops as soon as they reply or accept.`}</span></div>
   {deal.error&&<p className="crm-alert" role="alert">{deal.error}</p>}
   {!s.portalClient&&<><p className="pl-muted">Follow-ups wait until {first} has joined, so nothing is posted that they cannot see.</p><NotJoinedNotice waiting={s.waitingToJoin} studio={studio} request={request} projectId={detail.projectId} clientId={detail.clientId} what="the proposal or follow-ups"/></>}
@@ -200,18 +201,24 @@ function OfferDatesDialog({detail,signal,studio,request,act,busy,error,onClose,o
  </Modal>;
 }
 
-// What the client sees: the proposal, the lines, the total and what they pay to confirm.
+// What the client sees today: the shared proposal (or the estimate before one), with the
+// same lines and the same two buttons their project space shows. Nothing here is a mock-up:
+// the deposit is a separate invoice the studio sends from Billing after the scope is accepted.
 function ClientPreview({detail,signal,studio,project,estimate,planTemplate,onClose,onOpen}){
- const proposal=project?.proposals?.at(-1),split=planSplit(planTemplate,estimate.total),hold=signal.hold;
+ const latest=project?.proposals?.at(-1),proposal=latest&&['Awaiting response','Scope accepted'].includes(latest.status)?latest:null;
+ const shown=proposal?.estimate||estimate,first=(detail.clientName||'Your client').split(' ')[0],hold=signal.hold,deposit=planSplit(planTemplate,shown.total)[0];
+ const actions=proposal?['Accept scope','Request changes']:['Confirm budget direction','Discuss changes'];
+ const decided=proposal?proposal.status==='Scope accepted':estimate.status!=='Awaiting review';
+ const tax=Number(shown.taxRate)>0?` Includes ${shown.taxRate}% tax.`:'';
  return <Dialog.Root open onOpenChange={v=>{if(!v)onClose();}}><Dialog.Portal><Dialog.Overlay className="modal-backdrop"/><Dialog.Content className="pl-client" aria-describedby={undefined}>
   <Dialog.Close asChild><button type="button" className="pl-close pl-client-close" aria-label="Close client preview"><X size={18}/></button></Dialog.Close>
-  <span className="pl-client-studio">{studio.name} · {proposal?'Proposal':'Quote'}</span>
-  <Dialog.Title>{proposal?.title||detail.title}</Dialog.Title>
-  <p className="pl-muted">{[signal.eventDate&&longDay(signal.eventDate),signal.venue].filter(Boolean).join(' at ')}{hold?.status==='Held'?`. Your date is held for you until ${new Date(hold.holdUntil+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long'})}.`:'.'}</p>
+  <span className="pl-client-studio">{studio.name} · {proposal?'Proposal · version '+proposal.version:'Estimate'}</span>
+  <Dialog.Title>{proposal?.title||shown.title}</Dialog.Title>
+  <p className="pl-muted">{[[signal.eventDate&&longDay(signal.eventDate),signal.venue].filter(Boolean).join(' at '),proposal&&`Reply by ${longDay(proposal.expiresOn)}`].filter(Boolean).map(x=>x+'. ').join('')}{hold?.status==='Held'?`Their Delivery page shows the date held until ${longDay(hold.holdUntil)}.`:''}</p>
   {proposal?.scope&&<p className="pl-client-scope">{proposal.scope}</p>}
-  <div className="pl-client-lines">{estimate.items.map((i,n)=><div key={n}><span>{i.quantity} × {i.title}</span><span>{money(i.quantity*i.unitAmount,estimate.currency)}</span></div>)}<div><strong>Total</strong><strong>{money(estimate.total,estimate.currency)}</strong></div></div>
-  <div className="pl-client-deposit"><div><strong>{money(split[0].amount,estimate.currency)} {split[0].label.toLowerCase()}</strong><small>{split.length>1?`Confirms your date. ${split.slice(1).map(s=>`${s.label} ${money(s.amount,estimate.currency)} ${s.when}`).join('. ')}.`:'Confirms your date.'}</small></div><span className="pl-btn is-disabled" aria-hidden="true">Accept proposal</span></div>
-  <p className="pl-muted">{detail.clientName} accepts in their project space. The deposit invoice follows from Billing.</p>
+  <div className="pl-client-lines">{shown.items.map((i,n)=><div key={n}><span>{i.quantity} × {i.title}</span>{!proposal&&<span>{money(i.quantity*i.unitAmount,shown.currency)}</span>}</div>)}<div><strong>Total</strong><strong>{money(shown.total,shown.currency)}</strong></div></div>
+  {decided?<div className="pl-callout is-good"><span>{proposal?`${first} accepted the scope.`:`${first} has answered this estimate.`}</span></div>:<div className="pl-client-deposit"><div><strong>What {first} can do</strong><small>{proposal?'They tick that they have reviewed the scope, then accept it or ask for changes with a note.':'They confirm the budget direction or ask to discuss changes.'}{tax}</small></div><span className="pl-client-choices" aria-hidden="true">{actions.map((label,n)=><span key={label} className={'pl-btn is-disabled'+(n?' is-ghost':'')}>{label}</span>)}</span></div>}
+  <p className="pl-muted">{proposal?`Accepting the scope does not take payment or confirm the date. After that you send the ${money(deposit.amount,shown.currency)} ${deposit.label.toLowerCase()} invoice from Billing, and the date is confirmed when it is paid.`:`${first} sees this in the Estimate tab of their project space. Send a proposal when you want them to accept a scope.`}</p>
   <div className="pl-acts"><button type="button" className="pl-btn is-ghost" onClick={onOpen}><FileText size={13}/>Open in the project</button></div>
  </Dialog.Content></Dialog.Portal></Dialog.Root>;
 }
