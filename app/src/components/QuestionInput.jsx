@@ -1,5 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {FileText,Image as ImageIcon,ImagePlus,X} from 'lucide-react';
+import {readReply} from '../lib/read-reply.js';
 export function intakeFormValues(data,questions,prefix='intake__'){return Object.fromEntries(questions.map(q=>[q.id,['multi','file'].includes(q.type)?data.getAll(prefix+q.id):String(data.get(prefix+q.id)||'')]));}
 // File answers are {id,name} while a visitor fills the form in and plain names once saved.
 export function answerText(value){return Array.isArray(value)?value.map(item=>item?.name??item).join(', '):value||'';}
@@ -46,7 +47,7 @@ export function FileAnswer({question:q,value,onChange,disabled=false,name='intak
   const wrong=chosen.find(file=>file.type&&!ACCEPT.includes(file.type));if(wrong){setError(`“${wrong.name}” is not an image or a PDF.`);return;}
   const tooBig=chosen.find(file=>file.size>MAX_BYTES);if(tooBig){setError(`“${tooBig.name}” is larger than 5 MB.`);return;}
   setBusy(chosen.length);let next=files;
-  try{for(const file of chosen){const r=await fetch(uploadUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:file.name,content:await readBase64(file)})}),d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'That file could not be uploaded.');
+  try{for(const file of chosen){const r=await fetch(uploadUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:file.name,content:await readBase64(file)})}),d=await readReply(r);if(!r.ok)throw new Error(d.error||'That file could not be uploaded.');
    const preview=previewOf(file);setLocal(prev=>({...prev,[d.upload.id]:{size:file.size,preview}}));
    next=[...next,{id:d.upload.id,name:d.upload.name}];onChange?.(next);setBusy(n=>Math.max(0,n-1));}}
   catch(e){setError(e.message);}finally{setBusy(0);}
