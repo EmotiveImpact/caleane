@@ -1,6 +1,6 @@
 # Caleane
 
-A separate app for creative studios and their clients. NAY DÉCOR is its first connected website. The product display name is **Caleane**. Existing folder names, asset paths and environment variables retain the earlier Calenne spelling for compatibility.
+A separate app for creative studios and their clients. NAY DÉCOR is its first connected website. The product display name is **Caleane**. Settings use the Caleane spelling (`CALEANE_NOTIFICATION_KEY`, `CALEANE_STRIPE_COLLECTION_ENABLED`). A server still set up with the earlier `CALENNE_` names keeps working, because the app reads those as a fallback.
 
 The marketing domain is https://caleane.com. Its login links to the hosted Studio/Client demo at https://app.caleane.com/login. The demo uses fictional seed data and visitor-owned browser snapshots; it does not contain the local database or offer real customer accounts. Keep existing studio website integrations on their current origins until the production backend migration and connection tests are complete. See [deployment status](../docs/PRODUCTION-DEPLOYMENT.md).
 
