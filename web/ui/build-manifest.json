@@ -1770,7 +1770,7 @@
       "format": "cjs"
     },
     "ui/markup.jsx": {
-      "bytes": 2503,
+      "bytes": 2521,
       "imports": [
         {
           "path": "node_modules/react/index.js",
@@ -2073,10 +2073,10 @@
           "bytesInOutput": 288
         },
         "ui/markup.jsx": {
-          "bytesInOutput": 1457
+          "bytesInOutput": 1473
         }
       },
-      "bytes": 331063
+      "bytes": 331079
     }
   }
 }

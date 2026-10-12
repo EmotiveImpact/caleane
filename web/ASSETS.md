@@ -26,3 +26,7 @@ The industry originals were generated as PNG and converted with `cwebp -q 82`; t
 ## Source PNGs and compression
 
 Full-size PNG masters live in `frontpage-design/source-images/`, outside `web/`, so they are not deployed with the site. Pages only load the WebP and JPEG files in `web/assets/`. Those files were re-encoded on 2026-10-09 (WebP method 6, quality picked per image so it matches the previous file to SSIM 0.99, or the PNG master where one exists). `campaign-set.webp`, `interiors-studio.webp` and `candlelit-table.webp` were scaled down to the largest size any page draws them at, including 3x phone screens. When adding a new image, export WebP from the master and keep the master here, not in `web/assets/`.
+
+## Platform page phone captures
+
+`platform-app-*-phone.webp` are 390 × 760 captures (2x) of the local app demo (`npm run dev` in `app/`, Studio view and Client view), shown in place of the desktop screens on phones via `<picture>` in `platform.html`. Masters are in `frontpage-design/source-images/`; WebP quality 82, method 6.

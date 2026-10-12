@@ -237,3 +237,18 @@
 .cal-page .brief-sheet>span,.cal-page .brief-sheet dt,.cal-page .decision-record p{color:var(--site-ink-muted)}
 .cal-page .chapter,.cal-page .outcome,.cal-page .story-review{background:var(--site-surface)}
 .cal-page .story-feedback{border-left:0}
+
+/* Learn: the guides each card opens */
+.cal-page .help-guides{display:grid;gap:22px;padding-bottom:85px}
+.cal-page .help-guide{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:48px;background:var(--site-surface);border-radius:5px;padding:40px;scroll-margin-top:110px}
+.cal-page .help-guide h2{font-size:clamp(26px,2.6vw,34px);font-weight:400;letter-spacing:-.02em}
+.cal-page .help-guide-head>p{font-size:15px;line-height:1.7;color:var(--site-muted);margin-top:16px;max-width:420px}
+.cal-page .help-guide-links{display:flex;flex-wrap:wrap;gap:0 24px}
+.cal-page .help-guide ol{list-style:none;counter-reset:step;display:grid;gap:18px;margin:0;padding:0}
+.cal-page .help-guide li{counter-increment:step;display:grid;grid-template-columns:34px 1fr;font-size:15px;line-height:1.7;color:var(--site-muted)}
+.cal-page .help-guide li::before{content:counter(step,decimal-leading-zero);font-size:12px;line-height:2.1;color:var(--site-paper)}
+.cal-page .help-guide li strong{font-weight:500;color:var(--site-paper)}
+@media(max-width:760px){
+  .cal-page .help-guide{grid-template-columns:1fr;gap:28px;padding:28px 22px}
+  .cal-page .help-guide li{grid-template-columns:30px 1fr;font-size:14px}
+}
