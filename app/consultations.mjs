@@ -4,6 +4,7 @@ import {ensurePrimaryContact} from './relationships.mjs';
 import {readSetting,writeSetting} from './studio-commerce.mjs';
 import {recordConsultation} from './notification-feed.mjs';
 import {DEFAULT_WORKFLOW,isWorkflowId} from './src/lib/workflows.js';
+import {CURRENCIES} from './src/lib/currencies.js';
 
 // Self-service consultation booking. The studio publishes weekly availability;
 // a prospective client picks a free slot from a public page. Each booking is
@@ -18,7 +19,7 @@ export const defaultBookingSettings={enabled:false,title:'Discovery call',descri
  weekly:{1:[{start:'10:00',end:'17:00'}],2:[{start:'10:00',end:'17:00'}],3:[{start:'10:00',end:'17:00'}],4:[{start:'10:00',end:'17:00'}],5:[{start:'10:00',end:'15:00'}]},
  // Card payment at booking. Off by default, and only used while Stripe card payments are available.
  payment:{required:false,amountMinor:5000,currency:'GBP',label:'Booking fee'}};
-export const bookingCurrencies=['GBP','EUR','USD'];
+export const bookingCurrencies=CURRENCIES;
 // A paid booking holds its time while the client is on Stripe. The Checkout page closes first
 // (31 minutes, Stripe's minimum is 30), so a payment can never land after the hold has lapsed.
 export const PAYMENT_HOLD_MS=34*60000;

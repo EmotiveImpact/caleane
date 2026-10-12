@@ -57,3 +57,32 @@ test('password checks fail closed for missing accounts while still hashing',()=>
  assert.equal(passwordOK('a long enough password',undefined),false);
  assert.equal(passwordOK('a long enough password',''),false);
 });
+
+test('older databases limited to GBP, EUR and USD are widened once, keeping invoices, payments, costs and receipts',async()=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'caleane-currency-widen-')),file=path.join(dir,'test.sqlite');let ws;
+ const counts=db=>Object.fromEntries(['invoices','invoice_payments','expenses','expense_receipts'].map(table=>[table,db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n]));
+ try{
+  ws=await createWorkspace({dbFile:file,demo:true,showcase:true,reminderIntervalMs:0});
+  const expense=ws.db.prepare('SELECT id,studio_id FROM expenses LIMIT 1').get();
+  ws.db.prepare('INSERT INTO expense_receipts VALUES(?,?,?,?,?,?)').run(expense.id,expense.studio_id,'receipt.pdf','application/pdf',Buffer.from('%PDF-'),new Date().toISOString());
+  const before=counts(ws.db);assert.ok(before.invoices>0&&before.invoice_payments>0&&before.expenses>0);
+  ws.db.close();
+  // Put the tables back to how older releases created them.
+  const old=new DatabaseSync(file);old.exec('PRAGMA foreign_keys=OFF');
+  for(const table of ['invoices','expenses']){
+   const sql=old.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").get(table).sql,indexes=old.prepare("SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name=? AND sql IS NOT NULL").all(table).map(row=>row.sql);
+   old.exec(sql.replace('CHECK(length(currency)=3)',"CHECK(currency IN ('GBP','EUR','USD'))").replace(`CREATE TABLE ${table}`,`CREATE TABLE ${table}_old`));
+   old.exec(`INSERT INTO ${table}_old SELECT * FROM ${table};DROP TABLE ${table};ALTER TABLE ${table}_old RENAME TO ${table};`);for(const index of indexes)old.exec(index);
+  }
+  assert.match(old.prepare("SELECT sql FROM sqlite_master WHERE name='invoices'").get().sql,/'GBP','EUR','USD'/);old.close();
+  ws=await createWorkspace({dbFile:file,demo:true,showcase:true,reminderIntervalMs:0});
+  for(const table of ['invoices','expenses'])assert.match(ws.db.prepare("SELECT sql FROM sqlite_master WHERE name=?").get(table).sql,/CHECK\(length\(currency\)=3\)/);
+  assert.deepEqual(counts(ws.db),before,'every row survives the rebuild, including receipts that cascade from costs');
+  assert.deepEqual(ws.db.prepare('PRAGMA foreign_key_check').all(),[]);
+  assert.equal(ws.db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name IN ('invoices_tenant_key','invoices_studio_issued','invoices_project','expenses_studio_date','expenses_project')").get().n,5);
+  assert.equal(ws.db.prepare('PRAGMA foreign_keys').get().foreign_keys,1);
+  const invoice=ws.db.prepare('SELECT * FROM invoices LIMIT 1').get();
+  ws.db.prepare('UPDATE invoices SET currency=? WHERE id=?').run('CHF',invoice.id);
+  assert.equal(ws.db.prepare('SELECT currency FROM invoices WHERE id=?').get(invoice.id).currency,'CHF');
+ }finally{ws?.db.close();await rm(dir,{recursive:true,force:true});}
+});

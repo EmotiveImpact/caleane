@@ -47,6 +47,9 @@ export function XeroSettings({studio,request}){
     <WorkspaceField label="Send invoices as"><WorkspaceSelect label="Send invoices as" value={form.invoiceStatus} onValueChange={invoiceStatus=>set({invoiceStatus})} options={[{value:'AUTHORISED',label:'Approved'},{value:'DRAFT',label:'Drafts to review in Xero'}]}/></WorkspaceField>
     <WorkspaceField label="VAT rate code" value={form.taxType} maxLength={20} onChange={e=>set({taxType:e.target.value})} hint="OUTPUT2 is 20% VAT on income."/>
     <WorkspaceField label="Rate code when there is no VAT" value={form.noTaxType} maxLength={20} onChange={e=>set({noTaxType:e.target.value})} hint="NONE, or ZERORATEDOUTPUT."/>
+    <WorkspaceField label="Reduced rate code" value={form.reducedTaxType??''} maxLength={20} onChange={e=>set({reducedTaxType:e.target.value})} hint="RROUTPUT is 5% VAT, for lines at the reduced rate."/>
+    <WorkspaceField label="Zero rate code" value={form.zeroTaxType??''} maxLength={20} onChange={e=>set({zeroTaxType:e.target.value})} hint="ZERORATEDOUTPUT, for zero-rated lines."/>
+    <WorkspaceField label="Exempt code" value={form.exemptTaxType??''} maxLength={20} onChange={e=>set({exemptTaxType:e.target.value})} hint="EXEMPTOUTPUT, for lines exempt from VAT."/>
     <WorkspaceField label="Bank account code for payments" value={form.bankAccountCode} maxLength={20} onChange={e=>set({bankAccountCode:e.target.value})} hint="Leave empty to send invoices only. Payments need approved invoices."/>
     <WorkspaceField label="Send invoices issued from" type="date" value={form.sendFrom} onChange={e=>set({sendFrom:e.target.value})} hint="Empty means from the day you connected."/>
    </div>

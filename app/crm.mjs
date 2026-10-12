@@ -1,7 +1,8 @@
 import {id,now,transaction} from './store.mjs';
+import {CURRENCIES} from './src/lib/currencies.js';
 
 export const stages=['Discovery','Qualified','Proposal','Negotiation','Won','Lost'];
-const currencies=['GBP','EUR','USD'];
+const currencies=CURRENCIES;
 const activityKinds=['Call','Meeting','Email','Note'];
 const priorities=['Low','Normal','High'];
 const error=(status,message)=>{throw Object.assign(new Error(message),{status});};

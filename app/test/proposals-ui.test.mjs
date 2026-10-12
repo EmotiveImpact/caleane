@@ -78,3 +78,13 @@ test('the studio is asked for an estimate before writing a first proposal',async
  await input.click(screen.getByRole('button',{name:'Create estimate'}));
  assert.deepEqual(navigated,['Estimate']);
 });
+
+test('the proposed investment prices each line, shows tax and carries the estimate note',()=>{
+ const priced={...estimate,subtotal:450000,tax:90000,note:'Includes delivery and collection in central London.',items:[{title:'Floral design',quantity:1,unitAmount:300000},{title:'Styling team',quantity:2,unitAmount:75000,unit:'day'}]};
+ harness({p:project({estimates:[priced],proposals:[proposal({estimate:priced})]})});
+ const rows=[...document.querySelectorAll('.estimate-table>div:not(.estimate-table-head)')].map(row=>[...row.children].map(cell=>cell.textContent));
+ assert.deepEqual(rows,[['Floral design','1','£3,000.00','£3,000.00'],['Styling teamper day','2','£750.00','£1,500.00']]);
+ const totals=Object.fromEntries([...document.querySelectorAll('.estimate-totals>div')].map(d=>[d.querySelector('dt').textContent,d.querySelector('dd').textContent]));
+ assert.deepEqual(totals,{Subtotal:'£4,500.00','VAT (20%)':'£900.00',Total:'£5,400.00'});
+ assert.ok(screen.getByText('Includes delivery and collection in central London.'));
+});

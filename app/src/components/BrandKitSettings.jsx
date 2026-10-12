@@ -25,7 +25,7 @@ export function BrandKitSettings({studio,request}){
   <style>{style.fontCss}</style>{style.fontLink&&<link rel="stylesheet" href={style.fontLink}/>}
   <div className="settings-pane-layout">
    <form className="settings-pane-form" onSubmit={async e=>{e.preventDefault();if(await call({action:'save',kit}))setSaved(true);}}>
-    <header className="settings-pane-heading"><h2>Brand kit</h2><p>Upload your logos and fonts and set your colours once. Invoices use them now, and other client documents will follow.</p></header>
+    <header className="settings-pane-heading"><h2>Brand kit</h2><p>Upload your logos and fonts and set your colours once. Your invoices, estimates, proposals and contracts use them, and clients see your logo and main colour in their portal.</p></header>
     <section className="brand-kit-section" aria-labelledby="brand-logos"><h3 id="brand-logos">Logos</h3><p className="commerce-muted">PNG, JPG, WebP or SVG, up to 2 MB. A transparent background works best.</p>
      <div className="brand-logo-grid">{logoSlots.map(([slot,label,hint])=><LogoSlot key={slot} slot={slot} label={label} hint={hint} asset={assets.get(kit.logos[slot])} busy={busy} dark={slot==='light'} onChoose={file=>chooseLogo(slot,file)} onRemove={()=>call({action:'remove',assetId:kit.logos[slot]})}/>)}</div>
     </section>

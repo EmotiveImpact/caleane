@@ -12,7 +12,7 @@ async function setup(){
  const calls=[];let handler=()=>json({});const transport=async(url,options={})=>{const call={url,method:options.method||'GET',headers:options.headers||{},body:typeof options.body==='string'?JSON.parse(options.body):options.body};calls.push(call);return handler(call);};
  async function call(body,extra={}){let result;await handleXero({db,req:{method:body?'POST':'GET'},route:'/api/xero',body,studio,user,owner:true,origin:'http://localhost:4320',env,transport,reply:(status,data)=>{result={status,...data};},...extra});return result;}
  let number=0;
- const invoice=({net=100000,tax=20000,issuedAt=now()}={})=>{const invoiceId=id();number++;db.prepare(`INSERT INTO invoices(id,studio_id,project_id,number,estimate_id,estimate_version,kind,currency,amount_minor,net_minor,tax_minor,tax_rate,due_date,note,payment_instructions,snapshot,issued_at,issued_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(invoiceId,studio.id,project.id,'INV-2026-00'+number,'est',1,'Deposit','GBP',net+tax,net,tax,tax?20:0,'2026-11-01','','Bank transfer',JSON.stringify({billToName:'Amelia Taylor',billToEmail:'amelia@example.test',projectTitle:'Amelia’s wedding'}),issuedAt,user.id);return invoiceId;};
+ const invoice=({net=100000,tax=20000,issuedAt=now(),snapshot={}}={})=>{const invoiceId=id();number++;db.prepare(`INSERT INTO invoices(id,studio_id,project_id,number,estimate_id,estimate_version,kind,currency,amount_minor,net_minor,tax_minor,tax_rate,due_date,note,payment_instructions,snapshot,issued_at,issued_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(invoiceId,studio.id,project.id,'INV-2026-00'+number,'est',1,'Deposit','GBP',net+tax,net,tax,tax?20:0,'2026-11-01','','Bank transfer',JSON.stringify({billToName:'Amelia Taylor',billToEmail:'amelia@example.test',projectTitle:'Amelia’s wedding',...snapshot}),issuedAt,user.id);return invoiceId;};
  const payment=(invoiceId,amountMinor)=>{const paymentId=id();db.prepare(`INSERT INTO invoice_payments(id,studio_id,invoice_id,amount_minor,method,reference,received_at,note,recorded_at,recorded_by) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(paymentId,studio.id,invoiceId,amountMinor,'bank_transfer','BACS 123','2026-10-10','',now(),user.id);return paymentId;};
  return {db,studio,user,calls,call,invoice,payment,transport,setHandler:fn=>{handler=fn;},close:async()=>{server.close();db.close();await rm(dir,{recursive:true,force:true});}};
 }
@@ -93,5 +93,22 @@ test('expired access is refreshed and the rotated refresh token is saved; discon
   assert.match(String(seen[0].body),/refresh_token=xero-refresh-2/);
   await t.call({action:'disconnect'});assert.equal((await t.call()).connected,false);
   assert.equal(t.db.prepare('SELECT COUNT(*) AS n FROM xero_links').get().n,1,'links survive a disconnect so nothing is sent twice');
+ }finally{await t.close();}
+});
+
+test('an invoice at more than one VAT rate goes to Xero as a line per rate, each with its rate code',async()=>{
+ const t=await setup();
+ try{
+  await connect(t);
+  saveXeroSettings(t.db,t.studio.id,{salesAccountCode:'200',taxType:'OUTPUT2',noTaxType:'NONE',invoiceStatus:'AUTHORISED'});
+  t.invoice({net:66000,tax:4050,snapshot:{vatBreakdown:[{rate:20,exempt:false,netMinor:19500,taxMinor:3900},{rate:5,exempt:false,netMinor:3000,taxMinor:150},{rate:0,exempt:false,netMinor:30000,taxMinor:0},{rate:0,exempt:true,netMinor:13500,taxMinor:0}]}});
+  t.setHandler(c=>c.url.endsWith('/Invoices')?json({Invoices:[{InvoiceID:'xinv-1'}]}):json({}));
+  assert.equal((await syncXero(t.db,t.studio.id,{env,transport:t.transport})).invoices,1);
+  const lines=t.calls.find(c=>c.url.endsWith('/Invoices')).body.Invoices[0].LineItems;
+  assert.deepEqual(lines.map(line=>[line.UnitAmount,line.TaxAmount,line.TaxType]),[[195,39,'OUTPUT2'],[30,1.5,'RROUTPUT'],[300,0,'ZERORATEDOUTPUT'],[135,0,'EXEMPTOUTPUT']]);
+  assert.match(lines[2].Description,/Deposit invoice for Amelia’s wedding · Zero-rated/);
+  // The codes can be changed for an organisation set up differently.
+  assert.equal(saveXeroSettings(t.db,t.studio.id,{salesAccountCode:'200',taxType:'OUTPUT2',noTaxType:'NONE',exemptTaxType:'EXEMPT'}).exemptTaxType,'EXEMPT');
+  assert.throws(()=>saveXeroSettings(t.db,t.studio.id,{salesAccountCode:'200',zeroTaxType:'not a code!'}),/zero rate code/);
  }finally{await t.close();}
 });

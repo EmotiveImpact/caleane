@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {FileText,Plus,PenLine,Printer,Check,Clock,ScrollText} from 'lucide-react';
 import {AgreementComposer,AgreementPages,printAgreement} from './AgreementDocument';
 import {OpenedNote,useRecordOpen} from './OpenedNote';
+import {useDocumentBrand} from './DocumentBrand';
 import {starterContract} from '../lib/starter-gallery';
 import {ConfirmDialog} from './ConfirmDialog';
 import {workflowFor} from '../lib/workflows';
@@ -11,6 +12,7 @@ const when=value=>new Date(value).toLocaleString('en-GB',{day:'numeric',month:'s
 export function ProjectContracts({p,studio,owner,request,userName}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[selected,setSelected]=useState(''),[compose,setCompose]=useState(null),[declining,setDeclining]=useState(null);
  const base=`/api/projects/${p.id}/engagements`,list=data?.agreements||[],a=list.find(x=>x.id===selected)||list[0];
+ const brand=useDocumentBrand();
  async function load(){try{setData(await request(`${base}?studio=${studio.id}`));setError('');}catch(e){setError(e.message);}}
  useEffect(()=>{let active=true;request(`${base}?studio=${studio.id}`).then(d=>{if(active)setData(d);}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};},[base,studio.id,request]);
  async function change(action,body){setBusy(true);setError('');try{const result=await request(`${base}/${action}?studio=${studio.id}`,'POST',body);setData(result);return result;}catch(e){setError(e.message);return null;}finally{setBusy(false);}}
@@ -24,7 +26,7 @@ export function ProjectContracts({p,studio,owner,request,userName}){
   {!data&&!error?<p className="doc-empty">Loading contracts…</p>:<div className={`contract-layout ${compose?'is-editing':''}`}>
    <div className="contract-main">
     {compose?<AgreementComposer key={compose.id||'new'} agreement={compose} busy={busy} onCancel={()=>setCompose(null)} onSave={async values=>{const result=await change(compose.id?'update-agreement':'create-agreement',{...values,id:compose.id,revision:compose.revision});if(result){setSelected(compose.id||result.agreements[0]?.id);setCompose(null);}}}/>:a?<>
-     <header className="contract-document-bar"><div><h3>Document preview</h3><span className="doc-status" data-status={status}>{status}</span></div><div className="doc-actions"><button className="doc-quiet" onClick={()=>printAgreement(a)}><Printer size={15}/>Print / PDF</button>{owner&&a.status==='Draft'&&<><button className="doc-quiet" disabled={busy} onClick={()=>setCompose(a)}><PenLine size={15}/>Edit</button><button className="doc-primary" disabled={busy||gaps.length>0} title={gaps.length?'Fill in the gaps before issuing':undefined} onClick={()=>change('issue-agreement',{id:a.id,revision:a.revision})}>Issue to client</button></>}</div></header>
+     <header className="contract-document-bar"><div><h3>Document preview</h3><span className="doc-status" data-status={status}>{status}</span></div><div className="doc-actions"><button className="doc-quiet" onClick={()=>printAgreement(a,brand)}><Printer size={15}/>Print / PDF</button>{owner&&a.status==='Draft'&&<><button className="doc-quiet" disabled={busy} onClick={()=>setCompose(a)}><PenLine size={15}/>Edit</button><button className="doc-primary" disabled={busy||gaps.length>0} title={gaps.length?'Fill in the gaps before issuing':undefined} onClick={()=>change('issue-agreement',{id:a.id,revision:a.revision})}>Issue to client</button></>}</div></header>
      {owner&&gaps.length>0&&<div className="doc-gaps" role="status"><strong>Not ready to send yet</strong><p>{placeholderMessage(gaps)}</p><button className="doc-quiet" disabled={busy} onClick={()=>setCompose(a)}><PenLine size={15}/>Fill in the gaps</button></div>}
      <div className="contract-meta"><span>Version {a.version}</span><span>Brief {a.briefRevision}</span><span><Clock size={13}/>Reply by {formatDay(a.expiresOn)}</span></div>
      <OpenedNote p={p} owner={owner} kind="contract" itemId={a.id} shared={a.status!=='Draft'}/><AgreementPages agreement={a} hideControls/>

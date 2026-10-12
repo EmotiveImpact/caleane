@@ -233,6 +233,8 @@ test('brand kit accepts real logos and fonts only, serves them inertly and feeds
  r=await call('/api/brand-kit'+suffix,'POST',{action:'save',kit:{...r.data.kit,logos:{primary:logo.id}}},'owner');assert.equal(r.status,200);
  const base=`http://127.0.0.1:${ws.server.address().port}`,file=await fetch(base+logo.url);assert.equal(file.status,200);assert.equal(file.headers.get('content-type'),'image/png');assert.match(file.headers.get('content-security-policy'),/sandbox/);assert.equal(file.headers.get('x-content-type-options'),'nosniff');
  r=await call(`/api/projects/${project.id}/invoices${suffix}`,'GET',undefined,'client');assert.equal(r.data.brandKit.colours.primary,'#5a2d4c');assert.equal(r.data.brandKit.logos.primary,logo.id);
+ // The client's session carries the kit too, so estimates, proposals, contracts and the portal wear it.
+ me=await call('/api/me','GET',undefined,'client');assert.equal(me.data.studios[0].brandKit.colours.primary,'#5a2d4c');assert.equal(me.data.studios[0].brandKit.fonts.heading.family,'Brand Serif');
  const {invoicePageHtml}=await import('../src/lib/invoice-design.js');
  const html=invoicePageHtml({number:'INV-9',currency:'GBP',amountMinor:30000,netMinor:25000,taxMinor:5000,taxRate:20,snapshot:{}},{design:{layout:'studio',font:'brand'},brandKit:r.data.brandKit,estimate:{items:[{title:'Arch <b>',quantity:2,unitAmount:25000}],total:60000,taxRate:20}});
  assert.match(html,new RegExp(`/api/brand-assets/${logo.id}`));assert.match(html,/font-family:'Brand Serif'/);assert.match(html,/Arch &lt;b&gt;/);assert.match(html,/50% of the project total/);assert.match(html,/#5a2d4c/);

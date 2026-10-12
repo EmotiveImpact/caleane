@@ -3,7 +3,8 @@
 // what the studio designs is what the client sees and prints.
 import {brandStyle,readableOn} from './brand-kit.js';
 import {lateFeeTerms} from './invoice-charges.js';
-import {isVatDocument,isVatRegistered,showsTax,taxLabel,taxNumberLabel} from './vat.js';
+import {isVatDocument,isVatRegistered,lineVatLabel,showsTax,taxLabel,taxNumberLabel,vatGroupLabel} from './vat.js';
+import {perUnit} from './price-units.js';
 
 export const invoiceLayouts=[
  ['atelier','Atelier','Centred logo, fine rules and generous space.'],
@@ -29,7 +30,7 @@ export function normaliseInvoiceDesign(design){
  return {layout:invoiceLayouts.some(([k])=>k===d.layout)?d.layout:'atelier',accent:hex(d.accent),font:invoiceFonts.some(([k])=>k===d.font)?d.font:'brand',showLogo:d.showLogo!==false,showItems:d.showItems!==false,thankYou:String(d.thankYou||'').slice(0,300),footer:String(d.footer||'').slice(0,500)};
 }
 
-function lineTitle(invoice){return invoice.label?`${invoice.label} towards project scope`:invoice.kind==='Deposit'?'Deposit towards project scope':invoice.kind==='Balance'?'Remaining project balance':'Agreed project scope';}
+function lineTitle(invoice){return invoice.snapshot?.lines?invoice.label:invoice.label?`${invoice.label} towards project scope`:invoice.kind==='Deposit'?'Deposit towards project scope':invoice.kind==='Balance'?'Remaining project balance':'Agreed project scope';}
 
 // Everything an invoice or credit note says, worked out once. The HTML page
 // and the downloadable PDF both draw from this, so their figures always agree.
@@ -51,27 +52,32 @@ export function invoiceModel(invoice,{studio={},design,brandKit,estimate,creditN
   return {...base,kind:'credit',label:'Credit note',number:credit.number,stamp:'',due:['Total credited',money(credit.amountMinor)],dueBy:'',
    meta:[['Issued',date(credit.issuedAt)],['Original invoice',invoice.number],['Invoice date',date(invoice.issuedAt)]].filter(([,v])=>v),
    table:{head:['Description','Amount'],rows:[[`Credit against invoice ${invoice.number}`,credit.reason||'',money(credit.netMinor)]]},
-   totals:[['Net credit',money(credit.netMinor)],...(showsTax(rate,tax)?[[taxLabel(rate,vat),money(tax)]]:[])],
+   totals:[['Net credit',money(credit.netMinor)],...(showsTax(rate,tax)||s.vatBreakdown&&tax?[[s.vatBreakdown?(vat?'VAT':'Tax'):taxLabel(rate,vat),money(tax)]]:[])],
    pay:null,note:`This credit note reduces invoice ${invoice.number}${invoice.issuedAt?`, issued ${date(invoice.issuedAt)},`:''} by ${money(credit.amountMinor)}.`};
  }
  const credited=invoice.creditedMinor||0,paid=invoice.grossPaidMinor??invoice.paidMinor??0,refunded=invoice.refundedMinor||0;
  const balance=invoice.balanceMinor??Math.max(0,(invoice.amountMinor||0)-credited-paid+refunded),refundDue=invoice.refundDueMinor||0;
  const cancelled=invoice.status==='Cancelled';
  const due=refundDue?['Refund owed to you',money(refundDue)]:[cancelled?'Cancelled':balance===0&&paid>0?'Paid in full':'Amount due',money(cancelled?0:balance)];
- const items=d.showItems&&Array.isArray(estimate?.items)&&estimate.items.length?estimate.items:null;
+ // A quick invoice always lists its own lines; an estimate invoice lists the estimate's when the design asks.
+ const own=Array.isArray(s.lines?.items)&&s.lines.items.length?s.lines.items:null;
+ const items=own||(d.showItems&&Array.isArray(estimate?.items)&&estimate.items.length?estimate.items:null);
  const shareMinor=invoice.shareMinor??invoice.amountMinor,discountNet=invoice.discountNetMinor||0;
- const isPart=!!(items&&estimate.total&&estimate.total!==shareMinor);
+ const isPart=!own&&!!(items&&estimate.total&&estimate.total!==shareMinor);
  const share=isPart?Math.round(shareMinor/estimate.total*1000)/10:100;
+ // On an invoice at more than one VAT rate, each line says which rate it is at.
+ const mixed=Array.isArray(s.vatBreakdown),lineRate=own?s.lines.taxRate:estimate?.taxRate;
  const table=items
-  ?{head:[isPart?'Project scope':'Description','Qty','Unit','Amount'],rows:items.map(item=>[item.title,'',String(item.quantity),money(item.unitAmount),money(item.quantity*item.unitAmount)]),
-    part:isPart?{total:[`Project total${estimate.taxRate?` including ${estimate.taxRate}% ${vat?'VAT':'tax'}`:''}`,money(estimate.total)],line:[lineTitle(invoice),`${share}% of the project total`,money(invoice.amountMinor)]}:null}
+  ?{head:[isPart?'Project scope':'Description','Qty','Unit','Amount'],rows:items.map(item=>[item.title,[perUnit(item.unit),mixed?lineVatLabel(item,lineRate,vat):''].filter(Boolean).join(' · '),String(item.quantity),money(item.unitAmount),money(item.quantity*item.unitAmount)]),
+    part:isPart?{total:[`Project total${mixed?` including ${vat?'VAT':'tax'}`:estimate.taxRate?` including ${estimate.taxRate}% ${vat?'VAT':'tax'}`:''}`,money(estimate.total)],line:[lineTitle(invoice),`${share}% of the project total`,money(invoice.amountMinor)]}:null}
   :{head:['Description','Amount'],rows:[[lineTitle(invoice),`${s.projectTitle||''}${invoice.estimateVersion?` · Estimate version ${invoice.estimateVersion}`:''}`,money(invoice.netMinor)]]};
  const charges=(invoice.charges||[]).filter(item=>!item.waivedAt);
- const totals=[...(discountNet?[['Subtotal',money(invoice.netMinor+discountNet)],[invoice.discountLabel||'Discount','− '+money(discountNet)],['Net',money(invoice.netMinor)]]:[['Subtotal',money(invoice.netMinor)]]),...(showsTax(invoice.taxRate,invoice.taxMinor)?[[taxLabel(invoice.taxRate,vat),money(invoice.taxMinor)]]:[]),['Invoice total',money(invoice.amountMinor),'strong'],
+ const totals=[...(discountNet?[['Subtotal',money(invoice.netMinor+discountNet)],[invoice.discountLabel||'Discount','− '+money(discountNet)],['Net',money(invoice.netMinor)]]:[['Subtotal',money(invoice.netMinor)]]),...(mixed?s.vatBreakdown.map(group=>[`${vatGroupLabel(group,vat)} on ${money(group.netMinor)}`,money(group.taxMinor)]):showsTax(invoice.taxRate,invoice.taxMinor)?[[taxLabel(invoice.taxRate,vat),money(invoice.taxMinor)]]:[]),['Invoice total',money(invoice.amountMinor),'strong'],
   ...charges.map(item=>[item.kind==='tip'?'Tip, thank you':`${item.label}, added ${date(item.addedAt)}`,'+ '+money(item.amountMinor)]),
   ...(credited?[['Credit notes','− '+money(credited)]]:[]),...(paid?[['Paid','− '+money(paid)]]:[]),...(refunded?[['Refunded','+ '+money(refunded)]]:[])];
  const terms=invoice.lateFeeRule&&!cancelled&&balance>0&&!charges.some(item=>item.kind==='late_fee')?lateFeeTerms(invoice.lateFeeRule,currency):'';
- const pay=cancelled?null:{text:invoice.paymentInstructions||'Contact the studio for payment instructions.',by:invoice.dueDate&&balance>0?`Please pay by ${date(invoice.dueDate)}, quoting ${invoice.number}.`:'',terms};
+ // Payment details only appear while the client still owes something; a paid, credited or refunded invoice has nothing to pay.
+ const pay=cancelled||balance<=0||refundDue?null:{text:invoice.paymentInstructions||'Contact the studio for payment instructions.',by:invoice.dueDate&&balance>0?`Please pay by ${date(invoice.dueDate)}, quoting ${invoice.number}.`:'',terms};
  return {...base,kind:'invoice',label:'Invoice',number:invoice.number,stamp:['Paid','Cancelled','Refunded','Credited'].includes(invoice.status)?invoice.status:'',due,dueBy:invoice.dueDate&&!cancelled&&balance>0?`Due ${date(invoice.dueDate)}`:'',
   meta:[['Issued',date(invoice.issuedAt)],['Due',date(invoice.dueDate)],['Service date',date(s.supplyDate)]].filter(([,v])=>v),table,totals,pay,note:invoice.note||''};
 }
@@ -88,7 +94,7 @@ export function invoicePageHtml(invoice,options={}){
  const party=p=>`<div class="party"><span class="label">${escape(p.label)}</span><strong>${escape(p.name)}</strong><p>${lines(p.address)}</p>${p.small.map(line=>`<small>${escape(line)}</small>`).join('')}</div>`;
  const from=party(m.from),to=party(m.to),t=m.table;
  const table=t.head.length===4
-  ?`<table class="items"><thead><tr>${t.head.map((h,i)=>`<th${i?' class="num"':''}>${escape(h)}</th>`).join('')}</tr></thead><tbody>${t.rows.map(([title,,qty,unit,amount])=>`<tr><td>${escape(title)}</td><td class="num">${escape(qty)}</td><td class="num">${escape(unit)}</td><td class="num">${escape(amount)}</td></tr>`).join('')}</tbody>${t.part?`<tfoot><tr><td colspan="3">${escape(t.part.total[0])}</td><td class="num">${escape(t.part.total[1])}</td></tr><tr class="this"><td colspan="3"><strong>${escape(t.part.line[0])}</strong><small>${escape(t.part.line[1])}</small></td><td class="num"><strong>${escape(t.part.line[2])}</strong></td></tr></tfoot>`:''}</table>`
+  ?`<table class="items"><thead><tr>${t.head.map((h,i)=>`<th${i?' class="num"':''}>${escape(h)}</th>`).join('')}</tr></thead><tbody>${t.rows.map(([title,detail,qty,unit,amount])=>`<tr><td>${escape(title)}${detail?`<small class="unit">${escape(detail)}</small>`:''}<small class="each">${escape(qty)} × ${escape(unit)}${detail?` ${escape(detail)}`:''}</small></td><td class="num">${escape(qty)}</td><td class="num">${escape(unit)}</td><td class="num">${escape(amount)}</td></tr>`).join('')}</tbody>${t.part?`<tfoot><tr><td colspan="3">${escape(t.part.total[0])}</td><td class="num">${escape(t.part.total[1])}</td></tr><tr class="this"><td colspan="3"><strong>${escape(t.part.line[0])}</strong><small>${escape(t.part.line[1])}</small></td><td class="num"><strong>${escape(t.part.line[2])}</strong></td></tr></tfoot>`:''}</table>`
   :`<table class="items"><thead><tr><th>Description</th><th class="num">Amount</th></tr></thead><tbody>${t.rows.map(([title,detail,amount])=>`<tr><td><strong>${escape(title)}</strong><small>${escape(detail)}</small></td><td class="num">${escape(amount)}</td></tr>`).join('')}</tbody></table>`;
  const totalsHtml=`<section class="totals">${m.totals.map(([k,v,c])=>`<div class="${c||''}"><span>${escape(k)}</span><span>${escape(v)}</span></div>`).join('')}<div class="due"><span>${due[0]}</span><strong>${due[1]}</strong></div></section>`;
  const pay=m.pay?`<div class="pay"><span class="label">How to pay</span><p>${lines(m.pay.text)}</p>${m.pay.by?`<p class="pay-by">${escape(m.pay.by)}</p>`:''}${m.pay.terms?`<p class="pay-by">${escape(m.pay.terms)}</p>`:''}</div>`:'';
@@ -117,7 +123,7 @@ h1,h2,h3,p,dl,dd{margin:0}h1,.wordmark,.thanks,.due strong,.kicker{font-family:$
 .parties{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-bottom:18px}.party strong{display:block;margin:6px 0 2px;font-size:14px}.party p,.party small{display:block;color:color-mix(in srgb,${ink} 75%,${paper})}
 .project{margin:0 0 12px;font-size:14px}.project .label{display:block;margin-bottom:4px}
 table{width:100%;border-collapse:collapse}th{text-align:left;padding:0 0 8px}td{padding:9px 0;vertical-align:top;border-bottom:1px solid color-mix(in srgb,${ink} 10%,${paper})}
-.num{text-align:right;white-space:nowrap;padding-left:16px}td small{display:block;color:color-mix(in srgb,${ink} 55%,${paper});margin-top:2px;font-size:11px}
+.num{text-align:right;white-space:nowrap;padding-left:16px}td small{display:block;color:color-mix(in srgb,${ink} 55%,${paper});margin-top:2px;font-size:11px}td small.each{display:none}
 tfoot td{border-bottom:0;padding:8px 0 3px;color:color-mix(in srgb,${ink} 70%,${paper})}tfoot tr:first-child td{padding-top:10px}
 tfoot tr.this td{color:${ink};padding:9px 14px;background:${secondary}}tfoot tr.this td:first-child{border-radius:4px 0 0 4px}tfoot tr.this td:last-child{border-radius:0 4px 4px 0}
 .totals{margin:16px 0 0 auto;width:310px}.totals div{display:flex;justify-content:space-between;padding:3px 0;color:color-mix(in srgb,${ink} 72%,${paper})}.totals .strong{color:${ink};font-weight:600}
@@ -154,6 +160,22 @@ footer{margin-top:auto;padding-top:16px;font-size:10px;color:color-mix(in srgb,$
 /* minimal */
 .minimal .title h1{color:${ink};font-weight:300;font-size:36px}.minimal .meta{border-top:1px solid color-mix(in srgb,${ink} 12%,${paper});border-bottom:1px solid color-mix(in srgb,${ink} 12%,${paper});padding:14px 0}
 .minimal .due{border-top:1px solid ${ink}}.minimal .due strong{color:${ink}}.minimal .pay{background:none;padding:0}.minimal .thanks{color:${ink}}.minimal tfoot tr.this td{background:none;padding-left:0;padding-right:0;border-top:1px solid ${ink}}
+/* On a screen narrower than the A4 page, such as a phone, the page reflows to fit instead of shrinking. Print keeps A4. */
+@media screen and (max-width:793px){.page{width:auto;min-height:0;padding:32px 28px 24px}.page.bold{padding-top:0}.band{margin:0 -28px;padding:28px 28px 20px}.studio{padding:0}.studio .main{padding:32px 28px 24px}.studio footer{left:278px;right:28px}}
+@media screen and (max-width:600px){
+body{font-size:13px}.page{padding:24px 18px 20px}.page.bold{padding-top:0}.logo{max-width:150px;max-height:52px}
+.meta{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.parties,.notes{grid-template-columns:minmax(0,1fr);gap:18px}.notes{margin-top:22px}
+.totals,.studio .main .totals{width:100%}
+.page>*{order:2}.page>:is(header,.rail){order:0}.page .stamp{position:static;order:1;align-self:flex-end;margin:14px 0 0;padding:4px 12px;font-size:15px;border-width:2px}
+.items,.items thead,.items tbody,.items tfoot{display:block}.items tr{display:flex}.items :is(th,td):first-child{flex:1;min-width:0}
+.items :is(th,td):is(:nth-child(2),:nth-child(3)):not(:last-child),.items td small.unit{display:none}.items td small.each{display:block}
+footer{flex-direction:column;gap:4px}footer span:first-child{max-width:none}footer span:last-child{white-space:normal}
+.editorial .display{align-items:flex-start}.editorial .display h1{font-size:46px}.editorial .due strong{font-size:26px}
+.band{margin:0 -18px;padding:24px 18px 18px;flex-direction:column;align-items:flex-start;gap:14px}.band-total{text-align:left}.band-total strong{font-size:30px}.bold th{padding:8px 10px}.bold td{padding:9px 10px}
+.title h1,.minimal .title h1{font-size:26px}.classic .top,.minimal .top{gap:14px}
+.studio{flex-direction:column}.rail{width:auto;padding:24px 18px;gap:16px}.rail h1{margin-top:-8px}.rail .meta{grid-template-columns:repeat(2,minmax(0,1fr))}.rail .pay{margin-top:0}
+.studio .main{padding:20px 18px 8px}.studio footer{position:static;padding:16px 18px 20px}.studio .stamp{margin:16px 18px -4px}
+}
 @media print{.page{margin:0;min-height:296.5mm}tr,.totals,.pay,.note,.parties{break-inside:avoid}}
 </style></head><body><main class="page ${d.layout}${m.kind==='credit'?' credit-note':''}">${stamp}${body}${footer}</main>${fontLink?`<link rel="stylesheet" href="${escape(fontLink)}">`:''}</body></html>`;
 }

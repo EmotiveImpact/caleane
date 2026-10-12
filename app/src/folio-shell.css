@@ -36,3 +36,11 @@
 /* Keep shell utilities available in short windows, and out of estimate printouts. */
 @media(max-width:760px){.folio-workspace>.topbar>span{display:block;min-width:0}.folio-workspace>.topbar>div{flex-shrink:0}}
 @media print{.folio-rail,.folio-menu-toggle,.folio-nav-scrim{display:none!important}.workspace.folio-workspace{margin:0!important;padding:0!important}.folio-workspace>.workspace-body{padding:0!important;max-width:none}}
+/* The client portal wears the studio's brand kit: its light logo, or its main logo turned white, or its name. */
+.folio-rail-brand.is-studio .folio-studio-logo{display:block;max-width:100%;max-height:44px;object-fit:contain;object-position:left center}
+.folio-rail-brand.is-studio .folio-studio-logo.is-inverted{filter:brightness(0) invert(1)}
+.folio-rail-brand.is-studio .folio-brand-name{overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.folio-rail-brand.is-studio :is(.folio-studio-icon,.folio-studio-initial){display:none}
+.folio-rail[data-collapsed=true] .folio-rail-brand.is-studio :is(.folio-studio-logo,.folio-brand-name){display:none}
+.folio-rail[data-collapsed=true] .folio-rail-brand.is-studio .folio-studio-icon{display:block;width:32px;height:32px;object-fit:contain;border-radius:6px}
+.folio-rail[data-collapsed=true] .folio-rail-brand.is-studio .folio-studio-initial{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px solid currentColor;font-size:15px;font-weight:600}
