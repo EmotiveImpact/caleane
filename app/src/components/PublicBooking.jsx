@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import {ArrowLeft,CalendarCheck,CalendarPlus,CalendarX,Clock,CreditCard,Mail,MapPin,Phone,RefreshCw,Video} from 'lucide-react';
 import {bookingIcs,icsHref} from '../lib/booking-calendar';
+import {readReply} from '../lib/read-reply';
 import '../public-booking.css';
 
 const dayKey=(iso,zone)=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
@@ -27,7 +28,7 @@ function CalendarLink({booking,studioName,slug,token,durationMinutes=30}){
 export function PublicBooking({slug}){
  const [page,setPage]=useState(null),[closed,setClosed]=useState(null),[error,setError]=useState(''),[day,setDay]=useState(''),[slot,setSlot]=useState(''),[busy,setBusy]=useState(false),[done,setDone]=useState(null),[key,setKey]=useState(newKey),[confirming,setConfirming]=useState(false),[notice,setNotice]=useState('');
  const visitorZone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
- function load(){return fetch('/api/booking/'+slug).then(async r=>{const d=await r.json();if(r.status===404&&d.studio){setClosed(d.studio);return;}if(!r.ok)throw new Error(d.error);setPage(d);}).catch(e=>setError(e.message));}
+ function load(){return fetch('/api/booking/'+slug).then(async r=>{const d=await readReply(r);if(r.status===404&&d.studio){setClosed(d.studio);return;}if(!r.ok)throw new Error(d.error);setPage(d);}).catch(e=>setError(e.message));}
  useEffect(()=>{load();},[slug]);
  // Back from Stripe: a cancelled payment releases the held time; a finished one waits for Stripe's confirmation.
  useEffect(()=>{
@@ -36,7 +37,7 @@ export function PublicBooking({slug}){
   history.replaceState(null,'',location.pathname);
   if(payment==='cancelled'){fetch(`/api/booking/${slug}/release`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bookingId})}).finally(()=>{setNotice('Payment was not completed, so the time has not been booked. You can choose a time again.');load();});return;}
   let tries=0,timer;setConfirming(true);
-  const check=()=>fetch(`/api/booking/${slug}/status?booking=${encodeURIComponent(bookingId)}`).then(r=>r.json()).then(d=>{
+  const check=()=>fetch(`/api/booking/${slug}/status?booking=${encodeURIComponent(bookingId)}`).then(readReply).then(d=>{
    if(d.status==='Booked'){setDone({...d,manageToken:recall(bookingId)});setConfirming(false);}
    else if(d.status==='Awaiting payment'&&++tries<20)timer=setTimeout(check,2000);
    else{setConfirming(false);setNotice(d.status==='Awaiting payment'?'Stripe is still confirming your payment. Please do not pay again; the studio will be in touch once it arrives.':'This booking was not completed. Please choose a time again.');}
@@ -50,7 +51,7 @@ export function PublicBooking({slug}){
  async function book(event){
   event.preventDefault();setBusy(true);setError('');
   const data=Object.fromEntries(new FormData(event.currentTarget));
-  try{const r=await fetch('/api/booking/'+slug,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify({...data,start:slot})});const d=await r.json();if(!r.ok){if(r.status===409){setSlot('');await load();}throw new Error(d.error);}
+  try{const r=await fetch('/api/booking/'+slug,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify({...data,start:slot})});const d=await readReply(r);if(!r.ok){if(r.status===409){setSlot('');await load();}throw new Error(d.error);}
    if(d.manageToken)remember(d.bookingId,d.manageToken);
    if(d.checkoutUrl){const destination=new URL(d.checkoutUrl);if(destination.protocol!=='https:'||destination.hostname!=='checkout.stripe.com')throw new Error('Stripe did not return a secure payment page.');window.location.assign(destination.toString());return;}
    setDone(d);setBusy(false);}
@@ -104,7 +105,7 @@ export function PublicBooking({slug}){
 export function PublicBookingManage({slug}){
  const [token]=useState(()=>location.hash.slice(1)),[state,setState]=useState(null),[error,setError]=useState(''),[day,setDay]=useState(''),[slot,setSlot]=useState(''),[busy,setBusy]=useState(false),[cancelling,setCancelling]=useState(false),[notice,setNotice]=useState('');
  const zone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
- async function send(body){const r=await fetch(`/api/booking/${slug}/manage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,...body})});const d=await r.json();if(!r.ok)throw Object.assign(new Error(d.error),{status:r.status});return d;}
+ async function send(body){const r=await fetch(`/api/booking/${slug}/manage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,...body})});const d=await readReply(r);if(!r.ok)throw Object.assign(new Error(d.error),{status:r.status});return d;}
  useEffect(()=>{send({action:'view'}).then(setState).catch(e=>setError(e.message));},[slug]);
  const days=useMemo(()=>{const map=new Map();for(const s of state?.slots||[]){const k=dayKey(s,zone);if(!map.has(k))map.set(k,[]);map.get(k).push(s);}return [...map.entries()];},[state,zone]);
  useEffect(()=>{if(days.length&&!days.some(([k])=>k===day))setDay(days[0][0]);},[days,day]);

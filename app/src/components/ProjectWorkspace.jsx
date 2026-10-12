@@ -5,6 +5,7 @@ import {approvedDirection} from '../lib/studio-view';
 import React,{useState,useRef} from 'react';
 import {Check,FileText,MessageSquare,Plus} from 'lucide-react';
 import {workflowFor} from '../lib/workflows';
+import {todayISO} from '../lib/dates';
 import {QuietHelper} from './QuietHelper';
 import {StudioDetails,useFieldDefinitions,useMediaQuery} from './CustomFields';
 import {collectTags} from '../lib/custom-fields';
@@ -18,7 +19,7 @@ const links=(p,studio)=>p.inspiration.filter(item=>item.url||item.fileId||item.s
 
 function nextStep(p,owner,workflow){
  const proposal=p.proposals?.at(-1);
- if(proposal?.status==='Awaiting response'&&proposal.briefRevision===p.briefRevision&&proposal.expiresOn>=new Date().toISOString().slice(0,10))return {eyebrow:owner?'WAITING FOR CLIENT':'PROPOSAL TO REVIEW',title:proposal.title,detail:'Review the scope, delivery plan and proposed investment.',tab:'Proposal',cta:'Review proposal'};
+ if(proposal?.status==='Awaiting response'&&proposal.briefRevision===p.briefRevision&&proposal.expiresOn>=todayISO())return {eyebrow:owner?'WAITING FOR CLIENT':'PROPOSAL TO REVIEW',title:proposal.title,detail:'Review the scope, delivery plan and proposed investment.',tab:'Proposal',cta:'Review proposal'};
  const choice=[...(p.decisions||[])].reverse().find(d=>d.status==='Awaiting choice'&&d.briefRevision===p.briefRevision);
  // Collaborators and Viewers can look and comment, but only the Approver is asked to decide.
  const decides=owner||p.accessRole==='Approver';

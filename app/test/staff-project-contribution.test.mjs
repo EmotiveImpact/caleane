@@ -71,6 +71,7 @@ test('owner grants and revokes project-specific studio contribution without fina
   assert.ok(ownerDrafts.some(draft=>draft.id===staffDraft.data.draft.id&&draft.createdByName==='Studio Assistant'));
   assert.ok((await call('/api/notifications'+q,'GET',undefined,'owner')).data.notifications.some(n=>n.title==='Studio Assistant saved a design draft: Soft arrival'));
   assert.equal((await call(`/api/projects/${project.id}${q}`,'GET',undefined,'owner')).data.project.teamDrafts,1);
+  assert.equal((await call('/api/projects'+q,'GET',undefined,'owner')).data.projects.find(p=>p.id===project.id).teamDrafts,1,'the project list counts team drafts too');
   const shared=await call(`/api/projects/${project.id}/drafts/${staffDraft.data.draft.id}/share${q}`,'POST',{revision:staffDraft.data.draft.revision},'owner');
   assert.equal(shared.status,200);
   assert.equal(shared.data.project.designs.at(-1).title,'Soft arrival');

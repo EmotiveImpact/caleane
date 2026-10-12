@@ -66,8 +66,8 @@ async function ensureAccount(db,stripe,{studioId,ownerUserId,country}){
  if(Date.now()-Date.parse(row.created_at)>ACCOUNT_RETRY_MS)fail(409,'Stripe account creation needs review before it can be retried.');
  // Parameters come only from persisted studio/owner data and stay identical on retries.
  const account=await stripe.accounts.create({type:'express',country:row.country,email:row.owner_email,
-  capabilities:{card_payments:{requested:true},transfers:{requested:true}},metadata:{calenne_studio_id:row.studio_id}},
-  {idempotencyKey:`calenne-connect-account-${row.account_create_key}`});
+  capabilities:{card_payments:{requested:true},transfers:{requested:true}},metadata:{caleane_studio_id:row.studio_id}},
+  {idempotencyKey:`caleane-connect-account-${row.account_create_key}`});
  if(!/^acct_[A-Za-z0-9]{8,}$/.test(account?.id||'')||account.country!==row.country)fail(502,'Stripe did not return the expected connected account.');
  transaction(db,()=>{
   const current=onboardingRow(db,studioId);
@@ -86,7 +86,7 @@ async function newAccountLink(db,stripe,{studioId,ownerUserId,appOrigin}){
   VALUES(?,?,?,?,?,?,'creating',?,?,?)`).run(linkId,studioId,ownerUserId,row.stripe_account_id,digest(returnState),digest(refreshState),Date.now()+CALLBACK_LIFETIME_MS,at,at);
  const params={account:row.stripe_account_id,type:'account_onboarding',
   refresh_url:callbackUrl(origin,'refresh',refreshState),return_url:callbackUrl(origin,'return',returnState)};
- const link=await stripe.accountLinks.create(params,{idempotencyKey:`calenne-connect-link-${linkId}`});
+ const link=await stripe.accountLinks.create(params,{idempotencyKey:`caleane-connect-link-${linkId}`});
  let parsed;
  try{parsed=new URL(link?.url);}catch{fail(502,'Stripe did not return an account link.');}
  if(parsed.protocol!=='https:'||!parsed.hostname.endsWith('.stripe.com'))fail(502,'Stripe did not return a secure account link.');
