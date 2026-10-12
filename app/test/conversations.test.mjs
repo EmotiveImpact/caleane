@@ -78,7 +78,10 @@ test('legacy project messages and read positions migrate once without duplicates
  try{
   ({db}=await createWorkspace({dbFile:file,demo:true}));
   const client=db.prepare("SELECT * FROM users WHERE email='amelia@example.test'").get();
-  const row=db.prepare('SELECT * FROM projects WHERE client_email=?').get(client.email),p=JSON.parse(row.data),message=p.messages[0];
+  const row=db.prepare('SELECT * FROM projects WHERE client_email=?').get(client.email),p=JSON.parse(row.data);
+  // Older databases kept each project's messages inside its record, before migration 2 removed that copy.
+  const first=db.prepare('SELECT m.* FROM conversation_messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.project_id=? ORDER BY m.seq LIMIT 1').get(p.id),message={id:first.id,by:first.author_name,role:first.role,text:first.text,at:first.created_at};
+  db.prepare('UPDATE projects SET data=? WHERE id=?').run(JSON.stringify({...p,messages:[message]}),p.id);db.exec('PRAGMA user_version=1');
   db.prepare('INSERT INTO project_reads VALUES(?,?,?)').run(client.id,p.id,message.at);
   // Model an existing pre-conversation database, retaining every legacy record.
   db.exec('DROP TABLE conversation_reads; DROP TABLE conversation_messages; DROP TABLE conversations;');db.close();
@@ -86,6 +89,6 @@ test('legacy project messages and read positions migrate once without duplicates
   assert.equal(dto.messages[0].id,message.id);assert.equal(dto.messages[0].text,message.text);assert.equal(dto.unreadMessages,0);
   const cid=c.id;db.close();db=openStore(file);c=db.prepare('SELECT * FROM conversations WHERE project_id=?').get(p.id);dto=conversationDTO(db,c,client);
   assert.equal(c.id,cid);assert.equal(dto.messages.length,1);assert.equal(dto.unreadMessages,0);
-  assert.deepEqual(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(p.id).data),p,'migration leaves historical project JSON unchanged');
+  assert.deepEqual(JSON.parse(db.prepare('SELECT data FROM projects WHERE id=?').get(p.id).data),p,'once copied, the messages leave the project record and nothing else changes');
  }finally{db?.close();await rm(dir,{recursive:true,force:true});}
 });
