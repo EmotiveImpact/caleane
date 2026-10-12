@@ -1,7 +1,7 @@
 // Studio Folio shell. Navigation and account authority remain backed by the API.
 import React,{useEffect,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import {WorkspacePopover,WorkspaceSelect,WorkspaceTooltip} from '../workspace/WorkspaceUI';
+import {WorkspacePopover,WorkspaceSelect,WorkspaceTooltip} from './WorkspaceUI';
 import {House,FolderClosed,Columns3,ListTodo,UserRound,Settings2,LogOut,CalendarDays,Mail,Images,Menu,X,ReceiptText,ClipboardList,FileText,CircleCheck,UsersRound,PanelLeftClose,PanelLeftOpen} from 'lucide-react';
 const ownerItems=[['overview','Overview',House],['projects','Projects',FolderClosed],['clients','Clients',UserRound],['forms','Forms',ClipboardList],['briefs','Briefs',FileText],['approvals','Approvals',CircleCheck],['pipeline','Pipeline',Columns3],['tasks','Tasks',ListTodo],['finances','Finances',ReceiptText],['inbox','Messages',Mail],['calendar','Calendar',CalendarDays],['library','Library',Images]];
 const staffItems=[['overview','Overview',House],['projects','Projects',FolderClosed]];

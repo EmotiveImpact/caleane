@@ -1,6 +1,6 @@
-# Calenne imagery
+# Caleane imagery
 
-The sign-in panel rotates four concept photographs: the existing event image (`candlelit-table.webp`) plus generated interiors, hospitality and wellness images. The front page uses a separately generated worktable hero, plus event, interiors and campaign concept images. The shared industry files have independent copies in `app/public/assets/` and `web/assets/` so each surface runs on its own. These images illustrate creative disciplines; they are not a portfolio of completed client work. Hospitality and wellness are atmospheric sign-in imagery, not a claim that Calenne supports booking or clinical workflows.
+The sign-in panel rotates four concept photographs: the existing event image (`candlelit-table.webp`) plus generated interiors, hospitality and wellness images. The front page uses a separately generated worktable hero, plus event, interiors and campaign concept images. The shared industry files have independent copies in `app/public/assets/` and `web/assets/` so each surface runs on its own. These images illustrate creative disciplines; they are not a portfolio of completed client work. Hospitality and wellness are atmospheric sign-in imagery, not a claim that Caleane supports booking or clinical workflows.
 
 ## Generation prompts
 
@@ -21,7 +21,7 @@ Create a photorealistic editorial photograph for the left panel of a premium cre
 
 Create a photorealistic editorial photograph for the left panel of a premium creative-business software sign-in page. Industry: wellness and spa. A refined contemporary wellness retreat treatment room opening onto a small private courtyard, sculpted plaster walls, travertine, warm timber, soft linen treatment bed, filtered daylight, one stone basin, single leafy branch. Restrained, tactile, grounded and calming; high-end architectural photography with natural shadows and no overly clinical or generic stock-photo feel. Vertical 4:5 composition with calm darker space upper-left for a small white brand wordmark and lower-left for a large white editorial headline. It must clearly communicate a wellness studio even under a dark gradient overlay. No people, no computers, no screens, no logos, no text, no watermark.
 
-The industry originals were generated as PNG and converted with `cwebp -q 82`; the hero used `cwebp -q 84`. `campaign-set.webp` is existing NAY concept imagery reused with a conceptual-image label. The landing page uses the Calenne app's bundled Instrument Sans font under the included SIL Open Font License.
+The industry originals were generated as PNG and converted with `cwebp -q 82`; the hero used `cwebp -q 84`. `campaign-set.webp` is existing NAY concept imagery reused with a conceptual-image label. The landing page uses the Caleane app's bundled Instrument Sans font under the included SIL Open Font License.
 
 ## Source PNGs and compression
 

@@ -1,32 +1,5 @@
 /* A spacious identity form, with a quieter supporting website panel. */
 .folio-workspace .folio-settings-page { max-width: 980px; margin-inline: 0; }
-.folio-workspace .folio-settings-page > .settings-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 2.06fr) minmax(240px, 1fr);
-  gap: 32px;
-  max-width: none;
-  align-items: start;
-}
-.folio-workspace .folio-settings-page .settings-layout > form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
-  padding: 28px;
-  border: 1px solid var(--studio-rule);
-  border-radius: 8px;
-  background: var(--studio-paper);
-}
-.folio-workspace .folio-settings-page .settings-layout > form > * { grid-column: 1 / -1; min-width: 0; }
-.folio-workspace .folio-settings-page .settings-layout > .connection {
-  grid-column: 2;
-  grid-row: 1;
-  position: static;
-  padding: 24px;
-  border: 1px solid var(--studio-rule);
-  border-radius: 8px;
-  background: var(--studio-surface);
-  min-width: 0;
-}
 .folio-workspace .folio-settings-page :is(input:not([type=color],[type=checkbox],[type=radio],[type=hidden]), textarea, select, .ws-select) {
   --ws-field-surface: #f7f8f8;
   border: 1px solid #cbd0d2 !important;
@@ -36,11 +9,3 @@
 .folio-workspace .folio-settings-page .field > span { font-size: 13px; color: var(--studio-ink); }
 .folio-workspace .folio-settings-page .settings-component-link { font-size: 12px; justify-self: start; }
 .folio-workspace .folio-settings-page .accent-picker { margin: 0; padding-block: 24px; border-top: 1px solid var(--studio-rule); border-bottom: 1px solid var(--studio-rule); }
-.folio-workspace .folio-settings-page .studio-identity-preview { padding: 0 0 24px; background: transparent; }
-@media (max-width: 900px) {
-  .folio-workspace .folio-settings-page > .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-  .folio-workspace .folio-settings-page .settings-layout > .connection { grid-column: 1; grid-row: auto; }
-}
-@media (max-width: 600px) {
-  .folio-workspace .folio-settings-page .settings-layout > :is(form, .connection) { padding: 20px; }
-}

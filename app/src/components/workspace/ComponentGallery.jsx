@@ -1,6 +1,6 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {Bell,Check,Download,FileText,FolderClosed,MoreHorizontal,Plus,Send,Trash2} from 'lucide-react';
-import {AdminSidebar} from '../aetheria/AdminSidebar';
+import {AdminSidebar} from './AdminSidebar';
 import {InboxWorkspace} from '../InboxWorkspace';
 import {ACCENT_PRESETS,DEFAULT_ACCENT} from '../../lib/accent-theme';
 import {WorkspaceAvatar,WorkspaceButton,WorkspaceDate,WorkspaceDialog,WorkspaceEmpty,WorkspaceField,WorkspaceFilters,WorkspaceHeading,WorkspaceSearch,WorkspaceStatus,WorkspaceTabs,WorkspaceCheckbox,WorkspaceSwitch,WorkspaceSelect,WorkspaceMenu,WorkspacePopover,WorkspaceRadioChoices,WorkspaceConfirm} from './WorkspaceUI';
