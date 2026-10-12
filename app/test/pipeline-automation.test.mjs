@@ -4,11 +4,12 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {openStore,id,makeProject,insertProject,saveProject,materializeProjectConversation} from '../store.mjs';
-import {syncPipeline,pipelineOverview,savePipelineSettings,budgetMinor,installPipeline,followUpAction} from '../pipeline-automation.mjs';
+import {syncPipeline,pipelineOverview,savePipelineSettings,budgetMinor,installPipeline,followUpAction,dueFollowUps} from '../pipeline-automation.mjs';
 import {updateOpportunity} from '../crm.mjs';
 import {getPlan} from '../payment-plans.mjs';
 import {installForms} from '../forms.mjs';
 
+const addDaysTo=(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
 test('budget text is read as the highest figure',()=>{
  assert.equal(budgetMinor('£5,000 to £7,500'),750000);
  assert.equal(budgetMinor('around 6k'),600000);
@@ -143,9 +144,13 @@ test('the owner can send a follow-up early or pause them, and optional rules add
   syncPipeline(db,studioId,{asOf:'2099-05-20'});
   assert.equal(messages(project.id).length,1,'a paused sequence sends nothing');
   assert.equal(pipelineOverview(db,studioId,{asOf:'2099-05-20'}).signals[opp.id].followUpsPaused,true);
+  assert.ok(!dueFollowUps(db,studioId,{until:'2099-12-31'}).some(f=>f.opportunityId===opp.id),'a paused sequence is not due on Overview');
   followUpAction(db,studioId,{opportunityId:opp.id,action:'resume'});
   syncPipeline(db,studioId,{asOf:'2099-05-20'});
   assert.equal(messages(project.id).length,2,'resuming sends the next follow-up that is due');
+  const next=pipelineOverview(db,studioId,{asOf:'2099-05-20'}).signals[opp.id].nextFollowUp,due=dueFollowUps(db,studioId,{until:'2099-12-31'}).find(f=>f.opportunityId===opp.id);
+  assert.ok(next);assert.equal(due.date,next,'Overview shows the same next follow-up as Pipeline');assert.equal(due.step,3);
+  assert.ok(!dueFollowUps(db,studioId,{until:addDaysTo(next,-1)}).some(f=>f.opportunityId===opp.id),'a follow-up after the week is left out');
   db.prepare('INSERT INTO consultations VALUES(?,?,?,?,?,?,?)').run(id(),studioId,'2099-05-25T10:00:00.000Z','2099-05-25T10:30:00.000Z','Booked',JSON.stringify({clientId:opp.client_id}),'2099-05-20T09:00:00.000Z');
   savePipelineSettings(db,studioId,{prepBeforeConsultation:true,closeSilent:true,closeSilentDays:21});
   syncPipeline(db,studioId,{asOf:'2099-05-22'});

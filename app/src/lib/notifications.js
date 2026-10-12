@@ -29,6 +29,13 @@ export function notificationDestination(item,{owner=false,staff=false}={}){
 export const NOTIFICATION_KIND_LABEL={enquiry:'Enquiry',message:'Message',project_update:'Project update',task_assigned:'Assigned to you',follow_up:'Follow up'};
 
 export function notificationAge(createdAt,now=Date.now()){
+ // A plain date has no time of day, so it reads as the day itself.
+ if(typeof createdAt==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(createdAt)){
+  const today=localDay(new Date(now)),yesterday=localDay(new Date(new Date(now).setDate(new Date(now).getDate()-1)));
+  if(createdAt===today)return 'Today';if(createdAt===yesterday)return 'Yesterday';
+  const day=new Date(createdAt+'T12:00:00');if(!Number.isFinite(day.getTime()))return '';
+  return day.toLocaleDateString('en-GB',{day:'numeric',month:'short',...(day.getFullYear()!==new Date(now).getFullYear()?{year:'numeric'}:{})});
+ }
  const at=Date.parse(createdAt);if(!Number.isFinite(at))return '';
  const minutes=Math.max(0,Math.floor((now-at)/60000));
  if(minutes<1)return 'Just now';

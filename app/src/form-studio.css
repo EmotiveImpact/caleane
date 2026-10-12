@@ -128,7 +128,7 @@
 .public-questionnaire .form-choice-group{border:0;padding:0;margin:0 0 24px;min-width:0}
 .public-questionnaire .form-choice-group legend{font-size:14px;font-weight:500;line-height:1.5;padding:0;max-width:100%;overflow-wrap:anywhere}
 .public-questionnaire .form-choice-group legend small{font-size:12px;font-weight:400;color:#626b66}
-.public-questionnaire .form-choice-group .form-label-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.public-questionnaire .form-choice-group .form-label-hidden,.form-file-answer .form-label-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .public-questionnaire .form-choice-hint{font-size:13px;line-height:1.5;color:#626b66;margin:5px 0 14px}
 .public-questionnaire .form-choice-options{display:grid;gap:10px}
 .public-questionnaire .form-choice-option{display:flex;align-items:center;gap:14px;min-height:54px;padding:14px 17px;border:1px solid color-mix(in srgb,var(--form-accent) 24%,white);border-radius:7px;background:transparent;cursor:pointer;font-size:16px;line-height:1.4;transition:background-color 120ms ease,border-color 120ms ease}

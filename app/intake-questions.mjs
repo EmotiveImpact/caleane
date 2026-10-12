@@ -3,6 +3,7 @@ import {questionIsVisible} from './src/lib/intake-visibility.js';
 const bad=message=>{throw Object.assign(new Error(message),{status:400});};
 const string=(value,max,label)=>{if(typeof value!=='string'||value.length>max)bad(`Check ${label}.`);return value.trim();};
 const idPattern=/^q-[a-z0-9-]{3,64}$/;
+export const MAX_FILES=5;
 
 export function validateIntakeQuestions(input){
  if(!Array.isArray(input)||input.length>24)bad('Add up to 24 enquiry questions.');
@@ -13,7 +14,7 @@ export function validateIntakeQuestions(input){
   if(!idPattern.test(id)||seen.has(id)||label.length<3)bad('Give each enquiry question a unique ID and clear label.');
   seen.add(id);
   const type=item.type;
-  if(!['text','long','choice','multi','number','date','email','url'].includes(type)||typeof item.required!=='boolean')bad('Choose a question type and requirement.');
+  if(!['text','long','choice','multi','number','date','email','url','file'].includes(type)||typeof item.required!=='boolean')bad('Choose a question type and requirement.');
   let options=[];
   if(['choice','multi'].includes(type)){
    if(!Array.isArray(item.options)||item.options.length<2||item.options.length>12)bad('Add two to twelve choices.');
@@ -50,8 +51,12 @@ export function captureIntakeAnswers(input,questions,{excludedIds=new Set()}={})
  const answered={};
  return questions.map(question=>{
   const screenExcluded=excludedIds.has(question.id),applicable=!screenExcluded&&questionIsVisible(question,answered);
-  let value=applicable?input[question.id]??(question.type==='multi'?[]:''):(question.type==='multi'?[]:'');
-  if(question.type==='multi'){
+  let value=applicable?input[question.id]??(['multi','file'].includes(question.type)?[]:''):(['multi','file'].includes(question.type)?[]:'');
+  // File answers hold upload references on the way in and file names once saved.
+  if(question.type==='file'){
+   if(!Array.isArray(value)||value.length>MAX_FILES||value.some(item=>typeof item!=='string'||!item.trim()||item.length>180))bad(`Check the files for “${question.label}”.`);
+   value=value.map(item=>item.trim());
+  }else if(question.type==='multi'){
    if(!Array.isArray(value)||value.length>12||value.some(item=>typeof item!=='string'||!question.options.includes(item))||new Set(value).size!==value.length)bad(`Choose available answers for “${question.label}”.`);
    value=question.options.filter(option=>value.includes(option));
   }else value=string(value,question.type==='long'?1200:500,question.label);
