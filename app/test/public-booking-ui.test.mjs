@@ -123,3 +123,10 @@ test('the private link lets the client move the booking or cancel it after confi
  assert.deepEqual(calls.at(-1).body,{token,action:'cancel'});
  assert.equal(screen.getByRole('link',{name:'Book another time'}).getAttribute('href'),'/book/nay-decor');
 });
+
+test('a server hiccup shows a plain sentence, never “Unexpected token <”',async()=>{
+ server(()=>({ok:false,status:502,json:async()=>JSON.parse('<!doctype html>')}));
+ render(h(ui.PublicBooking,{slug:'nay-decor'}));
+ assert.ok(await screen.findByText('Caleane could not reach the server. Please try again.'));
+ assert.equal(screen.queryByText(/Unexpected token/),null);
+});

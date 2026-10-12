@@ -5,7 +5,7 @@ import {OpenedNote,useRecordOpen} from './OpenedNote';
 import {starterContract} from '../lib/starter-gallery';
 import {ConfirmDialog} from './ConfirmDialog';
 import {workflowFor} from '../lib/workflows';
-import {formatDay} from '../lib/dates';
+import {formatDay,todayISO} from '../lib/dates';
 import {fillMergeFields,findPlaceholders,placeholderMessage} from '../lib/merge-fields';
 const when=value=>new Date(value).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 export function ProjectContracts({p,studio,owner,request,userName}){
@@ -17,7 +17,7 @@ export function ProjectContracts({p,studio,owner,request,userName}){
  useRecordOpen(p,owner,'contract',a&&a.status!=='Draft'?a.id:null);
  const useStarter=()=>{const starter=starterContract(workflowFor(studio,p).id);setCompose({...starter,termsHtml:fillMergeFields(starter.termsHtml,data?.mergeFields||{studio_name:studio.name})});};
  const gaps=a?.status==='Draft'?findPlaceholders(a.title,a.terms):[];
- const status=a?.status==='Issued'&&a.expiresOn<new Date().toISOString().slice(0,10)?'Expired':a?.status;
+ const status=a?.status==='Issued'&&a.expiresOn<todayISO()?'Expired':a?.status;
  return <section className="contract-workspace contract-workspace-v2" aria-label="Contract workspace">
   <header className="contract-top"><div><h2>{compose?'Prepare agreement':a?.title||'Contracts'}</h2></div>{owner&&!compose&&<div className="doc-actions"><button className="doc-quiet" onClick={useStarter}><ScrollText size={15}/>Use starter</button><button className="doc-primary" onClick={()=>setCompose({})}><Plus size={15}/>New contract</button></div>}</header>
   {error&&<div className="doc-error" role="alert">{error}<button onClick={load} disabled={busy}>Refresh records</button></div>}

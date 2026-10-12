@@ -1,10 +1,10 @@
-# Calenne homepage design bible
+# Caleane homepage design bible
 
 ## Direction
 
 The opening portrait sets the rule for the entire page: one clear idea per section, human subjects at a useful scale, photographs with real depth, restrained type placed in deliberate negative space, and room to breathe. The page moves from the problem directly into a large, inspectable product example, then a short process index and photographic stories about actual creative work: a person, a brief, a version, and a decision.
 
-Calenne is for owner-led visual studios. Event styling and planning, interiors and spatial work, and brand or campaign studios are the first audience stories. NAY DÉCOR is a sample studio in the product preview, not the visual identity of every studio.
+Caleane is for owner-led visual studios. Event styling and planning, interiors and spatial work, and brand or campaign studios are the first audience stories. NAY DÉCOR is a sample studio in the product preview, not the visual identity of every studio.
 
 ## Typography
 
