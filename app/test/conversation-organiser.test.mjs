@@ -29,13 +29,13 @@ test('conversations show who needs a reply, keep pins and open asks, and can be 
   assert.equal((await call(route+'/asks'+q,'POST',{messageId:ask.id},'client')).status,403);
   r=await call(route+'/asks'+q,'POST',{messageId:ask.id});assert.equal(r.status,200);const created=r.data.conversation.asks[0];assert.equal(created.title,'Can we avoid lilies?');assert.equal(created.kind,'project');assert.equal(created.completed,false);
   assert.equal((await call(route+'/asks'+q,'POST',{messageId:ask.id})).status,409);
-  const project=(await call('/api/projects'+q)).data.projects.find(p=>p.id===thread.projectId);assert.ok(project.tasks.some(t=>t.id===created.taskId&&t.assignee==='studio'));
+  const project=(await call('/api/projects'+q)).data.projects.find(p=>p.id===thread.projectId);assert.ok(project.tasks.some(t=>t.id===created.taskId&&t.assignee==='studio'));assert.equal(created.taskKey,`project:${thread.projectId}:${created.taskId}`);
   r=await call(route+'/asks'+q,'POST',{messageId:ask.id,completed:true});assert.equal(r.data.conversation.asks[0].completed,true);
   assert.deepEqual((await list('client')).find(t=>t.id===thread.id).asks,[],'clients do not see the studio’s open asks');
 
   // A direct conversation turns asks into CRM tasks.
   const direct=(await call('/api/conversations'+q,'POST',{clientId:thread.clientId,subject:'Direct',text:'Hello'})).data.conversation;
-  r=await call('/api/conversations/'+direct.id+'/asks'+q,'POST',{messageId:direct.messages[0].id,title:'Send the price list'});assert.equal(r.data.conversation.asks[0].kind,'crm');
+  r=await call('/api/conversations/'+direct.id+'/asks'+q,'POST',{messageId:direct.messages[0].id,title:'Send the price list'});assert.equal(r.data.conversation.asks[0].kind,'crm');assert.match(r.data.conversation.asks[0].taskKey,/^crm:/);
   assert.ok((await call('/api/crm/tasks'+q)).data.tasks.some(t=>t.title==='Send the price list'));
 
   // Mark unread rewinds only this person's read marker.

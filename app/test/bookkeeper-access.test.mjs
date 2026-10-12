@@ -35,7 +35,10 @@ test('a bookkeeper reads studio finances and nothing else, and cannot change any
   assert.equal(invite.status,201);
   assert.equal(invite.data.access,'bookkeeper');
   assert.equal((await call('/api/staff'+q,'GET',undefined,'owner')).data.pending[0].access,'bookkeeper');
+  const preview=await call('/api/staff-invitations/inspect','POST',{token:new URL(invite.data.url).hash.slice(1)},'books');
+  assert.equal(preview.status,200);assert.equal(preview.data.access,'bookkeeper','the join page can say this invitation opens the books');
   assert.equal((await call('/api/staff-invitations/claim','POST',{token:new URL(invite.data.url).hash.slice(1),name:'Bea Books',password:'BeaBooks2026!Ledger'},'books')).status,200);
+  assert.equal((await call('/api/staff-invitations/inspect','POST',{token:new URL(invite.data.url).hash.slice(1)},'books')).status,400,'a used invitation tells nothing');
   const me=(await call('/api/me','GET',undefined,'books')).data;
   assert.equal(me.studios[0].role,'staff_bookkeeper');
   const member=(await call('/api/staff'+q,'GET',undefined,'owner')).data.members.find(m=>m.email==='books@example.test');

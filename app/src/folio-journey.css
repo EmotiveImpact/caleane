@@ -73,3 +73,4 @@
 .choice-dialog p{line-height:1.6;font-size:14px;color:#626973}
 .choice-dialog [role="alert"]{color:#a12626}
 @media(max-width:600px){.choice-dialog{padding:24px}.choice-dialog .journey-option-edit{grid-template-columns:1fr}}
+.journey-milestone-body p.journey-task-detail{white-space:pre-line;color:var(--studio-ink,#202326);margin:6px 0 4px}

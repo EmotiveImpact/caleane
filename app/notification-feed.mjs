@@ -123,6 +123,12 @@ export function recordTaskAssignment(db,{studioId,taskKind,taskId,projectId=null
   title:`${actor.name} assigned you: ${title}`,detail:project?.title||'Private follow-up',projectId,taskId:taskKind==='project'?`project:${projectId}:${taskId}`:taskId});
 }
 
+/** A team member saved a private design draft. Only owners hear of it, since only they can share it with the client. */
+export function recordTeamDraft(db,{studioId,projectId,draftId,title,actor}){
+ const project=JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(projectId,studioId)?.data||'null');
+ return deliver(db,owners(db,studioId),actor.id,{studioId,kind:'project_update',sourceKey:'design-draft:'+draftId,actorName:actor.name,title:`${actor.name} saved a design draft: ${title}`,detail:project?.title||'',projectId});
+}
+
 /** A private nudge for the studio about a conversation that has gone quiet. Only owners see these. */
 export function recordFollowUp(db,{studioId,conversationId,sourceKey,title,detail}){
  const c=db.prepare('SELECT * FROM conversations WHERE id=? AND studio_id=?').get(conversationId,studioId);

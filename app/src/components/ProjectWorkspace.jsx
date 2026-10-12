@@ -21,9 +21,11 @@ function nextStep(p,owner,workflow){
  const proposal=p.proposals?.at(-1);
  if(proposal?.status==='Awaiting response'&&proposal.briefRevision===p.briefRevision&&proposal.expiresOn>=todayISO())return {eyebrow:owner?'WAITING FOR CLIENT':'PROPOSAL TO REVIEW',title:proposal.title,detail:'Review the scope, delivery plan and proposed investment.',tab:'Proposal',cta:'Review proposal'};
  const choice=[...(p.decisions||[])].reverse().find(d=>d.status==='Awaiting choice'&&d.briefRevision===p.briefRevision);
- if(choice)return {eyebrow:owner?'WAITING FOR CLIENT':'YOUR NEXT DECISION',title:choice.title,detail:choice.description||workflow.decision,tab:'Decisions',cta:owner?'View choice':'Review choices'};
+ // Collaborators and Viewers can look and comment, but only the Approver is asked to decide.
+ const decides=owner||p.accessRole==='Approver';
+ if(choice)return {eyebrow:owner?'WAITING FOR CLIENT':decides?'YOUR NEXT DECISION':'WITH YOUR APPROVER',title:choice.title,detail:decides?choice.description||workflow.decision:'Your project approver makes this choice. You can see the options.',tab:'Decisions',cta:owner?'View choice':decides?'Review choices':'See the choices'};
  const design=p.designs.at(-1);
- if(design?.status==='Awaiting approval'&&design.briefRevision===p.briefRevision)return {eyebrow:owner?'WAITING FOR CLIENT':'YOUR NEXT DECISION',title:design.title,detail:owner?'A design is ready for your client to review.':'A new direction is ready for your review.',tab:'Designs',cta:'Review design'};
+ if(design?.status==='Awaiting approval'&&design.briefRevision===p.briefRevision)return {eyebrow:owner?'WAITING FOR CLIENT':decides?'YOUR NEXT DECISION':'NEW DESIGN VERSION',title:design.title,detail:owner?'A design is ready for your client to review.':decides?'A new direction is ready for your review.':p.accessRole==='Viewer'?'A new direction is ready to see.':'A new direction is ready to see. Add comments for your project approver.',tab:'Designs',cta:decides?'Review design':'See the design'};
  const invoice=p.latestInvoice;
  if(invoice&&['Issued','Partially paid'].includes(invoice.status))return {eyebrow:owner?'PAYMENT TO FOLLOW UP':'INVOICE TO REVIEW',title:invoice.kind==='Deposit'?'Your deposit invoice is ready':`Invoice ${invoice.number} is ready`,detail:owner?`Invoice ${invoice.number} is ${invoice.status.toLowerCase()}. Review the recorded payment and next step.`:`View invoice ${invoice.number}${invoice.dueDate?` by ${date(invoice.dueDate)}`:''} and the payment instructions from your studio.`,tab:'Billing',cta:'Open billing'};
  const estimate=p.estimates?.at(-1);

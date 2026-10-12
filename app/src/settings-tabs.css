@@ -130,3 +130,10 @@
 .settings-tab-panel > .commerce-section .commerce-list { display: grid; gap: 8px; }
 .settings-tab-panel > .commerce-section .commerce-list > li { padding: 14px 16px; background: var(--studio-paper,#fff); border: 1px solid var(--box-rule,var(--studio-rule)); border-radius: var(--box-radius,8px); }
 .settings-logo-note>span{display:block;font-size:12px;color:#62626c;margin-bottom:8px}.settings-logo-note p{margin:0;font-size:13px;color:#4b4c56}.settings-logo-note .text-button{padding:0 0 0 4px;text-decoration:underline}
+.recently-deleted{margin:0 0 28px}.recently-deleted-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.recently-deleted-list li{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--studio-rule,#e4e1da);border-radius:8px;padding:12px 14px;background:var(--studio-paper,#fff)}
+.recently-deleted-list li>div{display:grid;gap:3px;min-width:0}.recently-deleted-list strong{font-weight:550;overflow-wrap:anywhere}.recently-deleted-list span{font-size:13px;color:var(--studio-muted,#6b6a66);overflow-wrap:anywhere}.recently-deleted-list small{font-size:12px;color:var(--studio-muted,#6b6a66)}
+.recently-deleted-list button{flex:none}.recently-deleted-done{font-size:13px;color:var(--studio-ink,#202326)}
+.project-delete-for-good{margin-top:20px;border:1px solid var(--studio-rule,#e4e1da);border-radius:8px;padding:14px 16px}.project-delete-for-good h4{margin:0 0 6px}
+.project-delete-for-good .doc-danger{border:1px solid #a33a2b;background:#a33a2b;color:#fff;border-radius:6px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer}.project-delete-for-good .doc-danger:disabled{opacity:.45;cursor:not-allowed}
+@media (max-width:600px){.recently-deleted-list li{align-items:flex-start;flex-direction:column}}
