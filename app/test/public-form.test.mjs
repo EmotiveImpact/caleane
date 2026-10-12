@@ -11,7 +11,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const compiled=fileURLToPath(new URL(`.public-form-${process.pid}.mjs`,import.meta.url));
 const output=await build({entryPoints:[fileURLToPath(new URL('../src/components/PublicForm.jsx',import.meta.url))],bundle:true,packages:'external',format:'esm',platform:'node',write:false});
 await writeFile(compiled,output.outputFiles[0].text);
-const {PublicForm,FormUnavailable,usesBriefLook}=await import(pathToFileURL(compiled));
+const {PublicForm,FormUnavailable,HostedForm,usesBriefLook}=await import(pathToFileURL(compiled));
 const {render,screen,cleanup}=await import('@testing-library/react');
 const {default:userEvent}=await import('@testing-library/user-event');
 afterEach(cleanup);after(async()=>{await unlink(compiled);dom.window.close();});
@@ -110,5 +110,14 @@ test('a file question uploads each file and sends its reference with the enquiry
   assert.ok((await screen.findAllByText('moodboard.png')).length);
   assert.equal(requests[0][0],'/api/public/test/forms/moodboard/uploads');assert.equal(requests[0][1].name,'moodboard.png');
   assert.ok(screen.getByRole('button',{name:'Remove moodboard.png'}));
+ }finally{globalThis.fetch=realFetch;}
+});
+
+test('a hosted form that gets an error page shows a plain sentence, never “Unexpected token <”',async()=>{
+ const realFetch=globalThis.fetch;globalThis.fetch=async()=>new Response('<!doctype html><h1>Bad gateway</h1>',{status:502});
+ try{
+  render(React.createElement(HostedForm,{slug:'nay-decor'}));
+  assert.ok(await screen.findByText('Caleane could not reach the server. Please try again.'));
+  assert.equal(screen.queryByText(/Unexpected token/),null);
  }finally{globalThis.fetch=realFetch;}
 });

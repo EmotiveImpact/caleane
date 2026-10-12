@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,Check,X} from 'lucide-react';
 import {formFields,screensFor} from '../lib/form-flow.js';
+import {readReply} from '../lib/read-reply.js';
 import {briefSteps,chaptersOf,inspectSteps,IMAGE_LAYOUTS} from '../lib/brief-steps.js';
 import {answerText,answerForSending,FileAnswer} from './QuestionInput';
 import {formBrand} from '../lib/brand-kit.js';
@@ -93,7 +94,7 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
   setBusy(true);setError('');
   try{
    const body={...Object.fromEntries(formFields(d).filter(f=>!f.id.startsWith('q-')&&!f.id.startsWith('detail:')).map(f=>[f.key,flow.active[f.id]||''])),website:values.website||'',formVersion:form.version,consent:values.consent===true,colours:String(flow.active['core:colours']||'').split(',').map(v=>v.trim()).filter(Boolean),details:Object.fromEntries(formFields(d).filter(f=>f.id.startsWith('detail:')).map(f=>[f.id.slice(7),flow.active[f.id]||''])),intakeAnswers:Object.fromEntries(d.questions.map(q=>[q.id,answerForSending(q,flow.active[q.id]??(['multi','file'].includes(q.type)?[]:''))]))};
-   const r=await fetch(`/api/public/${studio.slug}/forms/${form.slug}/enquiries`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':requestKey},body:JSON.stringify(body)}),result=await r.json();if(!r.ok)throw new Error(result.error);
+   const r=await fetch(`/api/public/${studio.slug}/forms/${form.slug}/enquiries`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':requestKey},body:JSON.stringify(body)}),result=await readReply(r);if(!r.ok)throw new Error(result.error);
    setReceipt(result.reference);try{sessionStorage.removeItem(storageKey);}catch{}if(window.parent!==window)window.parent.postMessage({type:'caleane:submitted',reference:result.reference},'*');
   }catch(err){setError(err.message);}finally{setBusy(false);}
  }

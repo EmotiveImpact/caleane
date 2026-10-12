@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {formBrand} from '../lib/brand-kit.js';
 import {formPath,formFields,screensFor} from '../lib/form-flow.js';
+import {readReply} from '../lib/read-reply.js';
 import {QuestionInput,ChoiceInput,answerText,answerForSending} from './QuestionInput';
 import {BriefForm} from './BriefForm';
 import {usesBriefLook} from '../lib/brief-steps.js';
@@ -36,7 +37,7 @@ export function ClassicForm({studio,form,preview=false,startScreenId}){
  function missingAnswer(){return flow.path.flatMap(s=>s.fieldDefinitions).find(f=>f.required&&!answerText(flow.active[f.id]));}
  async function submit(e){e.preventDefault();setError('');if(!validate())return;if(d.layout!=='page'&&current.id!=='review'){const pathUnchanged=editingReview&&editingReview===routeKey;const next=pathUnchanged?reviewScreen:steps[steps.findIndex(s=>s.id===current.id)+1]||reviewScreen;setEditingReview(null);setScreenId(next.id);return;}const missing=missingAnswer();if(missing){const target=flow.path.find(s=>s.fields.includes(missing.id));setEditingReview(null);setScreenId(target.id);setError('Answer “'+missing.label+'” before sending.');return;}if(preview){setReceipt('Preview');return;}setBusy(true);try{
   const body={...Object.fromEntries(formFields(d).filter(f=>!f.id.startsWith('q-')&&!f.id.startsWith('detail:')).map(f=>[f.key,flow.active[f.id]||''])),website:values.website||'',formVersion:form.version,consent:values.consent===true,colours:String(flow.active['core:colours']||'').split(',').map(v=>v.trim()).filter(Boolean),details:Object.fromEntries(formFields(d).filter(f=>f.id.startsWith('detail:')).map(f=>[f.id.slice(7),flow.active[f.id]||''])),intakeAnswers:Object.fromEntries(d.questions.map(q=>[q.id,answerForSending(q,flow.active[q.id]??(['multi','file'].includes(q.type)?[]:''))]))};
-  const r=await fetch(`/api/public/${studio.slug}/forms/${form.slug}/enquiries`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':requestKey},body:JSON.stringify(body)}),result=await r.json();if(!r.ok)throw new Error(result.error);setReceipt(result.reference);try{sessionStorage.removeItem(storageKey);}catch{}if(window.parent!==window)window.parent.postMessage({type:'caleane:submitted',reference:result.reference},'*');
+  const r=await fetch(`/api/public/${studio.slug}/forms/${form.slug}/enquiries`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':requestKey},body:JSON.stringify(body)}),result=await readReply(r);if(!r.ok)throw new Error(result.error);setReceipt(result.reference);try{sessionStorage.removeItem(storageKey);}catch{}if(window.parent!==window)window.parent.postMessage({type:'caleane:submitted',reference:result.reference},'*');
  }catch(e){setError(e.message);}finally{setBusy(false);}}
  const contactNotice=<div className="form-contact-notice"><p className="form-help">{studio.name} will save your brief and contact details in its private workspace to respond to your enquiry.</p>{d.privacyUrl&&<a href={d.privacyUrl} target="_blank" rel="noreferrer">Read the studio’s privacy notice</a>}</div>;
  function editAnswer(field){
@@ -68,4 +69,4 @@ export function FormUnavailable({message,contact}){
   </ul></div>}
  </main>;
 }
-export function HostedForm({slug,formSlug='enquiry'}){const [data,setData]=useState(null),[error,setError]=useState(null);useEffect(()=>{let alive=true;fetch(`/api/public/${slug}/forms/${formSlug}`).then(async r=>{const d=await r.json();if(!r.ok)throw Object.assign(new Error(d.error),{contact:d.contact});if(alive)setData(d);}).catch(e=>{if(alive)setError(e);});return()=>{alive=false;};},[slug,formSlug]);if(error)return <FormUnavailable message={error.message} contact={error.contact}/>;if(!data)return <div className="loading">Opening the form…</div>;return <PublicForm studio={data.studio} form={data.form}/>;}
+export function HostedForm({slug,formSlug='enquiry'}){const [data,setData]=useState(null),[error,setError]=useState(null);useEffect(()=>{let alive=true;fetch(`/api/public/${slug}/forms/${formSlug}`).then(async r=>{const d=await readReply(r);if(!r.ok)throw Object.assign(new Error(d.error),{contact:d.contact});if(alive)setData(d);}).catch(e=>{if(alive)setError(e);});return()=>{alive=false;};},[slug,formSlug]);if(error)return <FormUnavailable message={error.message} contact={error.contact}/>;if(!data)return <div className="loading">Opening the form…</div>;return <PublicForm studio={data.studio} form={data.form}/>;}
