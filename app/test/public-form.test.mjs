@@ -11,7 +11,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const compiled=fileURLToPath(new URL(`.public-form-${process.pid}.mjs`,import.meta.url));
 const output=await build({entryPoints:[fileURLToPath(new URL('../src/components/PublicForm.jsx',import.meta.url))],bundle:true,packages:'external',format:'esm',platform:'node',write:false});
 await writeFile(compiled,output.outputFiles[0].text);
-const {PublicForm,usesBriefLook}=await import(pathToFileURL(compiled));
+const {PublicForm,HostedForm,usesBriefLook}=await import(pathToFileURL(compiled));
 const {render,screen,cleanup}=await import('@testing-library/react');
 const {default:userEvent}=await import('@testing-library/user-event');
 afterEach(cleanup);after(async()=>{await unlink(compiled);dom.window.close();});
@@ -83,4 +83,13 @@ test('the brief look checks emails and ends with the brief as sent',async()=>{
  await input.type(screen.getByRole('textbox',{name:'Email'}),'.com');await input.click(screen.getByRole('button',{name:/Continue/}));
  await input.type(screen.getByRole('textbox',{name:/idea/i}),'Supper by candlelight');await input.click(screen.getByRole('button',{name:/Send brief/}));
  assert.ok(screen.getByRole('heading',{name:'Thank you'}));for(const text of ['Dinner','Inside','Ama Mensah','ama@example.com','Supper by candlelight'])assert.ok(screen.getByText(text));
+});
+
+test('a hosted form that gets an error page shows a plain sentence, never “Unexpected token <”',async()=>{
+ const realFetch=globalThis.fetch;globalThis.fetch=async()=>new Response('<!doctype html><h1>Bad gateway</h1>',{status:502});
+ try{
+  render(React.createElement(HostedForm,{slug:'nay-decor'}));
+  assert.ok(await screen.findByText('Caleane could not reach the server. Please try again.'));
+  assert.equal(screen.queryByText(/Unexpected token/),null);
+ }finally{globalThis.fetch=realFetch;}
 });
