@@ -5,7 +5,7 @@ const PagedDocument=lazy(()=>import('./PagedDocument'));
 import * as Dialog from '@radix-ui/react-dialog';
 import {useConfirm} from './ConfirmDialog';
 import {OpenedNote,useRecordOpen} from './OpenedNote';
-import {formatDay} from '../lib/dates';
+import {formatDay,todayISO} from '../lib/dates';
 import {findPlaceholders,placeholderMessage} from '../lib/merge-fields';
 import {isVatDocument,lineVatLabel,splitsVat,taxRows,vatGroups} from '../lib/vat';
 import {perUnit} from '../lib/price-units.js';
@@ -28,7 +28,7 @@ export function Proposals({p,owner,mutate,busy,onNavigate}){
  const brand=useDocumentBrand(),branded=brandProps(brand);
  async function requestClose(){if(busy||flushing)return;const changed=edited.current||tidyHtml(documentHtml)!==tidyHtml(openedHtml.current);if(changed&&!await confirm({title:'Discard this proposal?',description:'Nothing has been shared yet. Closing now loses the scope, delivery plan and document you have written in this dialog.',confirmLabel:'Discard proposal',cancelLabel:'Keep editing'}))return;setOpen(false);}
  const trigger=useRef(null),list=p.proposals||[],q=list.find(x=>x.id===selected)||list.at(-1),estimate=p.estimates?.at(-1);
- const expired=q?.expiresOn&&q.expiresOn<new Date().toISOString().slice(0,10),stale=q&&q.briefRevision!==p.briefRevision;
+ const expired=q?.expiresOn&&q.expiresOn<todayISO(),stale=q&&q.briefRevision!==p.briefRevision;
  useRecordOpen(p,owner,'proposal',q?.id);
  const actionable=!!q&&q.id===list.at(-1)?.id&&q.status==='Awaiting response'&&!expired&&!stale;
  return <section className="folio-estimates proposal-workspace"><div className="section-title"><div><h2>Proposals</h2></div>{owner&&<button ref={trigger} className="doc-primary" onClick={()=>{const html=q?.documentHtml||'<h2>Our approach</h2><p>[Describe the creative direction, milestones and working relationship]</p>';setRevision(p.briefRevision);setError('');openedHtml.current=html;edited.current=false;setDocumentHtml(html);setOpen(true);}}>{q?'Create a revision':'Create proposal'}</button>}</div>
@@ -41,7 +41,7 @@ export function Proposals({p,owner,mutate,busy,onNavigate}){
  <label className="field"><span>Exclusions and assumptions</span><textarea name="exclusions" defaultValue={q?.exclusions||''} rows="3" maxLength="5000"/></label>
  <label className="field"><span>Delivery plan</span><textarea name="delivery" defaultValue={q?.delivery||''} required rows="3" maxLength="5000"/></label>
  <section className="proposal-rich-editor"><h3>Proposal document</h3><p className="muted">Add your approach, timeline, tables and working terms. The scope and estimate remain recorded alongside this document. Replace anything in [square brackets] before sharing.</p><Suspense fallback={<p>Loading document editor…</p>}><PagedDocument ref={editor} html={documentHtml} onChange={setDocumentHtml}/></Suspense></section>
- <label className="field"><span>Reply by (UTC)</span><input name="expiresOn" type="date" required min={new Date().toISOString().slice(0,10)}/></label>
+ <label className="field"><span>Reply by</span><input name="expiresOn" type="date" required min={todayISO()}/></label>
  <p>Sharing publishes to the client portal. No email is sent.</p>{error&&<p role="alert">{error}</p>}<button className="button" disabled={busy||flushing}>{busy||flushing?'Sharing…':'Share proposal'}</button>
  </form>:<><p>Create an estimate first so your proposal has a clear price.</p><button className="button" onClick={()=>onNavigate('Estimate')}>Create estimate</button></>}
  </Dialog.Content></Dialog.Portal></Dialog.Root>{confirmation}

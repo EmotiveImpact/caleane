@@ -109,13 +109,13 @@ test('project activity targets current authorized recipients and never includes 
 });
 
 test('Resend adapter uses the stable idempotency key and surfaces no provider response body',async()=>{
- const calls=[];const adapter=createResendDelivery({apiKey:'test-key',from:'Calenne <hello@example.test>',fetchImpl:async(url,options)=>{
+ const calls=[];const adapter=createResendDelivery({apiKey:'test-key',from:'Caleane <hello@example.test>',fetchImpl:async(url,options)=>{
   calls.push({url,options});return {ok:true,json:async()=>({id:'resend-1'})};
  }});
  const id=randomUUID(),result=await adapter({to:'client@example.test',subject:'Hello',text:'A project update',idempotencyKey:id});
  assert.equal(result.id,'resend-1');assert.equal(calls[0].url,'https://api.resend.com/emails');
  assert.equal(calls[0].options.headers['Idempotency-Key'],id);
- assert.deepEqual(JSON.parse(calls[0].options.body),{from:'Calenne <hello@example.test>',to:['client@example.test'],subject:'Hello',text:'A project update'});
+ assert.deepEqual(JSON.parse(calls[0].options.body),{from:'Caleane <hello@example.test>',to:['client@example.test'],subject:'Hello',text:'A project update'});
  const broken=createResendDelivery({apiKey:'test-key',from:'hello@example.test',fetchImpl:async()=>({ok:false,status:422,json:async()=>({secret:'Never expose this'})})});
  await assert.rejects(broken({to:'client@example.test',subject:'Hello',text:'Body',idempotencyKey:id}),error=>error.message==='Email provider returned 422.'&&!error.message.includes('Never expose'));
 });
