@@ -2,7 +2,7 @@ import React,{useMemo,useRef,useState} from 'react';
 import {CheckCircle2,Download,FileSpreadsheet,Upload} from 'lucide-react';
 import {WorkspaceButton,WorkspaceDialog,WorkspaceSelect} from './workspace/WorkspaceUI';
 import {useFieldDefinitions} from './CustomFields';
-import {BASE_FIELDS,IMPORT_STAGES,MAX_IMPORT_ROWS,TEMPLATE_CSV,guessMapping,parseCsv,reviewImport,rowToClient} from '../lib/client-import';
+import {BASE_FIELDS,IMPORT_STAGES,MAX_IMPORT_BYTES,MAX_IMPORT_ROWS,TEMPLATE_CSV,guessMapping,parseCsv,reviewImport,rowToClient} from '../lib/client-import';
 import './client-import.css';
 
 const NONE='__none';
@@ -37,7 +37,9 @@ export function ClientImport({open,onOpenChange,studio,clients,request,onImporte
   setWorking(true);setError('');
   try{
    const rows=reviewed.flatMap((r,i)=>r.problem?[]:[rowToClient(file.headers,file.rows[i],mapping,file.lines[i])]);
-   const d=await request(`/api/clients/import?studio=${studio.id}`,'POST',{rows,stage,tag,fileName:file.name.slice(0,120)});
+   const body={rows,stage,tag,fileName:file.name.slice(0,120)};
+   if(new TextEncoder().encode(JSON.stringify(body)).length>MAX_IMPORT_BYTES){setError('There’s too much in this file to import in one go, usually because of long notes. Split it into two files and import each one.');return;}
+   const d=await request(`/api/clients/import?studio=${studio.id}`,'POST',body);
    setResult({created:d.clients.length,skipped:[...skipped,...d.skipped.map(s=>({row:s.row,problem:s.reason,client:{name:s.name,email:s.email}}))]});
    onImported(d.clients);
   }catch(e){setError(e.message);}finally{setWorking(false);}

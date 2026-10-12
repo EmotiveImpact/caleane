@@ -4,7 +4,8 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {createWorkspace} from '../server.mjs';
-import {guessMapping,parseCsv,reviewImport,rowToClient} from '../src/lib/client-import.js';
+import {guessMapping,parseCsv,parseNumber,reviewImport,rowToClient} from '../src/lib/client-import.js';
+import {importClients} from '../client-import.mjs';
 
 const origin='http://127.0.0.1:4320';
 async function workspace(){
@@ -92,5 +93,21 @@ test('a studio imports a client list, skipping rows it already has, and clients 
   assert.equal((await portal('/api/login','POST',{email:'amelia@example.test',password:'StudioDemo2026!'})).status,200);
   const clientStudio=(await portal('/api/me')).data.studios[0].id;
   assert.equal((await portal(`/api/clients/import?studio=${clientStudio}`,'POST',{rows,stage:'Active'})).status,403);
+ }finally{await w.close();}
+});
+
+test('numbers read the same whether written 1,234.56 or 1.234,56',()=>{
+ assert.deepEqual(['12,50','1.234,56','1,234.56','1,234','£1 200','-3','.5','12,5,0','abc'].map(parseNumber),[12.5,1234.56,1234.56,1234,1200,-3,0.5,undefined,undefined]);
+});
+
+test('the tag for everyone is kept even when a row already has twenty tags',async()=>{
+ const w=await workspace();
+ try{
+  const studio=w.db.prepare('SELECT id FROM studios LIMIT 1').get().id;
+  const tags=Array.from({length:20},(_,i)=>'T'+i).join(',');
+  const {created}=importClients(w.db,{studioId:studio,rows:[{name:'Full Tags',email:'full@example.com',tags}],stage:'Active',tag:'HoneyBook'});
+  const data=JSON.parse(w.db.prepare('SELECT data FROM clients WHERE id=?').get(created[0]).data);
+  assert.equal(data.tags.length,20);
+  assert.equal(data.tags.at(-1),'HoneyBook');
  }finally{await w.close();}
 });

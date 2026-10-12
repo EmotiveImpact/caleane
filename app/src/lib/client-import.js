@@ -2,6 +2,8 @@
 // reads the CSV and previews each row; the server checks every row again with
 // the same rules before it creates a record, so both always agree.
 export const MAX_IMPORT_ROWS=1000;
+// The server reads at most 1 MB for one import, so the browser checks the request first.
+export const MAX_IMPORT_BYTES=1_000_000;
 export const IMPORT_STAGES=[{value:'Active',label:'Active'},{value:'Lead',label:'Prospective'},{value:'Past client',label:'Past client'}];
 export const BASE_FIELDS=[
  {key:'name',label:'Full name',hint:'Or use first and last name below.'},
@@ -70,9 +72,21 @@ export function rowToClient(headers,row,mapping,line){
  return {row:line,name:value('name')||[value('firstName'),value('lastName')].filter(Boolean).join(' '),email:value('email'),company:value('company'),phone:value('phone'),tags:value('tags'),note:value('note'),fields};
 }
 
+// Numbers come from both sides of the Channel: 1,234.56 and 1.234,56 both mean
+// the same amount, and a lone comma with other than three digits after it is a
+// decimal comma (12,50).
+export function parseNumber(text){
+ let value=String(text).replace(/[£$€\s]/g,'');
+ const comma=value.lastIndexOf(','),dot=value.lastIndexOf('.');
+ if(comma>=0&&dot>=0)value=comma>dot?value.replace(/\./g,'').replace(',','.'):value.replace(/,/g,'');
+ else if(comma>=0)value=/^-?\d{1,3}(,\d{3})+$/.test(value)?value.replace(/,/g,''):(value.split(',').length===2?value.replace(',','.'):'x');
+ if(!/^-?(\d+\.?\d*|\.\d+)$/.test(value))return undefined;
+ const n=Number(value);return Number.isFinite(n)&&Math.abs(n)<=1e12?n:undefined;
+}
+
 function fieldValue(field,raw){
  const text=String(raw).trim();
- if(field.type==='number'){const n=Number(text.replace(/[,£$€\s]/g,''));return Number.isFinite(n)&&Math.abs(n)<=1e12?n:undefined;}
+ if(field.type==='number')return parseNumber(text);
  if(field.type==='date'){
   let match=text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/),y,m,d;
   if(match)[,y,m,d]=match;else if((match=text.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/)))[,d,m,y]=match;else return undefined;

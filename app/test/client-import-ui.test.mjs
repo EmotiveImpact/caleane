@@ -51,3 +51,14 @@ test('a file without an email column asks for one before importing',async()=>{
  await input.upload(screen.getByLabelText('Choose a CSV file'),new dom.window.File(['just a header\n'],'empty.csv',{type:'text/csv'}));
  assert.match((await screen.findByRole('alert')).textContent,/no clients in it/);
 });
+
+test('a file too big to send in one go says so instead of failing on the server',async()=>{
+ const input=user(),calls=[];
+ const request=async(url,method,body)=>{calls.push({url,method});return {fields:{client:[],project:[]}};};
+ render(h(ui.WorkspaceUIProvider,null,h(ui.ClientImport,{open:true,onOpenChange(){},studio:{id:'s-big'},clients:[],request,onImported(){}})));
+ const note='x'.repeat(1500),rows=Array.from({length:1000},(_,i)=>`Person ${i},p${i}@example.com,${note}`).join('\n');
+ await input.upload(screen.getByLabelText('Choose a CSV file'),new dom.window.File([`Name,Email,Notes\n${rows}\n`],'big.csv',{type:'text/csv'}));
+ await input.click(await screen.findByRole('button',{name:'Import 1,000 clients'}));
+ assert.match((await screen.findByRole('alert')).textContent,/Split it into two files/);
+ assert.equal(calls.filter(c=>c.url.startsWith('/api/clients/import')).length,0);
+});

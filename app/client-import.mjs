@@ -20,7 +20,7 @@ export function importClients(db,{studioId,rows,stage='Active',tag='',fileName='
  transaction(db,()=>{
   for(const {client:c,problem,row} of reviewed){
    if(problem){skipped.push({row,email:c.email,name:c.name,reason:problem});continue;}
-   const tags=extraTag&&!c.tags.some(t=>t.toLowerCase()===extraTag.toLowerCase())?[...c.tags,extraTag].slice(0,20):c.tags,at=now();
+   const tags=extraTag&&!c.tags.some(t=>t.toLowerCase()===extraTag.toLowerCase())?[...c.tags.slice(0,19),extraTag]:c.tags,at=now();
    const data={company:c.company,phone:c.phone,stage,source,tags,customFields:c.fields,notes:c.note?[{id:id(),text:c.note,by,at}]:[],followUp:'',importedAt:at,createdAt:at,updatedAt:at};
    const clientId=id();
    db.prepare('INSERT INTO clients VALUES(?,?,?,?,?)').run(clientId,studioId,c.email,c.name,JSON.stringify(data));

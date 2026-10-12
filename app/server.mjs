@@ -49,6 +49,7 @@ import {discountFor,invoiceFigures} from './src/lib/invoice-charges.js';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
 import {handleCustomFields} from './custom-fields.mjs';
 import {handleClientImport} from './client-import.mjs';
+import {MAX_IMPORT_BYTES} from './src/lib/client-import.js';
 import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus,manageBooking,bookingEmail,issueManageToken} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
@@ -178,7 +179,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(!publicMatch&&req.headers.origin!==origin)fail(403,'Please use this workspace to make changes.');
     if(!/^application\/json(?:;|$)/i.test(String(req.headers['content-type']||'')))fail(415,'Use JSON for this request.');
     // Public form and booking submissions are text only and fit the 64 KB limit; uploads require a session.
-    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references))$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:route==='/api/clients/import'?1000000:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
+    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references))$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:route==='/api/clients/import'?MAX_IMPORT_BYTES:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
     // Refusals before the body is read close the connection, so the unread body is discarded rather than parsed as the next request.
     if((large&&!user)||Number(req.headers['content-length']||0)>limit){res.setHeader('Connection','close');fail(large&&!user?401:413,large&&!user?'Please sign in.':tooLarge);}
     await new Promise((resolve,reject)=>{let bytes=0;req.on('data',chunk=>{if(bytes<0)return;bytes+=chunk.length;if(bytes>limit){bytes=-1;res.setHeader('Connection','close');reject(Object.assign(new Error(tooLarge),{status:413}));}else chunks.push(chunk);});req.on('end',resolve);req.on('error',reject);});
