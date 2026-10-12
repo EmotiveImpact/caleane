@@ -1,5 +1,5 @@
 import sanitizeHtml from 'sanitize-html';
-import {id,now,hash,transaction,event,saveProject} from './store.mjs';
+import {id,now,hash,transaction,event,saveProject,earliestOpenDay} from './store.mjs';
 import {projectAccess} from './relationships.mjs';
 import {billingDefaults} from './studio-commerce.mjs';
 import {getPlan} from './payment-plans.mjs';
@@ -44,7 +44,7 @@ export function changeEngagements(db,{studioId,projectId,userId,action,body}){re
   if(role!=='Approver')fail(403,'Only a project approver can respond to an agreement.');
   const list=agreements(db,studioId,projectId),a=list.find(item=>item.id===body.id);
   if(!a||a.status!=='Issued'||a.revision!==body.revision||a.digest!==body.digest||a.briefRevision!==project.briefRevision)fail(409,'This agreement changed or is no longer current. Refresh before responding.');
-  if(a.expiresOn<stamp.slice(0,10))fail(409,'This agreement expired. Ask the studio for a new version.');
+  if(a.expiresOn<earliestOpenDay())fail(409,'This agreement expired. Ask the studio for a new version.');
   if(!['accept','decline'].includes(body.decision))fail(400,'Choose a response.');
   if(body.decision==='accept'&&(body.consent!==true||!sameName(text(body.signerName||'',120,true),actor.name)))fail(400,'Type your name as it appears on your account, and tick the box to confirm you accept these terms.');
   a.status=body.decision==='accept'?'Accepted':'Declined';a.response={decision:body.decision,name:actor.name,userId:actor.id,at:stamp,digest:a.digest,note:text(body.note||'',2000),consent:body.decision==='accept'};a.revision++;
@@ -55,12 +55,12 @@ export function changeEngagements(db,{studioId,projectId,userId,action,body}){re
   if(role!=='Owner')fail(403,'Only the studio owner can change this record.');
   if(action==='create-agreement'){
    const list=agreements(db,studioId,projectId),a={id:id(),version:(list[0]?.version||0)+1,title:text(body.title,160,true),...agreementDocument(merged(db,studioId,project,body)),briefRevision:project.briefRevision,status:'Draft',revision:1,createdAt:stamp,createdBy:actor.name,expiresOn:day(body.expiresOn)};
-   if(a.expiresOn<stamp.slice(0,10))fail(400,'Choose a future expiry date.');
+   if(a.expiresOn<earliestOpenDay())fail(400,'Choose a future expiry date.');
    db.prepare('INSERT INTO project_agreements VALUES(?,?,?,?,?)').run(a.id,studioId,projectId,a.version,JSON.stringify(a));
   }else if(action==='update-agreement'){
    const a=agreements(db,studioId,projectId).find(item=>item.id===body.id);
    if(!a||a.status!=='Draft'||a.revision!==body.revision)fail(409,'Only the current draft can be edited. Refresh before saving.');
-   const expiresOn=day(body.expiresOn);if(expiresOn<stamp.slice(0,10))fail(400,'Choose a future expiry date.');
+   const expiresOn=day(body.expiresOn);if(expiresOn<earliestOpenDay())fail(400,'Choose a future expiry date.');
    if(body.termsHtml===undefined){delete a.termsHtml;delete a.documentFormat;}
    Object.assign(a,agreementDocument(merged(db,studioId,project,body)),{title:text(body.title,160,true),expiresOn,briefRevision:project.briefRevision,revision:a.revision+1,updatedAt:stamp,updatedBy:actor.name});
    db.prepare('UPDATE project_agreements SET data=? WHERE id=? AND studio_id=?').run(JSON.stringify(a),a.id,studioId);
@@ -68,7 +68,7 @@ export function changeEngagements(db,{studioId,projectId,userId,action,body}){re
    const list=agreements(db,studioId,projectId),a=list.find(item=>item.id===body.id);
    if(!a||a.revision!==body.revision)fail(409,'The agreement changed. Refresh before continuing.');
    if(action==='issue-agreement'){
-    if(a.status!=='Draft'||a.briefRevision!==project.briefRevision||a.expiresOn<stamp.slice(0,10))fail(409,'Create a fresh draft against the current brief before issuing.');
+    if(a.status!=='Draft'||a.briefRevision!==project.briefRevision||a.expiresOn<earliestOpenDay())fail(409,'Create a fresh draft against the current brief before issuing.');
     const gaps=findPlaceholders(a.title,a.terms);if(gaps.length)fail(400,placeholderMessage(gaps));
     for(const previous of list.filter(item=>item.status==='Issued')){previous.status='Superseded';previous.revision++;db.prepare('UPDATE project_agreements SET data=? WHERE id=?').run(JSON.stringify(previous),previous.id);}
     a.status='Issued';a.issuedAt=stamp;a.issuedBy=actor.name;a.digest=hash(JSON.stringify({title:a.title,terms:a.terms,...(a.termsHtml?{termsHtml:a.termsHtml,documentFormat:a.documentFormat}:{}),version:a.version,briefRevision:a.briefRevision,expiresOn:a.expiresOn}));
