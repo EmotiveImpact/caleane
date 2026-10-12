@@ -77,7 +77,7 @@ export function NewProject({studio,request,busy,onCreate,client,onOpenPipeline})
  function chooseTemplate(id){
   setTemplateId(id);setError('');
   const next=templates.find(item=>item.id===id);
-  setForm(current=>next?withTemplate({...current,occasion:mode==='enquiry'?current.occasion:'',vision:mode==='enquiry'?current.vision:''},next,mode==='enquiry'):{...current,workflowType:emptyProject(studio,client).workflowType,details:{},budget:'',colours:[],customColours:''});
+  setForm(current=>next?withTemplate({...current,occasion:mode==='enquiry'?current.occasion:'',vision:mode==='enquiry'?current.vision:''},next,mode==='enquiry'):{...current,occasion:mode==='enquiry'?current.occasion:'',vision:mode==='enquiry'?current.vision:'',workflowType:emptyProject(studio,client).workflowType,details:{},budget:'',colours:[],customColours:''});
  }
  async function submit(event){
   event.preventDefault();
