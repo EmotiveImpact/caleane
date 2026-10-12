@@ -50,7 +50,7 @@ export function ProjectOverview({p,studio,owner,onNavigate,request,mutate,busy,p
 }
 function ProjectStudioDetails({p,studio,request,mutate,busy,projects,manageFields}){
  const definitions=useFieldDefinitions(studio,request);
- return <StudioDetails kind="project" record={p} definitions={definitions} tagSuggestions={collectTags(projects)} busy={busy} onManage={manageFields} onSave={async body=>!!(await mutate('fields',body))}/>;
+ return <StudioDetails kind="project" record={p} studioId={studio.id} request={request} definitions={definitions} tagSuggestions={collectTags(projects)} busy={busy} onManage={manageFields} onSave={async body=>!!(await mutate('fields',body))}/>;
 }
 function ProjectOverviewBody({p,studio,owner,onNavigate,request,details}){
  const workflow=workflowFor(studio,p),next=nextStep(p,owner,workflow),approved=approvedDirection(p),tasks=p.tasks||[];

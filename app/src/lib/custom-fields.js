@@ -1,16 +1,21 @@
 // Shared helpers for the studio's own fields and tags on clients and projects.
-export const FIELD_TYPES=[{value:'text',label:'Text'},{value:'number',label:'Number'},{value:'date',label:'Date'},{value:'choice',label:'Choice from a list'}];
+export const FIELD_TYPES=[{value:'text',label:'Text'},{value:'number',label:'Number'},{value:'date',label:'Date'},{value:'choice',label:'Choice from a list'},{value:'yesno',label:'Yes or no'},{value:'money',label:'Money'},{value:'link',label:'Web link'},{value:'file',label:'File'}];
+export const FIELD_CURRENCIES=['GBP','EUR','USD'];
 export const ALL_TAGS='All tags';
 
 export function displayValue(field,value){
  if(value===undefined||value===null||value==='')return '';
  if(field.type==='date')return new Date(value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
  if(field.type==='number')return Number(value).toLocaleString('en-GB');
+ if(field.type==='yesno')return value?'Yes':'No';
+ if(field.type==='money')return new Intl.NumberFormat('en-GB',{style:'currency',currency:field.currency||'GBP'}).format(Number(value));
+ if(field.type==='link')return String(value).replace(/^https?:\/\//,'').replace(/\/$/,'');
+ if(field.type==='file')return value?.name||'';
  return String(value);
 }
 
 // Tags and field values join the text a search box matches against.
-export function detailsText(record){return [...(record?.tags||[]),...Object.values(record?.customFields||{})].join(' ');}
+export function detailsText(record){return [...(record?.tags||[]),...Object.values(record?.customFields||{}).map(v=>typeof v==='object'?v?.name||'':typeof v==='boolean'?'':v)].join(' ');}
 
 export function collectTags(records){
  const seen=new Map();
@@ -39,4 +44,8 @@ export const FIELD_IDEAS=[
  {kind:'client',label:'Referred by',type:'text'},
  {kind:'client',label:'Preferred contact',type:'choice',options:['Email','Phone','Portal']},
  {kind:'client',label:'Birthday',type:'date'},
+ {kind:'client',label:'Signed NDA',type:'yesno'},
+ {kind:'project',label:'Budget',type:'money',currency:'GBP'},
+ {kind:'client',label:'Website',type:'link'},
+ {kind:'project',label:'Venue contract',type:'file'},
 ];

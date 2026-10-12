@@ -70,6 +70,9 @@ export function eraseClient(db,{studioId,clientId,confirmName}){
   drop('invitations',`studio_id=? AND email IN (${list(emails)})`,[studioId,...emails]);
   if(tables(db).includes('notification_outbox'))drop('notification_outbox',`studio_id=? AND recipient_email IN (${list(emails)})`,[studioId,...emails]);
   for(const userId of users)if(!db.prepare('SELECT 1 FROM crm_contacts WHERE studio_id=? AND user_id=?').get(studioId,userId))accounts[eraseAccount(db,{studioId,userId,drop})]++;
+  // Files kept in the client's and their projects' custom fields go with them, unless another record still names one.
+  const fieldFiles=[client.data,...projects.map(p=>JSON.stringify(p))].flatMap(data=>Object.values(JSON.parse(data).customFields||{}).map(v=>v?.fileId).filter(Boolean));
+  if(tables(db).includes('custom_field_files'))for(const fileId of new Set(fieldFiles)){const pattern=`%"fileId":"${fileId}"%`;if(!db.prepare(`SELECT 1 FROM clients WHERE studio_id=? AND id<>? AND data LIKE ? UNION ALL SELECT 1 FROM projects WHERE studio_id=? AND data LIKE ? LIMIT 1`).get(studioId,clientId,pattern,studioId,pattern))drop('custom_field_files','id=? AND studio_id=?',[fileId,studioId]);}
   drop('clients','id=? AND studio_id=?',[clientId,studioId]);
  });
  return {erasedAt:now(),client:{id:client.id,name:client.name},projects:projectIds.length,records:counts,accounts};

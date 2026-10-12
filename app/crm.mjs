@@ -98,6 +98,8 @@ function insertActivity(db,{studioId,clientId,opportunityId,kind,title,detail,us
  db.prepare(`INSERT INTO crm_activities (id,studio_id,client_id,opportunity_id,kind,title,detail,actor_id,actor_name,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)`)
   .run(id(),studioId,clientId,opportunityId||null,kind,title,detail||'',user.id,user.name,at);
 }
+/** A system entry on the client's history, for changes made outside the CRM screens. */
+export function recordActivity(db,{studioId,clientId,title,detail='',user}){insertActivity(db,{studioId,clientId,opportunityId:null,kind:'System',title,detail,user,at:now()});}
 export function listActivities(db,studioId,clientId,opportunityId=null){
  clientRow(db,studioId,clientId);
  const where=opportunityId?' AND a.opportunity_id=?':'';

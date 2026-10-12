@@ -126,3 +126,14 @@ export function bindInvitedContact(db,studioId,email,userId){
   db.prepare('UPDATE crm_contacts SET user_id=? WHERE id=? AND studio_id=?').run(userId,contact.id,studioId);
  }
 }
+
+/** A company typed on a client becomes their organisation: an existing one of that name is reused, otherwise one is created. A client already linked to an organisation keeps it. */
+export function linkCompany(db,studioId,clientId,company){
+ const name=String(company||'').trim();if(!name)return null;
+ if(db.prepare('SELECT 1 FROM crm_client_organizations WHERE client_id=? AND studio_id=?').get(clientId,studioId))return null;
+ let organization=db.prepare('SELECT id FROM crm_organizations WHERE studio_id=? AND lower(name)=lower(?) ORDER BY created_at LIMIT 1').get(studioId,name);
+ if(!organization){organization={id:randomUUID()};const created=at();db.prepare('INSERT INTO crm_organizations VALUES(?,?,?,?,?,?)').run(organization.id,studioId,name,'',created,created);}
+ db.prepare('INSERT INTO crm_client_organizations VALUES(?,?,?)').run(clientId,studioId,organization.id);
+ db.prepare(`UPDATE crm_contacts SET organization_id=? WHERE studio_id=? AND organization_id IS NULL AND id IN (SELECT contact_id FROM crm_client_contacts WHERE studio_id=? AND client_id=? AND primary_contact=1)`).run(organization.id,studioId,studioId,clientId);
+ return organization.id;
+}
