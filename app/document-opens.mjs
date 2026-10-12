@@ -60,9 +60,7 @@ export function recordDocumentOpen(db,{studioId,projectId,user,owner,staffViewer
 }
 
 // Owner view: "proposal:<id>" -> when it was first and last opened, how many visits, and by whom.
-export function documentOpens(db,studioId,projectId){
- installDocumentOpens(db);
- const rows=db.prepare('SELECT o.*,u.name FROM client_document_opens o JOIN users u ON u.id=o.user_id WHERE o.studio_id=? AND o.project_id=? ORDER BY o.first_opened_at').all(studioId,projectId);
+function groupOpens(rows){
  const result={};
  for(const r of rows){
   const key=`${r.kind}:${r.item_id}`,entry=result[key]||(result[key]={firstOpenedAt:r.first_opened_at,lastOpenedAt:r.last_opened_at,opens:0,people:[]});
@@ -71,6 +69,17 @@ export function documentOpens(db,studioId,projectId){
   entry.opens+=r.opens;entry.people.push(r.name);
  }
  return result;
+}
+export function documentOpens(db,studioId,projectId){
+ installDocumentOpens(db);
+ return groupOpens(db.prepare('SELECT o.*,u.name FROM client_document_opens o JOIN users u ON u.id=o.user_id WHERE o.studio_id=? AND o.project_id=? ORDER BY o.first_opened_at').all(studioId,projectId));
+}
+// documentOpens for every project in a studio, keyed by project id, for the project list.
+export function documentOpensByProject(db,studioId){
+ installDocumentOpens(db);
+ const rows=new Map();
+ for(const row of db.prepare('SELECT o.*,u.name FROM client_document_opens o JOIN users u ON u.id=o.user_id WHERE o.studio_id=? ORDER BY o.first_opened_at').all(studioId))(rows.get(row.project_id)||rows.set(row.project_id,[]).get(row.project_id)).push(row);
+ return new Map([...rows].map(([projectId,list])=>[projectId,groupOpens(list)]));
 }
 
 export function firstOpenedAt(db,studioId,kind,itemId){
