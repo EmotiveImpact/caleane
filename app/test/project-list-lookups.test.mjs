@@ -19,8 +19,7 @@ test('the project list reads its lookups for the whole studio and matches each p
   const before=await listWithCount();
   for(let i=0;i<10;i++)assert.equal((await call('/api/projects'+q,'owner','POST',{name:'Guest '+i,email:`guest${i}@example.test`,occasion:'Dinner',date:'2027-05-01',venue:'',vision:''})).status,201);
   const after=await listWithCount(),listed=after.projects,perProject=(after.count-before.count)/10;
-  console.log(`list statements: ${before.count} for ${before.projects.length} projects, ${after.count} for ${listed.length}`);
-  assert.ok(perProject<=4,`each extra project should add only a few statements, not ${perProject}`);
+  assert.ok(perProject<=4,`each extra project should add only a few statements, not ${perProject} (${before.count} for ${before.projects.length} projects, ${after.count} for ${listed.length})`);
   assert.ok(listed.some(p=>p.latestInvoice)&&listed.some(p=>p.unreadMessages>0||p.messages.length),'the sample exercises invoices and messages');
   for(const who of ['owner','client']){
    const list=who==='owner'?listed:(await call('/api/projects'+q,who)).data.projects;
