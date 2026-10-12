@@ -92,7 +92,7 @@ export async function expireStripeCheckout(db,stripe,{studioId,projectId,invoice
  let session;
  try{
   session=await stripe.checkout.sessions.expire(attempt.stripe_session_id,{},
-   {stripeAccount:attempt.stripe_account_id,idempotencyKey:`calenne-expire-${attempt.id}`});
+   {stripeAccount:attempt.stripe_account_id,idempotencyKey:`caleane-expire-${attempt.id}`});
  }catch(error){
   // A retry after an uncertain provider response can find a session already expired.
   const current=await stripe.checkout.sessions.retrieve(attempt.stripe_session_id,{},
@@ -144,7 +144,7 @@ export async function createStripeCheckout(db,stripe,{studioId,projectId,invoice
   success_url:checkoutReturnUrl(appOrigin,projectId,invoiceId,'return'),
   cancel_url:checkoutReturnUrl(appOrigin,projectId,invoiceId,'cancelled')};
  // The same persisted key and exact parameters make a retry safe after a lost response.
- const session=await stripe.checkout.sessions.create(params,{stripeAccount:attempt.stripe_account_id,idempotencyKey:`calenne-checkout-${attempt.id}`});
+ const session=await stripe.checkout.sessions.create(params,{stripeAccount:attempt.stripe_account_id,idempotencyKey:`caleane-checkout-${attempt.id}`});
  if(!session?.id||!session?.url||session.mode!=='payment')fail(502,'Stripe did not return a usable Checkout session.');
  attempt=transaction(db,()=>{
   const current=db.prepare('SELECT * FROM stripe_checkout_attempts WHERE id=?').get(attempt.id);

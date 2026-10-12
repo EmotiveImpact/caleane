@@ -1,5 +1,5 @@
 // Derived from persisted workflow state, never from invented dashboard metrics.
-import {formatDay} from './dates.js';
+import {formatDay,todayISO} from './dates.js';
 export function attentionFor(project,owner){
  const items=[];
  // at is when the item began waiting, where the record keeps it, so the bell can group by day.
@@ -9,7 +9,7 @@ export function attentionFor(project,owner){
  if(['Complete','Archived'].includes(project.status))return items;
  const proposal=project.proposals?.at(-1);
  if(proposal?.status==='Awaiting response'){
-  const needsUpdate=proposal.briefRevision!==project.briefRevision||proposal.expiresOn<new Date().toISOString().slice(0,10);
+  const needsUpdate=proposal.briefRevision!==project.briefRevision||proposal.expiresOn<todayISO();
   if(owner&&needsUpdate)add('proposal-update','Update the proposal','Proposal','The brief changed or the reply date passed.');
   if(!owner&&!needsUpdate&&project.accessRole==='Approver')add('proposal','Review your proposal','Proposal',proposal.title);
  }
