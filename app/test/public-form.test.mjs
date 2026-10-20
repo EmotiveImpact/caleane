@@ -11,7 +11,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const compiled=fileURLToPath(new URL(`.public-form-${process.pid}.mjs`,import.meta.url));
 const output=await build({entryPoints:[fileURLToPath(new URL('../src/components/PublicForm.jsx',import.meta.url))],bundle:true,packages:'external',format:'esm',platform:'node',write:false});
 await writeFile(compiled,output.outputFiles[0].text);
-const {PublicForm,HostedForm,usesBriefLook}=await import(pathToFileURL(compiled));
+const {PublicForm,FormUnavailable,HostedForm,usesBriefLook}=await import(pathToFileURL(compiled));
 const {render,screen,cleanup}=await import('@testing-library/react');
 const {default:userEvent}=await import('@testing-library/user-event');
 afterEach(cleanup);after(async()=>{await unlink(compiled);dom.window.close();});
@@ -83,6 +83,34 @@ test('the brief look checks emails and ends with the brief as sent',async()=>{
  await input.type(screen.getByRole('textbox',{name:'Email'}),'.com');await input.click(screen.getByRole('button',{name:/Continue/}));
  await input.type(screen.getByRole('textbox',{name:/idea/i}),'Supper by candlelight');await input.click(screen.getByRole('button',{name:/Send brief/}));
  assert.ok(screen.getByRole('heading',{name:'Thank you'}));for(const text of ['Dinner','Inside','Ama Mensah','ama@example.com','Supper by candlelight'])assert.ok(screen.getByText(text));
+});
+test('forms show the Brand kit logo unless the form keeps its own',()=>{
+ const studio={slug:'test',name:'Test studio',branding:{logoUrl:'https://example.test/brand.png'}};
+ for(const look of ['classic','brief']){
+  const view=render(h(PublicForm,{studio,form:{slug:'test',definition:{...definition,theme:{look}}},preview:true}));
+  assert.deepEqual([...new Set(screen.getAllByRole('img',{name:'Test studio'}).map(i=>i.getAttribute('src')))],['https://example.test/brand.png'],look);view.unmount();
+  const own=render(h(PublicForm,{studio,form:{slug:'test',definition:{...definition,logoUrl:'https://example.test/own.png',theme:{look}}},preview:true}));
+  assert.deepEqual([...new Set(screen.getAllByRole('img',{name:'Test studio'}).map(i=>i.getAttribute('src')))],['https://example.test/own.png'],look);own.unmount();
+ }
+});
+test('a paused form offers the studio email and website',()=>{
+ render(h(FormUnavailable,{message:'This form is not taking enquiries at the moment. Please contact the studio.',contact:{name:'NAY DÉCOR',email:'hello@nay.test',website:'https://nay.test'}}));
+ assert.match(screen.getByRole('link',{name:'Email hello@nay.test'}).getAttribute('href'),/^mailto:hello@nay\.test\?subject=/);
+ assert.equal(screen.getByRole('link',{name:'Visit nay.test'}).getAttribute('href'),'https://nay.test/');
+});
+test('a file question uploads each file and sends its reference with the enquiry',async()=>{
+ for(const key of ['FileReader','File','Blob','location','sessionStorage'])Object.defineProperty(globalThis,key,{configurable:true,value:dom.window[key]});
+ const requests=[],realFetch=globalThis.fetch;
+ globalThis.fetch=async(url,init)=>{requests.push([url,JSON.parse(init.body)]);return {ok:true,json:async()=>url.endsWith('/uploads')?{upload:{id:'upload-1',name:'moodboard.png'}}:{reference:'ABC123'}};};
+ try{
+  const fileForm={...definition,theme:{look:'classic'},layout:'page',projectTypes:['Wedding'],questions:[{id:'q-moodboard',label:'Share your inspiration',type:'file',required:true,options:[]}]};
+  delete fileForm.screens;
+  const input=userEvent.setup();const {container}=render(h(PublicForm,{studio:{slug:'test',name:'Test studio'},form:{slug:'moodboard',version:3,definition:fileForm}}));
+  await input.upload(container.querySelector('input[type=file]'),new dom.window.File(['png-bytes'],'moodboard.png',{type:'image/png'}));
+  assert.ok((await screen.findAllByText('moodboard.png')).length);
+  assert.equal(requests[0][0],'/api/public/test/forms/moodboard/uploads');assert.equal(requests[0][1].name,'moodboard.png');
+  assert.ok(screen.getByRole('button',{name:'Remove moodboard.png'}));
+ }finally{globalThis.fetch=realFetch;}
 });
 
 test('a hosted form that gets an error page shows a plain sentence, never “Unexpected token <”',async()=>{

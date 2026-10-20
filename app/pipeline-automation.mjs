@@ -427,7 +427,23 @@ function insights(db,studioId,opps,projects,asOf){
   overall:{won,lost:closed.length-won,rate:closed.length?Math.round(won/closed.length*100):null,decisionDays:decided.length?Math.round(decided.reduce((a,b)=>a+b,0)/decided.length):null}};
 }
 
+// Proposal follow-ups due on or before a day, worked out the same way as the Pipeline does, without the rest of its overview.
+export function dueFollowUps(db,studioId,{until}){
+ installPipeline(db);const settings=pipelineSettings(db,studioId);if(!settings.followUps)return [];
+ const due=[];
+ for(const o of db.prepare("SELECT o.id,o.project_id,o.stage,c.id AS client_id,c.name AS client_name FROM crm_opportunities o JOIN clients c ON c.id=o.client_id AND c.studio_id=o.studio_id WHERE o.studio_id=? AND o.project_id IS NOT NULL AND o.stage NOT IN ('Won','Lost')").all(studioId)){
+  const row=db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(o.project_id,studioId);if(!row)continue;
+  const p=JSON.parse(row.data),proposal=currentProposal(p);if(p.status==='Archived'||proposal?.status!=='Awaiting response'||fired(db,studioId,'pause:'+proposal.id))continue;
+  const sent=db.prepare('SELECT COUNT(*) AS n FROM crm_pipeline_triggers WHERE studio_id=? AND key LIKE ?').get(studioId,`follow:${proposal.id}:%`).n,replied=lastClientMessage(db,p.id);
+  if(sent>=settings.followUpDays.length||(replied&&replied>=proposal.createdAt))continue;
+  const date=addDays(proposal.createdAt,settings.followUpDays[sent]);if(date>until)continue;
+  due.push({opportunityId:o.id,clientId:o.client_id,clientName:o.client_name,projectId:p.id,projectTitle:p.title,date,step:sent+1,steps:settings.followUpDays.length});
+ }
+ return due.sort((a,b)=>a.date.localeCompare(b.date));
+}
+
 export async function handlePipeline({db,req,route,body,studio,owner,reply,outbox}){
+ if(route==='/api/pipeline/follow-ups'&&req.method==='GET'){if(!owner)fail(403,'Only the studio owner can open the pipeline.');return reply(200,{followUps:dueFollowUps(db,studio.id,{until:addDays(now().slice(0,10),6)})}),true;}
  if(route!=='/api/pipeline')return false;
  if(!owner)fail(403,'Only the studio owner can open the pipeline.');
  installPipeline(db);

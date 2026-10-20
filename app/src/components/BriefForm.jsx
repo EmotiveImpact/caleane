@@ -3,7 +3,8 @@ import {ArrowLeft,ArrowRight,Check,X} from 'lucide-react';
 import {formFields,screensFor} from '../lib/form-flow.js';
 import {readReply} from '../lib/read-reply.js';
 import {briefSteps,chaptersOf,inspectSteps,IMAGE_LAYOUTS} from '../lib/brief-steps.js';
-import {answerText} from './QuestionInput';
+import {answerText,answerForSending,FileAnswer} from './QuestionInput';
+import {formBrand} from '../lib/brand-kit.js';
 
 // The brief look: one question at a time, chapters across the top and the brief filling in beside it.
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -59,7 +60,7 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
  let index=pool.findIndex(s=>s.key===stepKey);if(index<0)index=Math.min(lastIndex.current,all.length-1);
  const step=pool[index];lastIndex.current=index;
  const questions=steps.filter(s=>s.kind==='question'),lastQuestion=questions.at(-1),isLast=step.kind==='question'&&step.key===lastQuestion?.key;
- const valueOf=field=>field.id.startsWith('q-')?answers[field.id]??(field.type==='multi'?[]:''):values[field.key]??'';
+ const valueOf=field=>field.id.startsWith('q-')?answers[field.id]??(['multi','file'].includes(field.type)?[]:''):values[field.key]??'';
 
  useEffect(()=>{if(preview&&startScreenId==='__welcome'){setStepKey('__welcome');setReceipt('');setError('');return;}if(preview&&startScreenId==='__ending'){setReceipt('Preview');return;}if(preview&&startScreenId){const first=all.find(s=>s.screen?.id===startScreenId)||inspectSteps(d,startScreenId)[0];if(first){setStepKey(first.key);setReceipt('');setError('');}}},[startScreenId,preview]);
  useEffect(()=>{if(preview)return;try{const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');if(saved){setValues(saved.values||{});setAnswers(saved.answers||{});setRequestKey(saved.key||crypto.randomUUID());setRemember(true);}}catch{}},[storageKey,preview]);
@@ -78,7 +79,7 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
  function validate(){
   if(step.kind!=='question')return true;const f=step.field,v=valueOf(f);
   if(f.type==='date'&&partial[f.id]){setError('Enter a full date, like 14 June 2027.');return false;}
-  if(f.required&&!filled(v)){setError(['choice','multi'].includes(f.type)?(f.type==='multi'?'Choose at least one answer to continue.':'Choose one to continue.'):'Please answer this one to continue.');return false;}
+  if(f.required&&!filled(v)){setError(f.type==='file'?'Add at least one file to continue.':['choice','multi'].includes(f.type)?(f.type==='multi'?'Choose at least one answer to continue.':'Choose one to continue.'):'Please answer this one to continue.');return false;}
   if(filled(v)&&f.type==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){setError('That email address looks incomplete. Check it and try again.');return false;}
   if(filled(v)&&f.type==='url'){try{const u=new URL(v);if(!['http:','https:'].includes(u.protocol))throw 0;}catch{setError('Use a complete link, starting with https://');return false;}}
   if(filled(v)&&f.type==='number'&&!Number.isFinite(Number(v))){setError('Enter a number.');return false;}
@@ -92,7 +93,7 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
   if(preview){setReceipt('Preview');return;}
   setBusy(true);setError('');
   try{
-   const body={...Object.fromEntries(formFields(d).filter(f=>!f.id.startsWith('q-')&&!f.id.startsWith('detail:')).map(f=>[f.key,flow.active[f.id]||''])),website:values.website||'',formVersion:form.version,consent:values.consent===true,colours:String(flow.active['core:colours']||'').split(',').map(v=>v.trim()).filter(Boolean),details:Object.fromEntries(formFields(d).filter(f=>f.id.startsWith('detail:')).map(f=>[f.id.slice(7),flow.active[f.id]||''])),intakeAnswers:Object.fromEntries(d.questions.map(q=>[q.id,flow.active[q.id]??(q.type==='multi'?[]:'')]))};
+   const body={...Object.fromEntries(formFields(d).filter(f=>!f.id.startsWith('q-')&&!f.id.startsWith('detail:')).map(f=>[f.key,flow.active[f.id]||''])),website:values.website||'',formVersion:form.version,consent:values.consent===true,colours:String(flow.active['core:colours']||'').split(',').map(v=>v.trim()).filter(Boolean),details:Object.fromEntries(formFields(d).filter(f=>f.id.startsWith('detail:')).map(f=>[f.id.slice(7),flow.active[f.id]||''])),intakeAnswers:Object.fromEntries(d.questions.map(q=>[q.id,answerForSending(q,flow.active[q.id]??(['multi','file'].includes(q.type)?[]:''))]))};
    const r=await fetch(`/api/public/${studio.slug}/forms/${form.slug}/enquiries`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':requestKey},body:JSON.stringify(body)}),result=await readReply(r);if(!r.ok)throw new Error(result.error);
    setReceipt(result.reference);try{sessionStorage.removeItem(storageKey);}catch{}if(window.parent!==window)window.parent.postMessage({type:'caleane:submitted',reference:result.reference},'*');
   }catch(err){setError(err.message);}finally{setBusy(false);}
@@ -114,9 +115,9 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
  const screen=step.screen,layout=step.kind==='welcome'?(screens[0]?.kind!=='welcome'&&IMAGE_LAYOUTS.includes(screens[0]?.layout)&&screens[0]?.imageUrl?screens[0].layout:'center'):screen?.layout,image=step.kind==='welcome'?screens[0]?.imageUrl:screen?.imageUrl;
  const media=!receipt&&IMAGE_LAYOUTS.includes(layout)&&image?layout:'',tone=useImageTone(media?image:'',(step.kind==='welcome'?screens[0]:screen)?.textTone);
  const onScreen=receipt||step.kind!=='question',chapters=chaptersOf(steps),answered=s=>filled(valueOf(s.field));
- const accent=d.accent||'#202326';
+ const look=formBrand(studio,d);
  const cls=['bf','palette-'+(theme.palette||'paper'),'shape-'+(theme.radius||'soft'),preview?'is-preview':'',!preview&&new URLSearchParams(location.search).get('embed')==='inline'?'is-inline':'',showBrief&&!onScreen?'has-brief':'',briefOpen?'brief-open':'',onScreen?'on-screen':'',media==='image-left'?'media-left':'',media==='image-right'?'media-right':'',media==='cover'?'media-cover':'',media?'mark-'+(media==='cover'?'light':tone):'',back?'going-back':''].filter(Boolean).join(' ');
- const brand=d.logoUrl?<img className="bf-logo" src={d.logoUrl} alt={studio.name}/>:<span>{studio.name}</span>;
+ const logo=d.logoUrl||studio.branding?.logoUrl,brand=logo?<img className="bf-logo" src={logo} alt={studio.name}/>:<span>{studio.name}</span>;
  const count=questions.filter(answered).length;
 
  let body;
@@ -131,7 +132,8 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
   const f=step.field,v=valueOf(f),ch=chapters.find(c=>c.name===step.chapter),pos=ch?ch.steps.findIndex(s=>s.key===step.key)+1:0,name=f.id.startsWith('q-')?'intake__'+f.id:f.key;
   const eyebrow=[showChapters&&ch?`${ch.name} · ${pos} of ${ch.steps.length}`:'',f.required?'Required':''].filter(Boolean).join(' · ');
   let input;
-  if(['choice','multi'].includes(f.type))input=<Choices field={f} value={v} name={name} onPick={pick} pictures={!!f.pictures&&f.id.startsWith('q-')}/>;
+  if(f.type==='file')input=<FileAnswer question={f} value={v} onChange={files=>setField(f,files)} name={name} hideLabel uploadUrl={preview?'':`/api/public/${studio.slug}/forms/${form.slug}/uploads`}/>;
+  else if(['choice','multi'].includes(f.type))input=<Choices field={f} value={v} name={name} onPick={pick} pictures={!!f.pictures&&f.id.startsWith('q-')}/>;
   else if(f.type==='date')input=<DateParts key={step.key} value={v} name={name} label={f.label} required={f.required} onChange={(iso,state)=>{setPartial(p=>({...p,[f.id]:state==='partial'}));setField(f,iso);}}/>;
   else if(f.type==='long')input=<textarea className="bf-field" name={name} aria-label={f.label} rows="2" maxLength={f.id.startsWith('q-')?1200:5000} placeholder="Start typing…" value={v} required={f.required} onChange={e=>{e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';setField(f,e.target.value);}}/>;
   else input=<input className="bf-field" name={name} aria-label={f.label} type={{email:'email',url:'url',number:'number'}[f.type]||'text'} inputMode={f.type==='number'?'decimal':undefined} value={v} required={f.required} placeholder={{email:'name@example.com',url:'https://',number:'0'}[f.type]||f.placeholder||'Start typing…'} autoComplete={f.key==='name'?'name':f.key==='email'?'email':'off'} maxLength={f.id.startsWith('q-')?500:f.key==='pinterest'?2000:f.key==='venue'?300:f.key==='email'?254:f.key.startsWith('detail__')?500:f.key==='colours'?300:120} onChange={e=>setField(f,e.target.value)}/>;
@@ -142,7 +144,8 @@ export function BriefForm({studio,form,preview=false,startScreenId}){
    <div className="bf-actions">{index>0&&<button type="button" className="bf-back" onClick={()=>go(pool[index-1].key,-1)}><ArrowLeft size={15} aria-hidden="true"/>Back</button>}<button type="submit" className="bf-btn" disabled={busy}>{busy?'Sending…':isLast?d.submitLabel||'Send my brief':step.lastOnScreen&&screen.buttonLabel||'Continue'}{!busy&&<ArrowRight size={16} aria-hidden="true"/>}</button><span className="bf-hint">{['choice','multi'].includes(f.type)?'or press a letter':'or press Enter'}</span></div></div>;
  }
 
- return <div className="form-render-surface bf-frame"><div ref={rootRef} className={cls} style={{'--accent':accent,'--img-pos':screen?.imagePosition||'center'}} onKeyDown={onKey}>
+ return <div className="form-render-surface bf-frame"><div ref={rootRef} className={cls} style={{'--accent':look.accent,'--on-accent':look.onAccent,...(look.body?{'--bf-body':look.body,'--bf-heading':look.heading}:{}),'--img-pos':screen?.imagePosition||'center'}} onKeyDown={onKey}>
+  {look.fontCss&&<style>{look.fontCss}</style>}{look.fontLink&&<link rel="stylesheet" href={look.fontLink}/>}
   {media==='cover'&&<div className="bf-cover" style={{backgroundImage:`url("${image.replace(/"/g,'%22')}")`}} aria-hidden="true"/>}
   <span className="bf-mark" aria-hidden="true">{brand}</span>
   <header className="bf-top"><span className="bf-brand">{brand}</span>{showChapters&&chapters.length>0&&<div className="bf-chapters" aria-label="Progress">{chapters.map(c=>{const done=c.steps.filter(answered).length;return <div key={c.name} className={'bf-ch'+(step.chapter===c.name?' on':'')}><span>{c.name}</span><i><b style={{width:Math.round(done/c.steps.length*100)+'%'}}/></i></div>;})}</div>}{showBrief&&<button type="button" className="bf-brieftoggle" aria-expanded={briefOpen} onClick={()=>setBriefOpen(!briefOpen)}>Your brief <span>{count}</span></button>}</header>

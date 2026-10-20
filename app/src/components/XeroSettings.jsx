@@ -29,7 +29,7 @@ export function XeroSettings({studio,request}){
  return <section className="integration-card xero-settings" aria-labelledby="xero-title">
   <header className="integration-card-head">
    <div><h3 id="xero-title">Xero</h3><p>Send each invoice you issue, and each payment you record, to Xero, so your books match without typing anything twice.</p>{data.connected&&<small>{data.organisation} · connected {when(data.connectedAt)}{data.lastSyncAt?` · last sync ${when(data.lastSyncAt)}`:''}</small>}</div>
-   <WorkspaceStatus value={data.connected?'Connected':data.configured?'Not connected':'Setup required'} tone={data.connected?'success':'neutral'}/>
+   <WorkspaceStatus value={data.connected?'Connected':data.configured?'Not connected':'Coming soon'} tone={data.connected?'success':'neutral'}/>
   </header>
   {!data.configured?<p className="xero-note">Xero needs to be switched on for this workspace before you can connect. Once it is, you sign in to Xero here and choose your organisation.</p>
   :!data.connected?<div className="integration-card-actions"><WorkspaceButton disabled={busy} onClick={()=>send({action:'connect'})}>Connect Xero</WorkspaceButton></div>

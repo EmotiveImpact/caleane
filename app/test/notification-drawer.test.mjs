@@ -47,6 +47,9 @@ test('notification ages read naturally',()=>{
  assert.equal(notificationAge('2026-10-04T09:00:00Z',now),'Yesterday');
  assert.equal(notificationAge('2026-09-02T09:00:00Z',now),'2 Sept');
  assert.equal(notificationAge('not a date',now),'');
+ assert.equal(notificationAge('2026-10-05',now),'Today','a plain date reads as the day');
+ assert.equal(notificationAge('2026-10-04',now),'Yesterday');
+ assert.equal(notificationAge('2026-09-28',now),'28 Sept');
 });
 
 function fixture(){

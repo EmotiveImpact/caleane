@@ -16,7 +16,7 @@ export function createAccountSecurity(db,{origin,encryptionKey='',previousKeys=[
  function open(data){const [iv,tag,content]=data.split('.').map(s=>Buffer.from(s,'base64url'));let error;for(const candidate of keys){try{const decipher=createDecipheriv('aes-256-gcm',candidate,iv);decipher.setAuthTag(tag);return JSON.parse(Buffer.concat([decipher.update(content),decipher.final()]).toString());}catch(e){error=e;}}throw error;}
  function status(user){return {email:user.email,verified:!!db.prepare('SELECT 1 FROM account_verifications WHERE user_id=? AND email=?').get(user.id,user.email),queueConfigured:!!key,deliveryConfigured:!!(key&&process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1')};}
  function enqueue(user,purpose){
-  if(!key)fail(503,'Account email is not configured yet. Contact your studio administrator.');
+  if(!key)fail(503,purpose==='reset'?'Caleane can’t send password reset emails yet. Contact Caleane support and we’ll help you get back in.':'Caleane can’t send account emails yet, so your email can’t be verified for now.');
   if(!user)return;
   const time=clock(),recent=db.prepare('SELECT created FROM account_tokens WHERE user_id=? AND purpose=? ORDER BY created DESC LIMIT 1').get(user.id,purpose);if(recent&&time-recent.created<60000)return;
   const token=randomBytes(32).toString('hex'),digest=hash(token),route=purpose==='reset'?'/reset-password':'/verify-email',expires=time+(purpose==='reset'?30*60000:24*3600000);
@@ -25,7 +25,7 @@ export function createAccountSecurity(db,{origin,encryptionKey='',previousKeys=[
  // The new address must confirm before it replaces the old one. The old address is told, so a
  // stolen session cannot quietly move the account. A token dies if the email changes meanwhile.
  function enqueueEmailChange(user,newEmail){
-  if(!key)fail(503,'Account email is not configured yet. Contact your studio administrator.');
+  if(!key)fail(503,'Caleane can’t send account emails yet, so your email address can’t be changed for now.');
   const time=clock(),recent=db.prepare("SELECT created FROM account_tokens WHERE user_id=? AND purpose='email' ORDER BY created DESC LIMIT 1").get(user.id);if(recent&&time-recent.created<60000)return;
   // An address another account uses gets the same reply and no email, so this cannot be used to probe accounts.
   if(db.prepare('SELECT 1 FROM users WHERE email=? AND id<>?').get(newEmail,user.id))return;

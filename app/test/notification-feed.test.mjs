@@ -86,6 +86,13 @@ test('notifications persist per person, respect project access and keep read sta
   assert.ok(!staff.notifications.some(n=>n.kind==='project_update'));
   assert.equal((await feed('client')).notifications[0].title,'NAY Studio: Delivery is at nine.');
 
+  // Reading the conversation clears its message notifications in the bell.
+  const before=await feed('client');assert.equal(before.notifications[0].read,false);
+  const seenProject=(await call('/api/projects'+q,'GET',undefined,'client')).data.projects.find(p=>p.id===project.id);
+  assert.equal((await call(`/api/projects/${project.id}/seen${q}`,'POST',{lastMessageId:seenProject.messages.at(-1).id},'client')).status,200);
+  const after=await feed('client');
+  assert.equal(after.notifications[0].read,true);assert.equal(after.unreadByKind.message,0);assert.equal(after.unread,before.unread-1);
+
   // Removing access removes the history from view without deleting it.
   assert.equal((await call(grant,'PATCH',{enabled:false},'owner')).status,200);
   staff=await feed('staff');

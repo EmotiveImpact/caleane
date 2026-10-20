@@ -1,7 +1,7 @@
-import {installForms,listForms,changeForm,publicForm,submitForm,listFormResponses,formResponseCSV} from './forms.mjs';
+import {installForms,listForms,changeForm,publicForm,submitForm,listFormResponses,formResponseCSV,formAcceptsUploads,storeEnquiryUpload} from './forms.mjs';
 import {installDataGovernance,dataGovernance,changeGovernance,streamStudioExport} from './data-governance.mjs';
-import {handleCalendarSync,syncAllCalendars} from './calendar-sync.mjs';
-import {handleBookingIntegrations,safeCalendarBusy,completeBookingIntegrations,syncBookingIntegrations} from './booking-integrations.mjs';
+import {handleCalendarSync,syncAllCalendars,calendarConfigured} from './calendar-sync.mjs';
+import {handleBookingIntegrations,zoomConfigured,safeCalendarBusy,completeBookingIntegrations,syncBookingIntegrations} from './booking-integrations.mjs';
 import {operationalReadiness} from './operational-readiness.mjs';
 import {invoicePdf,pdfFileName} from './invoice-pdf.mjs';
 import {installDocuments,listDocuments,changeDocument,downloadDocument,syncProjectArchives} from './documents.mjs';
@@ -42,7 +42,7 @@ import {validateIntakeQuestions,captureIntakeAnswers,updateIntakeAnswers,normali
 import {searchWorkspace} from './workspace-search.mjs';
 import {seedShowcase} from './demo-showcase.mjs';
 import {defaultTaxRate,isVatDocument,isVatRegistered} from './src/lib/vat.js';
-import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
+import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign,writeSetting} from './studio-commerce.mjs';
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
 import {installProjectTemplates,handleProjectTemplates,applyProjectTemplate} from './project-templates.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
@@ -55,7 +55,7 @@ import {cleanupFieldFiles,handleCustomFields,installCustomFieldFiles} from './cu
 import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus,manageBooking,bookingEmail,issueManageToken} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
-import {installXero,handleXero,syncAllXero} from './xero.mjs';
+import {installXero,handleXero,syncAllXero,xeroConfigured} from './xero.mjs';
 import {installFinances,handleFinances} from './finances.mjs';
 import {installPaymentPlans,planView,createPlan,updatePlan,deletePlan,stepInvoice,markStepInvoiced,linkIssuedDeposits} from './payment-plans.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
@@ -123,7 +123,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  // With TRUST_PROXY=N, N reverse proxies each append the peer they saw to X-Forwarded-For; the client is the right-most entry they did not add.
  const secureOrigin=origin.startsWith('https://');
  // Production pages only: Vite dev serves inline scripts. 'unsafe-inline' styles cover React style props and the print preview frame.
- const appCSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
+ const appCSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; frame-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
  const trustedHops=Math.max(0,Math.floor(Number(trustProxy))||0);
  const clientIP=req=>{const peer=req.socket?.remoteAddress||'';if(!trustedHops)return peer;const hops=String(req.headers['x-forwarded-for']||'').split(',').map(s=>s.trim()).filter(Boolean);return hops[Math.max(0,hops.length-trustedHops)]||peer;};
  function rate(req,bucket,max=30,subject=clientIP(req)){const key=bucket+':'+subject;const time=Date.now();for(const [k,v] of limits)if(v.until<time)limits.delete(k);const v=limits.get(key)||{n:0,until:time+600000};if(++v.n>max)fail(429,'Please wait a few minutes before trying again.');limits.set(key,v);}
@@ -141,6 +141,8 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    insertProject(db,p);
   }
   bindInvitedContact(db,studioId,client.email,client.id);
+  // The sample studio has its own brand, so forms and documents show what a Brand kit changes.
+  writeSetting(db,studioId,'brand_kit',{colours:{primary:'#7b4b3a',secondary:'#efe4d6',ink:'#1d1f1e',paper:'#ffffff'},fonts:{heading:{type:'preset',preset:'cormorant-garamond'},body:{type:'preset',preset:'instrument-sans'}}});
  }
  const vite=dev?await (await import('vite')).createServer({configFile:path.join(root,'vite.config.js'),server:{middlewareMode:true},appType:'spa'}):null;
  const server=http.createServer(async(req,res)=>{
@@ -172,7 +174,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     res.writeHead(401,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','WWW-Authenticate':'Basic realm="Caleane preview", charset="UTF-8"'});
     return res.end('Preview access required.');
    }
-   const publicMatch=route.match(/^\/api\/public\/([a-z0-9-]+)(?:\/(enquiries)|\/forms\/([a-z0-9-]+)(?:\/(enquiries))?)?$/);
+   const publicMatch=route.match(/^\/api\/public\/([a-z0-9-]+)(?:\/(enquiries)|\/forms\/([a-z0-9-]+)(?:\/(enquiries|uploads))?)?$/);
    let publicStudio;
    if(publicMatch){publicStudio=db.prepare('SELECT * FROM studios WHERE slug=?').get(publicMatch[1]);if(!publicStudio)fail(404,'Studio not found.');const allowed=[origin,...JSON.parse(publicStudio.origins)];if(req.headers.origin&&!allowed.includes(req.headers.origin))fail(403,'This website is not connected to the studio.');if(req.headers.origin){res.setHeader('Access-Control-Allow-Origin',req.headers.origin);res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Headers','Content-Type, Idempotency-Key');res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');}if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}}
    // Resolve the session before reading a body, so only signed-in people can send upload-sized requests.
@@ -181,20 +183,26 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(route.startsWith('/api/')&&!['GET','HEAD','OPTIONS'].includes(req.method)){
     if(!publicMatch&&req.headers.origin!==origin)fail(403,'Please use this workspace to make changes.');
     if(!/^application\/json(?:;|$)/i.test(String(req.headers['content-type']||'')))fail(415,'Use JSON for this request.');
-    // Public form and booking submissions are text only and fit the 64 KB limit; uploads require a session.
-    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references)|custom-fields\/files)$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:route==='/api/clients/import'?MAX_IMPORT_BYTES:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
+    // Public form and booking submissions are text only and fit the 64 KB limit; uploads require a session,
+    // except a file sent to a published form with a file question, which is rate limited before its body is read.
+    const formUpload=publicMatch?.[4]==='uploads'&&req.method==='POST';if(formUpload){rate(req,'form-upload',20);if(!formAcceptsUploads(db,publicStudio.id,publicMatch[3])){res.setHeader('Connection','close');fail(404,'This form does not take files.');}}
+    const isUpload=formUpload||/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references)|custom-fields\/files)$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:route==='/api/clients/import'?MAX_IMPORT_BYTES:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
     // Refusals before the body is read close the connection, so the unread body is discarded rather than parsed as the next request.
-    if((large&&!user)||Number(req.headers['content-length']||0)>limit){res.setHeader('Connection','close');fail(large&&!user?401:413,large&&!user?'Please sign in.':tooLarge);}
+    if((large&&!user&&!formUpload)||Number(req.headers['content-length']||0)>limit){res.setHeader('Connection','close');fail(large&&!user&&!formUpload?401:413,large&&!user&&!formUpload?'Please sign in.':tooLarge);}
     await new Promise((resolve,reject)=>{let bytes=0;req.on('data',chunk=>{if(bytes<0)return;bytes+=chunk.length;if(bytes>limit){bytes=-1;res.setHeader('Connection','close');reject(Object.assign(new Error(tooLarge),{status:413}));}else chunks.push(chunk);});req.on('end',resolve);req.on('error',reject);});
     try{body=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');if(!body||Array.isArray(body)||typeof body!=='object')throw 0;}catch{fail(400,'We could not read that request.');}
    }
    if(route==='/api/health'&&req.method==='GET')return reply(200,{ok:true});
    if(route==='/api/info'&&req.method==='GET')return reply(200,{demo,signup:true});
    if(publicMatch&&req.method==='GET'){
-    const brand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(publicStudio.id)?.data||'{}'),form=publicForm(db,publicStudio.id,publicMatch[3]||'enquiry');
+    const brand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(publicStudio.id)?.data||'{}');let form;
+    // A paused form still tells the visitor how to reach the studio: the owner's email and the studio's own website.
+    try{form=publicForm(db,publicStudio.id,publicMatch[3]||'enquiry');}catch(e){if(e.status!==410)throw e;const owner=db.prepare("SELECT u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.studio_id=? AND m.role='owner' ORDER BY u.email LIMIT 1").get(publicStudio.id);
+     return reply(410,{error:e.message,contact:{name:brand.portalTitle||publicStudio.name,email:owner?.email||'',website:JSON.parse(publicStudio.origins||'[]')[0]||'',logoUrl:brand.logoUrl||'',accent:publicStudio.accent,brandKit:brandKit(db,publicStudio.id)}});}
     if(publicMatch[3]&&!form)fail(404,'Form not found.');
-    return reply(200,{enabled:true,studio:{name:publicStudio.name,slug:publicStudio.slug,accent:publicStudio.accent,branding:brand},form,plannerUrl:`${origin}/intake/${publicStudio.slug}${publicMatch[3]?'/'+publicMatch[3]:''}`});
+    return reply(200,{enabled:true,studio:{name:publicStudio.name,slug:publicStudio.slug,accent:publicStudio.accent,branding:brand,brandKit:brandKit(db,publicStudio.id)},form,plannerUrl:`${origin}/intake/${publicStudio.slug}${publicMatch[3]?'/'+publicMatch[3]:''}`});
    }
+   if(publicMatch?.[4]==='uploads'&&req.method==='POST')return reply(201,{upload:storeEnquiryUpload(db,publicStudio,publicMatch[3],body,sniffMime)});
    if(publicMatch&&(publicMatch[2]||publicMatch[4])&&req.method==='POST'){
     const formExists=db.prepare('SELECT 1 FROM enquiry_forms WHERE studio_id=? AND slug=?').get(publicStudio.id,publicMatch[3]||'enquiry');
     if(formExists||publicMatch[3]){rate(req,'intake',30);const result=submitForm(db,{studio:publicStudio,slug:publicMatch[3]||'enquiry',body,key:req.headers['idempotency-key'],buildBrief:brief,legacy:!publicMatch[3],onCreated:projectId=>recordEnquiry(db,{studioId:publicStudio.id,projectId})});return reply(result.status,result.data);}
@@ -262,6 +270,13 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
    if(route==='/api/signup'&&req.method==='POST'){
     rate(req,'signup',5);const mail=email(body.email),name=str(body.name,120),studioName=str(body.studio,120),slug=str(body.slug,80),pass=password(body.password),profession=body.profession??DEFAULT_WORKFLOW;if(!name||!studioName||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))fail(400,'Add your name, studio name and a lowercase studio address.');if(!isWorkflowId(profession))fail(400,'Choose a valid studio practice.');if(db.prepare('SELECT id FROM users WHERE email=?').get(mail)||db.prepare('SELECT id FROM studios WHERE slug=?').get(slug))fail(409,'That email or studio address is already in use.');const u={id:id(),name,email:mail},sid=id();db.exec('BEGIN');try{db.prepare('INSERT INTO users VALUES(?,?,?,?)').run(u.id,mail,name,passwordHash(pass));db.prepare('INSERT INTO studios VALUES(?,?,?,?,?)').run(sid,slug,studioName,'#181925',JSON.stringify([origin]));db.prepare('INSERT INTO memberships VALUES(?,?,?)').run(u.id,sid,'owner');db.prepare('INSERT INTO studio_branding VALUES(?,?)').run(sid,JSON.stringify({portalTitle:studioName,welcome:'Your project, thoughtfully brought together.',logoUrl:'',profession,projectTypes:projectTypesFor(profession)}));db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}startSession(u);return reply(201,{ok:true});
    }
+   // The join page names the studio and the person invited. The token stays in the request body, never the address.
+   if(route==='/api/invite/preview'&&req.method==='POST'){
+    rate(req,'invite',30);const invite=db.prepare('SELECT * FROM invitations WHERE token=? AND used=0 AND expires>?').get(hash(str(body.token,100)),Date.now());if(!invite)fail(400,'This invitation has expired or has already been used. Ask the studio for a new link.');
+    const brand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(invite.studio_id)?.data||'{}'),studioRow=db.prepare('SELECT name FROM studios WHERE id=?').get(invite.studio_id);
+    const person=db.prepare('SELECT name FROM crm_contacts WHERE studio_id=? AND email=? ORDER BY name LIMIT 1').get(invite.studio_id,invite.email)||db.prepare('SELECT name FROM clients WHERE studio_id=? AND email=?').get(invite.studio_id,invite.email);
+    return reply(200,{studioName:brand.portalTitle||studioRow?.name||'',logoUrl:brand.logoUrl||'',name:person?.name||'',email:invite.email});
+   }
    if(route==='/api/invite/claim'&&req.method==='POST'){
     rate(req,'invite',15);const token=str(body.token,100);const u=transaction(db,()=>{const invite=db.prepare('SELECT * FROM invitations WHERE token=? AND used=0 AND expires>?').get(hash(token),Date.now());if(!invite)fail(400,'This invitation has expired or has already been used. Ask the studio for a new link.');let account=db.prepare('SELECT * FROM users WHERE email=?').get(invite.email);if(account&&user?.id!==account.id)fail(409,'This email already has an account. Sign in first, then open the invitation again.');if(!account){const name=str(body.name,120);if(!name)fail(400,'Enter your name.');account={id:id(),email:invite.email,name};db.prepare('INSERT INTO users VALUES(?,?,?,?)').run(account.id,account.email,account.name,passwordHash(password(body.password)));}bindInvitedContact(db,invite.studio_id,invite.email,account.id);db.prepare("INSERT OR IGNORE INTO memberships VALUES(?,?,'client')").run(account.id,invite.studio_id);db.prepare('UPDATE invitations SET used=1 WHERE token=?').run(hash(token));return account;});startSession(u);return reply(200,{ok:true});
    }
@@ -303,9 +318,9 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      const opens=documentOpensByProject(db,studioId),latest=latestProjectMessages(db,studioId),unread=studioUnreadCounts(db,studioId,user);
      return {conversation:p=>conversations.get(p.id),clientId:p=>clients.get(p.id)||null,latestInvoice:p=>invoices.get(p.id),enquiryReviewedAt:p=>reviews.get(p.id),documentOpens:p=>opens.get(p.id)||{},messages:c=>c&&latest.get(c.id)||[],unread:c=>unread.get(c.id)||0};
     };
-    const decorate=(p,lookups=projectLookups)=>{if(bookkeeper)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Bookkeeper',brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,workflowType:p.brief.workflowType},clientId:lookups.clientId(p),createdAt:p.createdAt,updatedAt:p.updatedAt};if(staffViewer)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Studio viewer',canContribute:!!db.prepare('SELECT 1 FROM studio_project_collaborators WHERE studio_id=? AND project_id=? AND user_id=?').get(p.studioId,p.id,user.id),briefRevision:p.briefRevision,brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,venue:p.brief.venue,vision:p.brief.vision,workflowType:p.brief.workflowType},designs:p.designs.map(d=>({id:d.id,version:d.version,title:d.title,status:d.status,at:d.at})),tasks:(p.tasks||[]).map(t=>({id:t.id,title:t.title,due:t.due,assignee:t.assignee,completed:t.completed})),createdAt:p.createdAt,updatedAt:p.updatedAt};const c=lookups.conversation(p),accessRole=owner?'Owner':projectAccess(db,p.studioId,p.id,user.id),latest=accessRole==='Owner'||accessRole==='Approver'?lookups.latestInvoice(p):null;const invoice=latest?invoiceDTO(db,latest):null;const moneyHidden=accessRole!=='Owner'&&accessRole!=='Approver';return {...p,...(owner?{}:{tags:undefined,customFields:undefined}),...(moneyHidden?{estimates:[],proposals:[],moneyHidden:true,activity:(p.activity||[]).filter(entry=>!MONEY_ACTIVITY.test(entry.text||entry.title||''))}:{}),viewerId:user.id,enquiryReviewedAt:owner?lookups.enquiryReviewedAt(p):undefined,operations:owner?p.operations:undefined,documentOpens:owner?lookups.documentOpens(p):undefined,waitingToJoin:owner?joinStatus(db,p.studioId,{projectId:p.id}).waiting:undefined,estimateDraft:owner?p.estimateDraft:undefined,clientId:lookups.clientId(p),accessRole,conversationId:c?.id,messages:lookups.messages(c),unreadMessages:c?lookups.unread(c):0,latestInvoice:invoice?{id:invoice.id,number:invoice.number,kind:invoice.kind,currency:invoice.currency,amountMinor:invoice.amountMinor,paidMinor:invoice.paidMinor,dueDate:invoice.dueDate,status:invoice.status}:null};};
+    const decorate=(p,lookups=projectLookups)=>{if(bookkeeper)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Bookkeeper',brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,workflowType:p.brief.workflowType},clientId:lookups.clientId(p),createdAt:p.createdAt,updatedAt:p.updatedAt};if(staffViewer)return {id:p.id,studioId:p.studioId,title:p.title,status:p.status,accessRole:'Studio viewer',canContribute:!!db.prepare('SELECT 1 FROM studio_project_collaborators WHERE studio_id=? AND project_id=? AND user_id=?').get(p.studioId,p.id,user.id),briefRevision:p.briefRevision,brief:{name:p.brief.name,occasion:p.brief.occasion,date:p.brief.date,venue:p.brief.venue,vision:p.brief.vision,workflowType:p.brief.workflowType},designs:p.designs.map(d=>({id:d.id,version:d.version,title:d.title,status:d.status,at:d.at})),tasks:(p.tasks||[]).map(t=>({id:t.id,title:t.title,due:t.due,assignee:t.assignee,completed:t.completed})),createdAt:p.createdAt,updatedAt:p.updatedAt};const c=lookups.conversation(p),accessRole=owner?'Owner':projectAccess(db,p.studioId,p.id,user.id),latest=accessRole==='Owner'||accessRole==='Approver'?lookups.latestInvoice(p):null;const invoice=latest?invoiceDTO(db,latest):null;const moneyHidden=accessRole!=='Owner'&&accessRole!=='Approver';return {...p,...(owner?{}:{tags:undefined,customFields:undefined}),...(moneyHidden?{estimates:[],proposals:[],moneyHidden:true,activity:(p.activity||[]).filter(entry=>!MONEY_ACTIVITY.test(entry.text||entry.title||''))}:{}),viewerId:user.id,enquiryReviewedAt:owner?lookups.enquiryReviewedAt(p):undefined,operations:owner?p.operations:undefined,documentOpens:owner?lookups.documentOpens(p):undefined,waitingToJoin:owner?joinStatus(db,p.studioId,{projectId:p.id}).waiting:undefined,estimateDraft:owner?p.estimateDraft:undefined,clientId:lookups.clientId(p),accessRole,conversationId:c?.id,messages:lookups.messages(c),unreadMessages:c?lookups.unread(c):0,latestInvoice:invoice?{id:invoice.id,number:invoice.number,kind:invoice.kind,currency:invoice.currency,amountMinor:invoice.amountMinor,paidMinor:invoice.paidMinor,dueDate:invoice.dueDate,issuedAt:invoice.issuedAt,status:invoice.status}:null};};
     const memberships=[...db.prepare('SELECT s.*,m.role FROM studios s JOIN memberships m ON m.studio_id=s.id WHERE m.user_id=?').all(user.id),...db.prepare("SELECT s.*,CASE st.access WHEN 'bookkeeper' THEN 'staff_bookkeeper' ELSE 'staff_viewer' END AS role FROM studios s JOIN studio_staff st ON st.studio_id=s.id WHERE st.user_id=? AND st.access IN ('viewer','bookkeeper')").all(user.id)];
-    if(route==='/api/me'&&req.method==='GET')return reply(200,{user:{id:user.id,name:user.name,email:user.email},studios:memberships.map(s=>({...s,origins:JSON.parse(s.origins),branding:branding(s.id)}))});
+    if(route==='/api/me'&&req.method==='GET')return reply(200,{user:{id:user.id,name:user.name,email:user.email},studios:memberships.map(s=>({...s,origins:JSON.parse(s.origins),branding:branding(s.id),brandKit:brandKit(db,s.id)}))});
     if(route==='/api/stripe/connect/refresh'&&req.method==='GET'){
      if(!stripe)fail(503,'Stripe account setup is not configured.');
      const link=await refreshStripeOnboarding(db,stripe,{ownerUserId:user.id,state:url.searchParams.get('state'),appOrigin:origin});
@@ -331,7 +346,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     if(route==='/api/data-governance'){const args={studioId:studio.id,userId:user.id};if(req.method==='GET')return reply(200,dataGovernance(db,args));if(req.method==='POST')return reply(200,changeGovernance(db,args,body));fail(405,'Method not allowed.');}
     if(route==='/api/studio-export'&&req.method==='GET')return await streamStudioExport(db,{studioId:studio.id,userId:user.id},res,{includeFiles:url.searchParams.get('files')==='1'});
-    if(route==='/api/operations'&&req.method==='GET')return reply(200,await operationalReadiness(db,{studioId:studio.id,userId:user.id,backupReceiptPath:process.env.CALEANE_BACKUP_RECEIPT||'',emailConfigured:!!(process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1'),offsiteBackupsConfigured:false}));
+    if(route==='/api/operations'&&req.method==='GET')return reply(200,await operationalReadiness(db,{studioId:studio.id,userId:user.id,backupReceiptPath:process.env.CALEANE_BACKUP_RECEIPT||'',emailConfigured:!!(process.env.RESEND_API_KEY&&process.env.RESEND_FROM&&process.env.CALEANE_EMAIL_ENABLED==='1'),offsiteBackupsConfigured:false,services:{ai:!!helper,calendar:!disableExternalServices&&(calendarConfigured('google')||calendarConfigured('outlook')),calendarConnected:!!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='calendar_connections'").get()&&!!db.prepare('SELECT 1 FROM calendar_connections WHERE studio_id=?').get(studio.id),zoom:!disableExternalServices&&zoomConfigured(),xero:!disableExternalServices&&xeroConfigured(),xeroConnected:!!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='xero_connections'").get()&&!!db.prepare('SELECT 1 FROM xero_connections WHERE studio_id=?').get(studio.id),stripe:stripeReady,stripeConnected:studioConnected(studio.id)}}));
     if(await handleCalendarSync({db,req,url,route,body,user,studio,owner,reply,origin}))return;
     if(route==='/api/notifications/preferences'){
      if(req.method==='POST'){if(typeof body.messageEmail!=='boolean')fail(400,'Choose whether to receive message emails.');setMessageEmail(db,user.id,studio.id,body.messageEmail);}
