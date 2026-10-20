@@ -23,9 +23,9 @@ import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import Stripe from 'stripe';
 import {caleaneEnv} from './env-names.mjs';
 import {openStore,STAFF_ACCESS,id,now,earliestOpenDay,hash,passwordHash,passwordOK,event,makeProject,saveProject,insertProject,transaction,materializeProjectConversation,conversationDTO,conversationUnreadCount,studioUnreadCounts,projectMessages,latestProjectMessage,latestProjectMessages,markConversationSeen,appendConversationMessage,setConversationStatus} from './store.mjs';
-import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,listTasks,createTask,updateTask,deleteTask} from './crm.mjs';
+import {listOpportunities,getOpportunity,reviewOpportunity,createOpportunity,updateOpportunity,listActivities,logActivity,recordActivity,listTasks,createTask,updateTask,deleteTask} from './crm.mjs';
 import {clientErasurePreview,eraseClient} from './client-erasure.mjs';
-import {bindInvitedContact,conversationAccess,ensurePrimaryContact,listClientContacts,listStakeholders,joinStatus,projectAccess,projectClientId} from './relationships.mjs';
+import {bindInvitedContact,conversationAccess,ensurePrimaryContact,linkCompany,listClientContacts,listStakeholders,joinStatus,projectAccess,projectClientId} from './relationships.mjs';
 import {installStripePayments,activeStripeCheckout,createStripeCheckout,expireStripeCheckout,verifyStripeEvent,applyInvoiceCheckoutEvent,listStripeCheckoutAttempts} from './stripe-payments.mjs';
 import {installBookingPayments,isBookingEvent,applyBookingEvent,startBookingCheckout,releaseBooking} from './booking-payments.mjs';
 import {installPlanAutopay,isAutopayEvent,applyAutopayEvent,autopayView,cardPaymentSettings,saveCardPaymentSettings,startAutopaySetup,stopAutopay,runAutopay} from './plan-autopay.mjs';
@@ -49,9 +49,9 @@ import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState
 import {setTip,waiveLateFee} from './invoice-extras.mjs';
 import {discountFor,invoiceFigures} from './src/lib/invoice-charges.js';
 import {installReminders,handleReminders,runAllReminders} from './reminders.mjs';
-import {handleCustomFields} from './custom-fields.mjs';
 import {handleClientImport} from './client-import.mjs';
 import {MAX_IMPORT_BYTES} from './src/lib/client-import.js';
+import {cleanupFieldFiles,handleCustomFields,installCustomFieldFiles} from './custom-fields.mjs';
 import {handlePipeline,syncAllPipelines,syncPipeline,syncProjectPipeline} from './pipeline-automation.mjs';
 import {installConsultations,handleConsultations,publicBooking,bookConsultation,bookingSettings,publicBookingStatus,manageBooking,bookingEmail,issueManageToken} from './consultations.mjs';
 import {installWebhooks,handleWebhooks,runWebhooks} from './webhooks.mjs';
@@ -92,7 +92,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installFinances(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installProjectTemplates(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBookingPayments(db);installPlanAutopay(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map(),bookingLinks=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installCustomFieldFiles(db);installStripePayments(db);installFinances(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installProjectTemplates(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBookingPayments(db);installPlanAutopay(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map(),bookingLinks=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  // Payment at booking and plan autopay take money without an invoice being opened, so a live
@@ -182,7 +182,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(!publicMatch&&req.headers.origin!==origin)fail(403,'Please use this workspace to make changes.');
     if(!/^application\/json(?:;|$)/i.test(String(req.headers['content-type']||'')))fail(415,'Use JSON for this request.');
     // Public form and booking submissions are text only and fit the 64 KB limit; uploads require a session.
-    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references))$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:route==='/api/clients/import'?MAX_IMPORT_BYTES:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
+    const isUpload=/^\/api\/(?:projects\/[a-f0-9-]+\/(?:files|drafts\/files)|staff\/projects\/[a-f0-9-]+\/(?:drafts\/files|references)|custom-fields\/files)$/.test(route),large=isUpload||/^\/api\/(?:conversations\/[^/]+\/files|task-workspace\/(?:project|crm)\/[^/]+|expenses)$/.test(route);const limit=large?8500000:route==='/api/brand-kit'?6000000:route==='/api/clients/import'?MAX_IMPORT_BYTES:65536,chunks=[],tooLarge=isUpload?'This file is too large. Choose a file below 6 MB.':'This request is too large. Shorten your answers and try again.';
     // Refusals before the body is read close the connection, so the unread body is discarded rather than parsed as the next request.
     if((large&&!user)||Number(req.headers['content-length']||0)>limit){res.setHeader('Connection','close');fail(large&&!user?401:413,large&&!user?'Please sign in.':tooLarge);}
     await new Promise((resolve,reject)=>{let bytes=0;req.on('data',chunk=>{if(bytes<0)return;bytes+=chunk.length;if(bytes>limit){bytes=-1;res.setHeader('Connection','close');reject(Object.assign(new Error(tooLarge),{status:413}));}else chunks.push(chunk);});req.on('end',resolve);req.on('error',reject);});
@@ -320,7 +320,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     const studio=memberships.find(s=>s.id===url.searchParams.get('studio'));if(!studio)fail(403,'You do not have access to this studio.');const owner=studio.role==='owner',staffViewer=studio.role==='staff_viewer',bookkeeper=studio.role==='staff_bookkeeper';
     // Bookkeepers read the money and nothing else: no project content, messages, files, settings or changes of any kind.
     if(bookkeeper&&!(req.method==='GET'&&(['/api/invoices','/api/projects',`/api/studios/${studio.id}/stripe-status`,'/api/expenses','/api/finance-report'].includes(route)||/^\/api\/projects\/[a-f0-9-]+\/invoices(?:\/(?:plan|[a-f0-9-]+(?:\/pdf|\/credit-notes\/[a-f0-9-]{36}\/pdf)?))?$/.test(route)||/^\/api\/expenses\/[a-f0-9-]{36}\/receipt$/.test(route))))fail(403,'Bookkeeper access is read-only and limited to finances.');const requireOwner=()=>{if(!owner)fail(403,'Only the studio can make this change.');};
-    if(req.method==='POST'&&((route.startsWith('/api/conversations/')&&route.endsWith('/files'))||(route.startsWith('/api/task-workspace/')&&body.action==='file')||(route==='/api/expenses'&&body.receipt)))rate(req,'upload',40);
+    if(req.method==='POST'&&(route==='/api/custom-fields/files'||(route.startsWith('/api/conversations/')&&route.endsWith('/files'))||(route.startsWith('/api/task-workspace/')&&body.action==='file')||(route==='/api/expenses'&&body.receipt)))rate(req,'upload',40);
     const formRoute=route.match(/^\/api\/forms(?:\/([a-f0-9-]+)(?:\/(responses|export))?)?$/);
     if(formRoute){requireOwner();const formId=formRoute[1],action=formRoute[2];
      if(req.method==='GET'&&action==='export'){res.setHeader('Content-Type','text/csv; charset=utf-8');res.setHeader('Content-Disposition','attachment; filename=caleane-form-responses.csv');return res.end(formResponseCSV(db,studio.id,formId));}
@@ -373,7 +373,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     }
     const createInvitation=mail=>{requireOwner();const linked=db.prepare(`SELECT u.email FROM crm_contacts ct JOIN users u ON u.id=ct.user_id WHERE ct.studio_id=? AND ct.email=?`).get(studio.id,mail);if(linked&&linked.email!==mail)fail(409,'This contact already has a portal login at a different email.');const token=randomBytes(32).toString('hex'),result={url:`${origin}/join#${token}`,email:mail,expiresDays:7,delivery:outbox?'queued':'copy_link'};transaction(db,()=>{db.prepare('UPDATE invitations SET used=1 WHERE studio_id=? AND email=?').run(studio.id,mail);db.prepare('INSERT INTO invitations VALUES(?,?,?,?,0)').run(hash(token),studio.id,mail,Date.now()+7*86400000);if(outbox)outbox.enqueueInvitation({studioId:studio.id,email:mail,inviteUrl:result.url});});return result;};
     const clientDTO=row=>{const organization=db.prepare(`SELECT o.name FROM crm_client_organizations co JOIN crm_organizations o ON o.id=co.organization_id AND o.studio_id=co.studio_id WHERE co.client_id=? AND co.studio_id=?`).get(row.id,studio.id);return {id:row.id,email:row.email,name:row.name,...JSON.parse(row.data),organizationName:organization?.name||''};};
-    if(handleCustomFields({db,req,route,body,studio,owner,reply,clientDTO,decorate}))return;
+    if(handleCustomFields({db,req,res,route,body,studio,owner,reply,clientDTO,decorate,sniffMime,assertQuota}))return;
     if(handleClientImport({db,req,route,body,studio,owner,user,reply,clientDTO,rate}))return;
     if(route==='/api/search'&&req.method==='GET'){requireOwner();const query=str(url.searchParams.get('q')||'',80);return reply(200,searchWorkspace(db,studio.id,query,url.searchParams.get('scope')||'all'));}
     if(route==='/api/staff'){
@@ -518,7 +518,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      const existing=db.prepare('SELECT id,name,email FROM clients WHERE studio_id=? AND email=?').get(studio.id,mail);
      if(existing){if(reuse)return existing;fail(409,'This client already has a record.');}
      const client={id:id(),name,email:mail,company:str(input.company||'',200),phone:str(input.phone||'',60),stage:'Lead',source:'Added by studio',tags:[],notes:[],followUp:'',createdAt:now(),updatedAt:now()};const {id:cid,name:cn,email:ce,...data}=client;
-     transaction(db,()=>{db.prepare('INSERT INTO clients VALUES(?,?,?,?,?)').run(cid,studio.id,ce,cn,JSON.stringify(data));ensurePrimaryContact(db,db.prepare('SELECT * FROM clients WHERE id=?').get(cid));});
+     transaction(db,()=>{db.prepare('INSERT INTO clients VALUES(?,?,?,?,?)').run(cid,studio.id,ce,cn,JSON.stringify(data));ensurePrimaryContact(db,db.prepare('SELECT * FROM clients WHERE id=?').get(cid));linkCompany(db,studio.id,cid,client.company);});
      return client;
     };
     if(route==='/api/opportunities'){
@@ -654,7 +654,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(route==='/api/clients'){
      requireOwner();
      if(req.method==='GET'){const clients=db.prepare('SELECT * FROM clients WHERE studio_id=? ORDER BY name').all(studio.id).map(clientDTO);return reply(200,{clients});}
-     if(req.method==='POST')return reply(201,{client:addClient(body)});
+     if(req.method==='POST'){const client=addClient(body);return reply(201,{client:clientDTO(db.prepare('SELECT * FROM clients WHERE id=?').get(client.id))});}
      fail(405,'Method not allowed.');
     }
     const clientMatch=route.match(/^\/api\/clients\/([a-f0-9-]+)(?:\/(notes|invite|erase))?$/);
@@ -663,10 +663,11 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(clientMatch[2]==='invite'&&req.method==='POST'){const primary=db.prepare(`SELECT ct.email FROM crm_client_contacts cc JOIN crm_contacts ct ON ct.id=cc.contact_id AND ct.studio_id=cc.studio_id WHERE cc.studio_id=? AND cc.client_id=? AND cc.primary_contact=1`).get(studio.id,row.id);return reply(201,createInvitation(primary?.email||row.email));}
      if(clientMatch[2]==='erase'){const preview=clientErasurePreview(db,studio.id,row.id);if(req.method==='GET')return reply(200,{name:row.name,projects:preview.projects.map(p=>({id:p.id,title:p.title})),blocked:preview.blocked});if(req.method==='POST')return reply(200,eraseClient(db,{studioId:studio.id,clientId:row.id,confirmName:body.confirmName}));fail(405,'Method not allowed.');}
      if(clientMatch[2]==='notes'&&req.method==='PATCH'){const note=(data.notes||[]).find(n=>n.id===body.noteId);if(!note)fail(404,'Note not found.');if(body.remove===true)data.notes=data.notes.filter(n=>n.id!==note.id);else{const text=str(body.text,5000);if(!text)fail(400,'Write a note first.');note.text=text;note.editedAt=now();}}
+     else if(!clientMatch[2]&&req.method==='PATCH'&&body.followUpDone===true){if(!data.followUp)fail(409,'This follow-up has already been ticked off.');recordActivity(db,{studioId:studio.id,clientId:row.id,title:'Follow-up done: '+(data.followUpNote||'Follow up with '+row.name),user});data.followUp='';data.followUpNote='';}
      else if(!clientMatch[2]&&req.method==='PATCH'&&typeof body.archived==='boolean'){data.archived=body.archived;data.archivedAt=body.archived?now():'';}
      else if(clientMatch[2]==='notes'&&req.method==='POST'){const text=str(body.text,5000);if(!text)fail(400,'Write a note first.');data.notes.unshift({id:id(),text,by:user.name,at:now()});}
-     else if(!clientMatch[2]&&req.method==='PATCH'){name=str(body.name,120);if(!name||!['Lead','Active','Past client','VIP'].includes(body.stage))fail(400,'Add a client name and relationship stage.');if(!Array.isArray(body.tags)||body.tags.length>20)fail(400,'Use up to 20 tags.');const followUp=date(body.followUp,'follow-up date');Object.assign(data,{company:str(body.company||'',200),phone:str(body.phone||'',60),source:str(body.source||'',200),stage:body.stage,tags:body.tags.map(t=>str(t,50)).filter(Boolean),followUp,followUpNote:str(body.followUpNote||'',500)});}
-     else fail(405,'Method not allowed.');data.updatedAt=now();transaction(db,()=>{db.prepare('UPDATE clients SET name=?,data=? WHERE id=? AND studio_id=?').run(name,JSON.stringify(data),row.id,studio.id);const primary=db.prepare('SELECT contact_id FROM crm_client_contacts WHERE studio_id=? AND client_id=? AND primary_contact=1').get(studio.id,row.id);if(primary)db.prepare('UPDATE crm_contacts SET name=?,phone=?,updated_at=? WHERE id=? AND studio_id=?').run(name,data.phone||'',now(),primary.contact_id,studio.id);});return reply(200,{client:clientDTO(db.prepare('SELECT * FROM clients WHERE id=?').get(row.id))});
+     else if(!clientMatch[2]&&req.method==='PATCH'){name=str(body.name,120);if(!name||!['Lead','Active','Past client','VIP'].includes(body.stage))fail(400,'Add a client name and relationship stage.');if(!Array.isArray(body.tags)||body.tags.length>20)fail(400,'Use up to 20 tags.');const followUp=body.followUp===undefined?data.followUp||'':date(body.followUp,'follow-up date');Object.assign(data,{company:str(body.company||'',200),phone:str(body.phone||'',60),source:str(body.source||'',200),stage:body.stage,tags:body.tags.map(t=>str(t,50)).filter(Boolean),followUp,followUpNote:body.followUpNote===undefined?data.followUpNote||'':str(body.followUpNote||'',500)});}
+     else fail(405,'Method not allowed.');data.updatedAt=now();transaction(db,()=>{db.prepare('UPDATE clients SET name=?,data=? WHERE id=? AND studio_id=?').run(name,JSON.stringify(data),row.id,studio.id);const primary=db.prepare('SELECT contact_id FROM crm_client_contacts WHERE studio_id=? AND client_id=? AND primary_contact=1').get(studio.id,row.id);if(primary)db.prepare('UPDATE crm_contacts SET name=?,phone=?,updated_at=? WHERE id=? AND studio_id=?').run(name,data.phone||'',now(),primary.contact_id,studio.id);if(!clientMatch[2]&&req.method==='PATCH')linkCompany(db,studio.id,row.id,data.company);});return reply(200,{client:clientDTO(db.prepare('SELECT * FROM clients WHERE id=?').get(row.id))});
     }
     if(route==='/api/projects'&&req.method==='GET'){const all=(owner||staffViewer||bookkeeper?db.prepare('SELECT data FROM projects WHERE studio_id=?').all(studio.id):db.prepare(`SELECT DISTINCT p.data FROM projects p JOIN crm_project_stakeholders ps ON ps.project_id=p.id AND ps.studio_id=p.studio_id JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE p.studio_id=? AND ps.portal_access=1 AND ct.user_id=?`).all(studio.id,user.id)).map(row=>JSON.parse(row.data));const lookups=owner||bookkeeper?studioLookups(studio.id):{...projectLookups,messages:c=>latestProjectMessage(db,c)};return reply(200,{projects:all.map(p=>decorate(p,lookups)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))});}
     if(route==='/api/projects'&&req.method==='POST'){requireOwner();const p=makeProject(studio.id,brief({...body,workflowType:body.workflowType||branding(studio.id).profession||DEFAULT_WORKFLOW}),user,body.clientId?str(body.clientId,100):null);p.status='Planning';p.activity[0].text='Created the project';if(body.templateId)applyProjectTemplate(db,studio.id,p,body.templateId,user);insertProject(db,p);return reply(201,{project:decorate(p)});}
@@ -998,7 +999,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const scheduledTimer=scheduledIntervalMs>0?setInterval(()=>{try{sendDueScheduled(db,{afterSend:queueMessage});}catch(error){console.error('Scheduled messages could not be sent:',error.message);}},scheduledIntervalMs):null;scheduledTimer?.unref();
  const reminderTimer=reminderIntervalMs>0?setInterval(()=>{runAllReminders(db,{outbox});syncAllPipelines(db,{outbox});collectAutopay();},reminderIntervalMs):null;reminderTimer?.unref();
  // Uploads never attached to a message or task are removed at start-up and then hourly.
- const cleanUploads=()=>{try{cleanupUnattachedUploads(db);}catch(error){console.error('Upload cleanup failed:',error?.stack||error);}};cleanUploads();
+ const cleanUploads=()=>{try{cleanupUnattachedUploads(db);cleanupFieldFiles(db);}catch(error){console.error('Upload cleanup failed:',error?.stack||error);}};cleanUploads();
  const uploadTimer=uploadCleanupIntervalMs>0?setInterval(cleanUploads,uploadCleanupIntervalMs):null;uploadTimer?.unref();
  // Outgoing webhooks: find new events and send what is due every 15 seconds.
  let webhookRun=null;const tickWebhooks=()=>{if(webhookRun)return;webhookRun=runWebhooks(db).catch(error=>console.error('Webhook delivery failed:',error?.stack||error)).finally(()=>{webhookRun=null;});};

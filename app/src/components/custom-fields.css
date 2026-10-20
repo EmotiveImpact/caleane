@@ -85,3 +85,12 @@
 @media(max-width:480px){
  .studio-client-directory .studio-client-tools>.ws-select.ws-select{width:auto;flex:1 1 0;min-width:0}
 }
+.cf-file-input{display:grid;gap:6px;align-content:start}
+.cf-file-chosen,.cf-file-pick{display:inline-flex;align-items:center;gap:6px;justify-self:start;max-width:100%;padding:7px 10px;border:1px solid var(--studio-rule,#e2e2df);border-radius:4px;background:var(--studio-paper,#fff);font-size:13px;overflow-wrap:anywhere}
+.cf-file-pick{cursor:pointer;color:var(--studio-ink,#202326)}
+.cf-file-pick input{position:absolute;width:1px;height:1px;opacity:0}
+.cf-file-pick:focus-within{outline:2px solid var(--accent,#181925);outline-offset:2px}
+.cf-file-chosen button{display:grid;place-items:center;width:18px;height:18px;padding:0;border:0;border-radius:3px;background:none;color:var(--studio-muted,#6e7274);cursor:pointer}
+.cf-file-input small{font-size:12px;color:var(--studio-muted,#6e7274)}
+.cf-values dd a{display:inline-flex;align-items:center;gap:5px;color:inherit;text-decoration:underline;text-underline-offset:2px}
+.cf-file-input>.cf-label{color:var(--studio-ink);font-size:var(--ws-label,13px);font-weight:550;line-height:1.4}

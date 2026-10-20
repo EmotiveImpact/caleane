@@ -1,0 +1,9 @@
+.client-tasks .crm-client-activity-form>div>input[name=title]{flex:1 1 auto}
+.client-tasks .crm-client-activity-form>div>input[type=date]{flex:0 0 170px;width:170px}
+.client-tasks .crm-client-activity-form>div>select{flex:0 0 120px;width:120px}
+.client-tasks .client-tasks-done-toggle{margin-top:16px}
+@media(max-width:640px){
+ .client-tasks .crm-client-activity-form>div{flex-wrap:wrap}
+ .client-tasks .crm-client-activity-form>div>input[name=title]{flex-basis:100%}
+ .client-tasks .crm-client-activity-form>div>input[type=date]{flex:1 1 0;width:auto}
+}

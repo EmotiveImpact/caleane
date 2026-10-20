@@ -36,3 +36,19 @@ test('clients sort by activity or name, page in fifties and open on a single cli
  await input.click(rows()[1]);
  assert.deepEqual(opened,['c0']);
 });
+
+test('a client with a company is listed under their own name, and an empty studio is invited to add one',async()=>{
+ const people=[{id:'p',name:'Test Person',email:'test@example.test',company:'Pigment Ltd',stage:'Active',createdAt:'2026-01-01T10:00:00.000Z'}],added=[];
+ const view=render(h(ui.WorkspaceUIProvider,null,h(ui.ClientDirectory,{clients:people,projects:[],studio:{id:'s1',branding:{}},loading:false,error:'',onSelect(){},onAdd:()=>added.push(1),openProject(){}})));
+ assert.match(rows()[0].querySelector('strong').textContent,/^Test Person$/);
+ assert.match(rows()[0].textContent,/Pigment Ltd · Active/);
+ assert.match(rows()[0].querySelector('.studio-client-initials').textContent,/^TP$/);
+ assert.equal(within(document.querySelector('.studio-client-preview')).getByRole('heading',{level:2}).textContent,'Test Person');
+ view.unmount();
+ render(h(ui.WorkspaceUIProvider,null,h(ui.ClientDirectory,{clients:[],projects:[],studio:{id:'s1',branding:{}},loading:false,error:'',onSelect(){},onAdd:()=>added.push(1),openProject(){}})));
+ assert.ok(screen.getByRole('heading',{name:'No clients yet'}));
+ assert.equal(screen.queryByText('No matching clients'),null);
+ assert.equal(document.querySelector('.studio-client-table-head'),null);
+ await user().click(screen.getAllByRole('button',{name:'Add client'}).at(-1));
+ assert.equal(added.length,1);
+});
