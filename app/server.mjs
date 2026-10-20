@@ -44,6 +44,7 @@ import {seedShowcase} from './demo-showcase.mjs';
 import {defaultTaxRate,isVatDocument,isVatRegistered} from './src/lib/vat.js';
 import {installStudioCommerce,handleStudioCommerce,billingDefaults,invoiceDesign} from './studio-commerce.mjs';
 import {installBrandKit,handleBrandKit,serveBrandAsset,brandKit} from './brand-kit.mjs';
+import {installProjectTemplates,handleProjectTemplates,applyProjectTemplate} from './project-templates.mjs';
 import {installInvoiceAdjustments,invoiceAdjustments,invoiceCharges,invoiceState,issueCreditNote,recordRefund,refundWithCredit} from './invoice-adjustments.mjs';
 import {setTip,waiveLateFee} from './invoice-extras.mjs';
 import {discountFor,invoiceFigures} from './src/lib/invoice-charges.js';
@@ -89,7 +90,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
  const previewUser=disableExternalServices?'':process.env.PREVIEW_ACCESS_USER||'',previewPass=disableExternalServices?'':process.env.PREVIEW_ACCESS_PASS||'';
  if(Boolean(previewUser)!==Boolean(previewPass)||previewUser.includes(':'))throw new Error('Set both valid PREVIEW_ACCESS_USER and PREVIEW_ACCESS_PASS to protect the preview.');
  const previewEnabled=Boolean(previewUser),previewUserDigest=previewEnabled?Buffer.from(hash(previewUser),'hex'):null,previewPassDigest=previewEnabled?Buffer.from(hash(previewPass),'hex'):null;
- await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installFinances(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBookingPayments(db);installPlanAutopay(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map(),bookingLinks=new Map();
+ await mkdir(path.dirname(dbFile),{recursive:true});const db=openStore(dbFile);installStripePayments(db);installFinances(db);installStripeOnboarding(db);installNotifications(db);installNotificationFeed(db);installDocumentOpens(db);installOnboarding(db);installEngagements(db);installDocuments(db);installDataGovernance(db);installForms(db);installStudioCommerce(db);installProjectTemplates(db);installInvoiceAdjustments(db);installPaymentPlans(db);installReminders(db);installConsultations(db);installBookingPayments(db);installPlanAutopay(db);installTaskCollaboration(db);installBrandKit(db);installWebhooks(db);installXero(db);const limits=new Map(),bookingLinks=new Map();
  const stripe=disableExternalServices?null:stripeClient||(process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null);
  const stripeReady=Boolean(enableStripeCollection&&stripe&&stripeWebhookSecret&&(origin.startsWith('https://')||/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin)));
  // Payment at booking and plan autopay take money without an invoice being opened, so a live
@@ -345,6 +346,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(handleScheduledMessages({db,req,route,body,user,studio,owner,reply,afterSend:queueMessage}))return;
     if(await handleStudioCommerce({db,req,route,body,studio,owner,reply}))return;
     if(handleBrandKit({db,req,route,body,studio,owner,reply,origin}))return;
+    if(handleProjectTemplates({db,req,route,body,studio,owner,reply}))return;
     if(await handleReminders({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handlePipeline({db,req,route,body,studio,owner,reply,outbox}))return;
     if(await handleConsultations({db,req,route,body,studio,owner,user,reply,origin,paymentsAvailable:cardPaymentsReady&&studioConnected(studio.id)}))return;
@@ -517,6 +519,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
       const client=db.prepare('SELECT name,email FROM clients WHERE id=? AND studio_id=?').get(opportunity.clientId,studio.id);
       if(!client)fail(404,'Client not found.');
       const p=makeProject(studio.id,brief({...body,name:client.name,email:client.email,workflowType:body.workflowType||branding(studio.id).profession||DEFAULT_WORKFLOW}),user,client.id);
+      if(body.templateId)applyProjectTemplate(db,studio.id,p,body.templateId,user);
       transaction(db,()=>{
        insertProject(db,p);
        db.prepare('DELETE FROM crm_opportunities WHERE project_id=? AND studio_id=?').run(p.id,studio.id);
@@ -639,7 +642,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      else fail(405,'Method not allowed.');data.updatedAt=now();transaction(db,()=>{db.prepare('UPDATE clients SET name=?,data=? WHERE id=? AND studio_id=?').run(name,JSON.stringify(data),row.id,studio.id);const primary=db.prepare('SELECT contact_id FROM crm_client_contacts WHERE studio_id=? AND client_id=? AND primary_contact=1').get(studio.id,row.id);if(primary)db.prepare('UPDATE crm_contacts SET name=?,phone=?,updated_at=? WHERE id=? AND studio_id=?').run(name,data.phone||'',now(),primary.contact_id,studio.id);});return reply(200,{client:clientDTO(db.prepare('SELECT * FROM clients WHERE id=?').get(row.id))});
     }
     if(route==='/api/projects'&&req.method==='GET'){const all=(owner||staffViewer||bookkeeper?db.prepare('SELECT data FROM projects WHERE studio_id=?').all(studio.id):db.prepare(`SELECT DISTINCT p.data FROM projects p JOIN crm_project_stakeholders ps ON ps.project_id=p.id AND ps.studio_id=p.studio_id JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE p.studio_id=? AND ps.portal_access=1 AND ct.user_id=?`).all(studio.id,user.id)).map(row=>JSON.parse(row.data));const lookups=owner||bookkeeper?studioLookups(studio.id):{...projectLookups,messages:c=>latestProjectMessage(db,c)};return reply(200,{projects:all.map(p=>decorate(p,lookups)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))});}
-    if(route==='/api/projects'&&req.method==='POST'){requireOwner();const p=makeProject(studio.id,brief({...body,workflowType:body.workflowType||branding(studio.id).profession||DEFAULT_WORKFLOW}),user,body.clientId?str(body.clientId,100):null);p.status='Planning';p.activity[0].text='Created the project';insertProject(db,p);return reply(201,{project:decorate(p)});}
+    if(route==='/api/projects'&&req.method==='POST'){requireOwner();const p=makeProject(studio.id,brief({...body,workflowType:body.workflowType||branding(studio.id).profession||DEFAULT_WORKFLOW}),user,body.clientId?str(body.clientId,100):null);p.status='Planning';p.activity[0].text='Created the project';if(body.templateId)applyProjectTemplate(db,studio.id,p,body.templateId,user);insertProject(db,p);return reply(201,{project:decorate(p)});}
     if(route==='/api/invoices'){
      if(!bookkeeper)requireOwner();if(req.method!=='GET')fail(405,'Method not allowed.');return reply(200,{invoices:invoiceRows(db,studio.id).map(row=>invoiceDTO(db,row))});
     }

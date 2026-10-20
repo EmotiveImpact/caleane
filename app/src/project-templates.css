@@ -1,0 +1,30 @@
+/* The studio's own project templates: saving one from a project, choosing one in
+   Create project, and the list in Settings, Templates. Uses the boxed look. */
+.studio-setup-template { margin-bottom: 16px; }
+.studio-setup-template .studio-setup-help { margin: 8px 0 0; line-height: 1.5; }
+
+.project-template-dialog { width: min(520px, calc(100vw - 32px)); }
+.project-template-form, .project-template-saved { display: grid; gap: 16px; }
+.project-template-form textarea, .project-template-edit textarea { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; }
+.project-template-include { display: grid; gap: 10px; margin: 0; padding: 16px; border: 1px solid var(--box-rule, var(--studio-rule, #e2e2df)); border-radius: var(--box-radius, 8px); background: var(--studio-paper, #fff); }
+.project-template-include legend { padding: 0 4px; font-size: 13px; font-weight: 600; }
+.project-template-include .ws-choice-label { align-items: flex-start; font-size: 13px; line-height: 1.45; }
+.project-template-include .ws-choice-label:has(:disabled) { color: var(--studio-muted, #6b6b6b); }
+.project-template-always { margin: 0; font-size: 13px; line-height: 1.45; color: var(--studio-muted, #6b6b6b); }
+.project-template-saved p { margin: 0; font-size: 14px; line-height: 1.55; }
+
+.project-template-settings { max-width: 1100px; margin-bottom: 56px; padding-bottom: 48px; border-bottom: 1px solid var(--studio-rule, #e2e2df); }
+.project-template-empty { display: flex; gap: 12px; align-items: flex-start; padding: 20px; border: 1px solid var(--box-rule, var(--studio-rule, #e2e2df)); border-radius: var(--box-radius, 8px); background: var(--studio-paper, #fff); }
+.project-template-empty > svg { flex: none; margin-top: 2px; color: var(--studio-muted, #6b6b6b); }
+.project-template-empty strong { font-size: 14px; font-weight: 600; }
+.project-template-empty p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--studio-muted, #6b6b6b); }
+.project-template-edit { display: grid; gap: 12px; width: 100%; }
+.project-template-list { display: grid; gap: 8px; }
+.project-template-list > li { padding: 16px 20px; background: var(--studio-paper, #fff); border: 1px solid var(--box-rule, var(--studio-rule, #e2e2df)); border-bottom: 1px solid var(--box-rule, var(--studio-rule, #e2e2df)); border-radius: var(--box-radius, 8px); }
+.project-template-list > li p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; }
+.project-template-list > li p.commerce-muted { margin-top: 4px; font-size: 12px; }
+
+@media (max-width: 600px) {
+  .workspace.folio-workspace .project-actions .project-template-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .workspace.folio-workspace .project-actions > button:has(.project-template-label) { padding: 0 12px; }
+}
