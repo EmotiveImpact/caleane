@@ -261,3 +261,5 @@ button.pl-slot{cursor:pointer}
 .pl-dbody .pipeline-task:first-of-type{padding-top:4px}
 @media(max-width:700px){.folio-workspace .pipeline-enquiry:not(.is-board-card){padding:14px}.pl-dbody .pl-kv,.pl-dbody .pl-fit,.pl-dbody .pipeline-intake,.pl-dbody .pipeline-next-section,.pl-dbody .pipeline-context,.pl-dbody .pipeline-history,.pl-dbody .pl-steps,.pl-dbody .pl-totals{padding:14px}.pl-dbody .pl-table{padding:10px 12px}}
 .pl-stage{display:inline-block;margin-left:8px;padding:2px 8px;border:1px solid #e3e4e8;border-radius:999px;font-style:normal;font-size:11px;color:#5f6370;background:#fff;vertical-align:middle;white-space:nowrap}
+.pl-currency.is-tax{margin-left:0}
+.pl-currency input{width:72px;min-height:34px;box-sizing:border-box;padding:6px 8px;border:1px solid var(--studio-rule,#e3e3e1);border-radius:6px;background:var(--studio-paper,#fff);color:inherit;font:inherit;font-size:13px}

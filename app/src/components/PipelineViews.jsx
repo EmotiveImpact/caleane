@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {shortDay} from '../lib/dates';
 import {ChevronLeft,ChevronRight} from 'lucide-react';
 import {Chip} from './PipelineDeal';
+import {CURRENCIES} from '../lib/currencies.js';
 
 const money=(minor,currency='GBP')=>new Intl.NumberFormat('en-GB',{style:'currency',currency,maximumFractionDigits:0}).format((minor||0)/100);
 const compact=(minor,currency='GBP')=>minor>=100000?new Intl.NumberFormat('en-GB',{style:'currency',currency,notation:'compact',maximumFractionDigits:1}).format(minor/100):money(minor,currency);
@@ -96,7 +97,7 @@ export function AutomationsView({settings,onSave,busy}){
    {draft.followUpMessages.map((text,index)=><label className="pl-field" key={index}>Message {index+1}<textarea rows="4" maxLength="3000" value={text} onChange={e=>set({followUpMessages:draft.followUpMessages.map((m,i)=>i===index?e.target.value:m)})}/></label>)}</section>}
   <section className="pl-panel"><span className="pl-label">Fit checks for new enquiries</span>
    <label className="pl-field">Events you can take on one day<input type="number" min="1" max="20" step="1" value={draft.dailyCapacity} onChange={e=>set({dailyCapacity:Number(e.target.value)})}/></label>
-   <div className="pl-pair"><label className="pl-field">Minimum spend<input type="number" min="0" step="1" value={draft.minimumSpend} onChange={e=>set({minimumSpend:Number(e.target.value)})}/></label><label className="pl-field">Currency<select value={draft.minimumCurrency} onChange={e=>set({minimumCurrency:e.target.value})}>{['GBP','EUR','USD'].map(c=><option key={c}>{c}</option>)}</select></label></div>
+   <div className="pl-pair"><label className="pl-field">Minimum spend<input type="number" min="0" step="1" value={draft.minimumSpend} onChange={e=>set({minimumSpend:Number(e.target.value)})}/></label><label className="pl-field">Currency<select value={draft.minimumCurrency} onChange={e=>set({minimumCurrency:e.target.value})}>{CURRENCIES.map(c=><option key={c}>{c}</option>)}</select></label></div>
    <label className="pl-field">Areas you cover<input maxLength="500" value={draft.serviceAreas} onChange={e=>set({serviceAreas:e.target.value})} placeholder="London, Surrey, Kent"/></label><small>Separate places with commas. An enquiry is flagged when its venue mentions none of them. Leave empty to skip this check.</small>
    {draft.closeSilent&&<label className="pl-field">Close an enquiry with no reply after (days)<input type="number" min="7" max="120" step="1" value={draft.closeSilentDays} onChange={e=>set({closeSilentDays:Number(e.target.value)})}/></label>}{draft.nudgeOpened&&<label className="pl-field">Add the check-in task this many days after they open it<input type="number" min="1" max="30" step="1" value={draft.nudgeOpenedDays} onChange={e=>set({nudgeOpenedDays:Number(e.target.value)})}/></label>}<label className="pl-field">Flag a proposal with no reply after (days)<input type="number" min="1" max="60" step="1" value={draft.silentDays} onChange={e=>set({silentDays:Number(e.target.value)})}/></label></section>
   <div className="pl-acts"><button className="pl-btn" disabled={busy}>Save automations</button>{saved&&<span role="status">{saved}</span>}</div>

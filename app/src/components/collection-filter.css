@@ -19,7 +19,7 @@
 .folio-workspace .studio-display-controls>button.collection-filter-trigger{display:inline-flex;width:auto;height:auto;min-width:76px;gap:7px;color:var(--studio-muted)}
 .folio-workspace .studio-display-controls>button.collection-filter-trigger[data-active=true]{color:var(--studio-accent);background:var(--studio-accent-soft)}
 .studio-collection-controls>.studio-billing-filters{flex:1;min-width:0;margin-bottom:0}
-@media(max-width:760px){.collection-filter-trigger,.folio-workspace .studio-display-controls>button.collection-filter-trigger{min-height:44px}.studio-collection-controls>.studio-billing-filters{overflow:auto}.collection-filter-heading button{width:32px;height:32px}}
+@media(max-width:760px){.collection-filter-trigger,.folio-workspace .studio-display-controls>button.collection-filter-trigger{min-height:44px}.folio-workspace .studio-collection-controls>.studio-billing-filters{flex-wrap:wrap;overflow:visible;column-gap:20px}.collection-filter-heading button{width:32px;height:32px}}
 
 @media(max-width:760px){.folio-workspace .studio-display-controls>button.collection-filter-trigger{min-width:44px;width:44px;padding:8px}.studio-display-controls>.collection-filter-trigger>span:not(.collection-filter-dot){display:none}}
 @media(min-width:761px) and (max-width:1280px){.folio-workspace .studio-projects .studio-index-controls>.studio-tabs{flex:1 0 100%}.folio-workspace .studio-projects .studio-index-controls>.studio-display-controls{margin-left:auto}}

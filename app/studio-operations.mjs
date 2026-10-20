@@ -47,13 +47,13 @@ function currentScope(project){
  return proposal?.status==='Scope accepted'&&proposal.briefRevision===project.briefRevision?proposal:null;
 }
 // Deposits count against the accepted proposal's estimate or, before any proposal, the latest estimate, however they were issued.
+// A project with no estimate at all, billed with a quick invoice, counts any deposit it has.
 function depositInvoices(db,project,proposal){
  const estimateId=proposal?proposal.estimate?.id:project.estimates?.at(-1)?.id;
- if(!estimateId)return [];
  installInvoiceAdjustments(db);
  return db.prepare("SELECT id,estimate_id,currency,amount_minor,cancelled_at FROM invoices WHERE studio_id=? AND project_id=? AND kind='Deposit' ORDER BY issued_at,id").all(project.studioId,project.id)
   .filter(invoice=>!invoice.cancelled_at)
-  .map(invoice=>{const payments=db.prepare('SELECT amount_minor,source FROM invoice_payments WHERE studio_id=? AND invoice_id=?').all(project.studioId,invoice.id);return {...invoice,forAcceptedEstimate:invoice.estimate_id===estimateId,paidMinor:payments.reduce((sum,payment)=>sum+payment.amount_minor,0)-(db.prepare("SELECT COALESCE(SUM(amount_minor),0) AS n FROM invoice_refunds WHERE studio_id=? AND invoice_id=?").get(project.studioId,invoice.id)?.n||0),paymentSources:[...new Set(payments.map(payment=>payment.source))]};});
+  .map(invoice=>{const payments=db.prepare('SELECT amount_minor,source FROM invoice_payments WHERE studio_id=? AND invoice_id=?').all(project.studioId,invoice.id);return {...invoice,forAcceptedEstimate:estimateId?invoice.estimate_id===estimateId:true,paidMinor:payments.reduce((sum,payment)=>sum+payment.amount_minor,0)-(db.prepare("SELECT COALESCE(SUM(amount_minor),0) AS n FROM invoice_refunds WHERE studio_id=? AND invoice_id=?").get(project.studioId,invoice.id)?.n||0),paymentSources:[...new Set(payments.map(payment=>payment.source))]};});
 }
 function dateConflicts(db,project,hold,asOf){
  if(!hold||!['Held','Confirmed'].includes(hold.status))return [];

@@ -63,8 +63,9 @@ export function dueReminders(db,studioId,today,settings=reminderSettings(db,stud
   const design=(p.designs||[]).filter(item=>item.status==='Awaiting approval').at(-1);
   if(design&&design.briefRevision===p.briefRevision&&settings.approvalAfterDays>0&&t-dayNumber(design.sharedAt||design.at)>=settings.approvalAfterDays)items.push({key:`approval:${design.id}`,kind:'Review waiting',audience:'client',project:p,summary:`${design.title} awaiting review`,
    text:`“${design.title}” (version ${String(design.version).padStart(2,'0')}) is ready for your review whenever you have a moment. Your approval or comments help us keep things moving.`});
+  // A plan that issues itself raises its own task if a payment cannot go out.
   const plan=settings.planStepTasks?getPlan(db,studioId,p.id):null;
-  for(const step of plan?.steps||[])if(!step.invoiceId&&stepDueDate(step,p)&&dayNumber(stepDueDate(step,p))<=t)items.push({key:`plan-step:${step.id}`,kind:'Payment to invoice',audience:'studio',project:p,summary:`Issue the ${step.label.toLowerCase()} invoice (${money(step.amountMinor,plan.currency)})`,step,plan});
+  for(const step of plan?.autoIssue?[]:plan?.steps||[])if(!step.invoiceId&&stepDueDate(step,p)&&dayNumber(stepDueDate(step,p))<=t)items.push({key:`plan-step:${step.id}`,kind:'Payment to invoice',audience:'studio',project:p,summary:`Issue the ${step.label.toLowerCase()} invoice (${money(step.amountMinor,plan.currency)})`,step,plan});
  }
  return items;
 }
@@ -132,17 +133,26 @@ export function runReminders(db,{studioId,today=now().slice(0,10),outbox=null,cl
    if(item.audience==='client'){
     const conversation=materializeProjectConversation(db,item.project);
     messageId=appendConversationMessage(db,conversation,owner,'owner',item.text);
-   }else{
-    const clientId=projectClientId(db,studioId,item.project.id);
-    if(clientId)db.prepare(`INSERT INTO crm_tasks (id,studio_id,client_id,opportunity_id,title,detail,due_date,priority,completed,created_at,completed_at,created_by) VALUES(?,?,?,?,?,?,?,?,0,?,'',?)`)
-     .run(id(),studioId,clientId,null,`${item.summary} · ${item.project.title}`,`Scheduled in the payment plan for ${item.step.dueDate}. Open Billing on the project to issue it.`,item.step.dueDate,'High',now(),'Caleane reminders');
-   }
-   db.prepare('INSERT INTO reminder_log VALUES(?,?,?,?,?,?,?)').run(studioId,item.key,item.project.id,item.kind,item.audience,item.summary,now());
+    db.prepare('INSERT INTO reminder_log VALUES(?,?,?,?,?,?,?)').run(studioId,item.key,item.project.id,item.kind,item.audience,item.summary,now());
+   }else planStepTask(db,{studioId,project:item.project,step:item.step,plan:item.plan,detail:`Scheduled in the payment plan for ${stepDueDate(item.step,item.project)}. Open Billing on the project to issue it.`});
   });
   if(messageId&&outbox){try{outbox.enqueueMessage({studioId,conversationId:materializeProjectConversation(db,item.project).id,messageId,actorUserId:owner.id});}catch{/* In-app delivery has already happened. */}}
   sent.push({key:item.key,kind:item.kind,audience:item.audience,projectId:item.project.id,summary:item.summary});
  }
  return sent;
+}
+
+// A to-do for the studio to issue one scheduled payment. It is logged under the reminder's key,
+// so a payment gets one task whether the reminder or automatic issuing raised it.
+export function planStepTask(db,{studioId,project,step,plan,detail}){
+ const key=`plan-step:${step.id}`;if(db.prepare('SELECT 1 FROM reminder_log WHERE studio_id=? AND key=?').get(studioId,key))return false;
+ const summary=`Issue the ${step.label.toLowerCase()} invoice (${money(step.amountMinor,plan.currency)})`,clientId=projectClientId(db,studioId,project.id),due=stepDueDate(step,project)||now().slice(0,10);
+ transaction(db,()=>{
+  if(clientId)db.prepare(`INSERT INTO crm_tasks (id,studio_id,client_id,opportunity_id,title,detail,due_date,priority,completed,created_at,completed_at,created_by) VALUES(?,?,?,?,?,?,?,?,0,?,'',?)`)
+   .run(id(),studioId,clientId,null,`${summary} · ${project.title}`,detail,due,'High',now(),'Caleane reminders');
+  db.prepare('INSERT INTO reminder_log VALUES(?,?,?,?,?,?,?)').run(studioId,key,project.id,'Payment to invoice','studio',summary,now());
+ });
+ return true;
 }
 
 export function runAllReminders(db,{outbox=null,today}={}){

@@ -67,7 +67,7 @@ test('discounts, late fees and tips on issued invoices',async()=>{
   assert.deepEqual([deposit.shareMinor,deposit.discountNetMinor,deposit.discountMinor,deposit.amountMinor,deposit.netMinor,deposit.taxMinor],[10000,1000,1200,8800,7333,1467]);
   assert.equal(deposit.discountLabel,'Returning client');
   assert.equal(deposit.tipsAllowed,false,'deposits never take tips');
-  assert.deepEqual(deposit.lateFeeRule,{type:'fixed',amountMinor:2500,percent:5,afterDays:7});
+  assert.deepEqual(deposit.lateFeeRule,{type:'fixed',amountMinor:2500,currency:'GBP',percent:5,afterDays:7});
   assert.equal(deposit.balanceMinor,8800);
 
   // The discounted deposit still covers its full share, so the balance is the rest of the estimate.

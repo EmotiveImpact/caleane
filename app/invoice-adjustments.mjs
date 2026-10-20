@@ -13,7 +13,18 @@ export function installInvoiceAdjustments(db){db.exec(`
  CREATE INDEX IF NOT EXISTS invoice_credit_notes_invoice ON invoice_credit_notes(studio_id,invoice_id,issued_at);
  CREATE TABLE IF NOT EXISTS credit_note_counters(studio_id TEXT NOT NULL,year INTEGER NOT NULL,next_number INTEGER NOT NULL,PRIMARY KEY(studio_id,year));
  CREATE TABLE IF NOT EXISTS invoice_refunds(id TEXT PRIMARY KEY,studio_id TEXT NOT NULL REFERENCES studios(id),invoice_id TEXT NOT NULL REFERENCES invoices(id),amount_minor INTEGER NOT NULL CHECK(amount_minor>0),method TEXT NOT NULL,reference TEXT NOT NULL,refunded_at TEXT NOT NULL,note TEXT NOT NULL,recorded_at TEXT NOT NULL,recorded_by TEXT NOT NULL);
- CREATE INDEX IF NOT EXISTS invoice_refunds_invoice ON invoice_refunds(studio_id,invoice_id,recorded_at);`);ensureInvoiceLabel(db);ensureInvoiceExtras(db);}
+ CREATE INDEX IF NOT EXISTS invoice_refunds_invoice ON invoice_refunds(studio_id,invoice_id,recorded_at);
+ CREATE TABLE IF NOT EXISTS invoice_paid_notices(id TEXT PRIMARY KEY,studio_id TEXT NOT NULL REFERENCES studios(id),invoice_id TEXT NOT NULL REFERENCES invoices(id),paid_on TEXT NOT NULL,method TEXT NOT NULL,reference TEXT NOT NULL DEFAULT '',sent_at TEXT NOT NULL,sent_by TEXT NOT NULL);
+ CREATE INDEX IF NOT EXISTS invoice_paid_notices_invoice ON invoice_paid_notices(studio_id,invoice_id,sent_at);`);ensureInvoiceLabel(db);ensureInvoiceExtras(db);}
+
+// A client telling the studio they have paid. It changes no figures: the studio records the payment once it
+// has arrived. A notice stays open until the next payment is recorded after it.
+export const PAID_NOTICE_METHODS=['bank_transfer','paypal_external','card_external','other_external'];
+export function openPaidNotice(db,studioId,invoiceId){
+ const notice=db.prepare('SELECT * FROM invoice_paid_notices WHERE studio_id=? AND invoice_id=? ORDER BY sent_at DESC,id DESC LIMIT 1').get(studioId,invoiceId);
+ if(!notice||db.prepare('SELECT 1 FROM invoice_payments WHERE studio_id=? AND invoice_id=? AND recorded_at>=?').get(studioId,invoiceId,notice.sent_at))return null;
+ return {paidOn:notice.paid_on,method:notice.method,reference:notice.reference,sentAt:notice.sent_at,sentBy:notice.sent_by};
+}
 
 // Scheduled payments carry their plan label (for example "Second instalment").
 export function ensureInvoiceLabel(db){if(!db.prepare('PRAGMA table_info(invoices)').all().some(column=>column.name==='label'))db.exec("ALTER TABLE invoices ADD COLUMN label TEXT NOT NULL DEFAULT ''");}
