@@ -1,5 +1,5 @@
 import {id,now,transaction} from './store.mjs';
-import {ensurePrimaryContact} from './relationships.mjs';
+import {ensurePrimaryContact,linkCompany} from './relationships.mjs';
 import {fieldDefinitions} from './custom-fields.mjs';
 import {IMPORT_STAGES,MAX_IMPORT_ROWS,reviewImport} from './src/lib/client-import.js';
 
@@ -25,6 +25,7 @@ export function importClients(db,{studioId,rows,stage='Active',tag='',fileName='
    const clientId=id();
    db.prepare('INSERT INTO clients VALUES(?,?,?,?,?)').run(clientId,studioId,c.email,c.name,JSON.stringify(data));
    ensurePrimaryContact(db,db.prepare('SELECT * FROM clients WHERE id=?').get(clientId));
+   linkCompany(db,studioId,clientId,c.company);
    created.push(clientId);
   }
  });

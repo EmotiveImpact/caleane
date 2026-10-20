@@ -85,6 +85,8 @@ test('a studio imports a client list, skipping rows it already has, and clients 
   const contacts=(await call(`/api/clients/${nadia.id}/contacts${q}`)).data;
   assert.equal(contacts.contacts.find(c=>c.isPrimary)?.email,'nadia@example.com');
   assert.equal((await call('/api/clients'+q)).data.clients.length,before.length+1);
+  // The company becomes their organisation, as it does for a client added by hand.
+  assert.equal((await call('/api/clients'+q)).data.clients.find(c=>c.id===nadia.id).organizationName,'Okafor Interiors');
   // Importing the same file again adds nobody.
   const again=await call('/api/clients/import'+q,'POST',{rows,stage:'Active'});
   assert.equal(again.data.clients.length,0);
