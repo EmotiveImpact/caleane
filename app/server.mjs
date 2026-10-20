@@ -495,10 +495,46 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(staffMemberMatch){requireOwner();if(req.method==='PATCH'&&body.access!==undefined){if(!STAFF_ACCESS.includes(body.access))fail(400,'Choose a valid access level.');const changed=transaction(db,()=>{if(body.access!=='viewer')db.prepare('DELETE FROM studio_project_collaborators WHERE studio_id=? AND user_id=?').run(studio.id,staffMemberMatch[1]);return db.prepare('UPDATE studio_staff SET access=? WHERE studio_id=? AND user_id=?').run(body.access,studio.id,staffMemberMatch[1]);});if(!changed.changes)fail(404,'Studio member not found.');return reply(200,{ok:true,access:body.access});}if(req.method!=='PATCH'||body.remove!==true)fail(405,'Method not allowed.');const removed=transaction(db,()=>{db.prepare('DELETE FROM studio_project_collaborators WHERE studio_id=? AND user_id=?').run(studio.id,staffMemberMatch[1]);return db.prepare('DELETE FROM studio_staff WHERE studio_id=? AND user_id=?').run(studio.id,staffMemberMatch[1]);});if(!removed.changes)fail(404,'Studio member not found.');return reply(200,{ok:true});}
     const staffInviteMatch=route.match(/^\/api\/staff-invitations\/([a-f0-9]{64})$/);
     if(staffInviteMatch){requireOwner();if(req.method!=='PATCH'||body.revoke!==true)fail(405,'Method not allowed.');const revoked=db.prepare('UPDATE staff_invitations SET used=1 WHERE studio_id=? AND token=? AND used=0').run(studio.id,staffInviteMatch[1]);if(!revoked.changes)fail(404,'Invitation not found.');return reply(200,{ok:true});}
+    // Links a new delivery project to an enquiry. Used by "Create linked project" and by a new enquiry that already has a date or place.
+    const linkProject=(opportunity,input)=>{
+     if(opportunity.projectId)fail(409,'This opportunity already has a project.');
+     if(input.revision!==opportunity.revision)fail(409,'This opportunity changed while you were editing. Refresh and try again.');
+     const client=db.prepare('SELECT name,email FROM clients WHERE id=? AND studio_id=?').get(opportunity.clientId,studio.id);
+     if(!client)fail(404,'Client not found.');
+     const p=makeProject(studio.id,brief({...input,name:client.name,email:client.email,workflowType:input.workflowType||branding(studio.id).profession||DEFAULT_WORKFLOW}),user,client.id);
+     if(input.templateId)applyProjectTemplate(db,studio.id,p,input.templateId,user);
+     transaction(db,()=>{
+      insertProject(db,p);
+      db.prepare('DELETE FROM crm_opportunities WHERE project_id=? AND studio_id=?').run(p.id,studio.id);
+      const updated=db.prepare('UPDATE crm_opportunities SET project_id=?,revision=revision+1,updated_at=? WHERE id=? AND studio_id=? AND project_id IS NULL AND revision=?').run(p.id,now(),opportunity.id,studio.id,input.revision);
+      if(!updated.changes)fail(409,'This opportunity changed while you were editing. Refresh and try again.');
+      logActivity(db,studio.id,user,opportunity.clientId,{kind:'Note',title:'Project created from opportunity',detail:p.title},opportunity.id);
+     });
+     return p;
+    };
+    // A studio adds a client by hand. With reuse, an existing record with the same email is returned instead of refusing.
+    const addClient=(input,{reuse=false}={})=>{
+     const name=str(input.name,120),mail=email(input.email);if(!name)fail(400,'Add a client name.');
+     const existing=db.prepare('SELECT id,name,email FROM clients WHERE studio_id=? AND email=?').get(studio.id,mail);
+     if(existing){if(reuse)return existing;fail(409,'This client already has a record.');}
+     const client={id:id(),name,email:mail,company:str(input.company||'',200),phone:str(input.phone||'',60),stage:'Lead',source:'Added by studio',tags:[],notes:[],followUp:'',createdAt:now(),updatedAt:now()};const {id:cid,name:cn,email:ce,...data}=client;
+     transaction(db,()=>{db.prepare('INSERT INTO clients VALUES(?,?,?,?,?)').run(cid,studio.id,ce,cn,JSON.stringify(data));ensurePrimaryContact(db,db.prepare('SELECT * FROM clients WHERE id=?').get(cid));});
+     return client;
+    };
     if(route==='/api/opportunities'){
      requireOwner();
      if(req.method==='GET'){syncPipeline(db,studio.id,{outbox});return reply(200,{opportunities:listOpportunities(db,studio.id)});}
-     if(req.method==='POST')return reply(201,{opportunity:createOpportunity(db,studio.id,user,body)});
+     if(req.method==='POST'){
+      // A new enquiry can bring a new client and the date and place, so it lands complete in one step.
+      const date=str(body.date||'',10),venue=str(body.venue||'',300);
+      const created=transaction(db,()=>{
+       const clientId=body.newClient?addClient(body.newClient,{reuse:true}).id:body.clientId;
+       const opportunity=createOpportunity(db,studio.id,user,{...body,clientId});
+       if(date||venue)linkProject(opportunity,{occasion:opportunity.title,date,venue,vision:opportunity.description,workflowType:body.workflowType,revision:opportunity.revision});
+       return getOpportunity(db,studio.id,opportunity.id);
+      });
+      return reply(201,{opportunity:created});
+     }
      fail(405,'Method not allowed.');
     }
     const opportunityMatch=route.match(/^\/api\/opportunities\/([a-f0-9-]+)(?:\/(activities|project|review|planning))?$/);
@@ -517,19 +553,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
      if(opportunityMatch[2]==='review'&&req.method==='POST')return reply(200,{opportunity:reviewOpportunity(db,studio.id,user,oid,body)});
      if(opportunityMatch[2]==='activities'&&req.method==='POST')return reply(201,{activities:logActivity(db,studio.id,user,opportunity.clientId,body,oid)});
      if(opportunityMatch[2]==='project'&&req.method==='POST'){
-      if(opportunity.projectId)fail(409,'This opportunity already has a project.');
-      if(body.revision!==opportunity.revision)fail(409,'This opportunity changed while you were editing. Refresh and try again.');
-      const client=db.prepare('SELECT name,email FROM clients WHERE id=? AND studio_id=?').get(opportunity.clientId,studio.id);
-      if(!client)fail(404,'Client not found.');
-      const p=makeProject(studio.id,brief({...body,name:client.name,email:client.email,workflowType:body.workflowType||branding(studio.id).profession||DEFAULT_WORKFLOW}),user,client.id);
-      if(body.templateId)applyProjectTemplate(db,studio.id,p,body.templateId,user);
-      transaction(db,()=>{
-       insertProject(db,p);
-       db.prepare('DELETE FROM crm_opportunities WHERE project_id=? AND studio_id=?').run(p.id,studio.id);
-       const updated=db.prepare('UPDATE crm_opportunities SET project_id=?,revision=revision+1,updated_at=? WHERE id=? AND studio_id=? AND project_id IS NULL AND revision=?').run(p.id,now(),oid,studio.id,body.revision);
-       if(!updated.changes)fail(409,'This opportunity changed while you were editing. Refresh and try again.');
-       logActivity(db,studio.id,user,opportunity.clientId,{kind:'Note',title:'Project created from opportunity',detail:p.title},oid);
-      });
+      const p=linkProject(opportunity,body);
       return reply(201,{project:decorate(p),opportunity:getOpportunity(db,studio.id,oid)});
      }
      if(!opportunityMatch[2]&&req.method==='GET')return reply(200,{opportunity});
@@ -630,7 +654,7 @@ export async function createWorkspace({dbFile=path.join(root,'data/workspace.sql
     if(route==='/api/clients'){
      requireOwner();
      if(req.method==='GET'){const clients=db.prepare('SELECT * FROM clients WHERE studio_id=? ORDER BY name').all(studio.id).map(clientDTO);return reply(200,{clients});}
-     if(req.method==='POST'){const name=str(body.name,120),mail=email(body.email);if(!name)fail(400,'Add a client name.');if(db.prepare('SELECT id FROM clients WHERE studio_id=? AND email=?').get(studio.id,mail))fail(409,'This client already has a record.');const client={id:id(),name,email:mail,company:str(body.company||'',200),phone:str(body.phone||'',60),stage:'Lead',source:'Added by studio',tags:[],notes:[],followUp:'',createdAt:now(),updatedAt:now()};const {id:cid,name:cn,email:ce,...data}=client;transaction(db,()=>{db.prepare('INSERT INTO clients VALUES(?,?,?,?,?)').run(cid,studio.id,ce,cn,JSON.stringify(data));ensurePrimaryContact(db,db.prepare('SELECT * FROM clients WHERE id=?').get(cid));});return reply(201,{client});}
+     if(req.method==='POST')return reply(201,{client:addClient(body)});
      fail(405,'Method not allowed.');
     }
     const clientMatch=route.match(/^\/api\/clients\/([a-f0-9-]+)(?:\/(notes|invite|erase))?$/);

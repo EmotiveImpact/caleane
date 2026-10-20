@@ -76,8 +76,9 @@ test('adding a dated follow-up removes enquiry from attention, supports assignme
 test('not proceeding requires an explanation and keeps project accessible; Undo restores previous stage',async()=>{
  const input=user(),{writes}=fixture();await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));await screen.findByRole('heading',{name:'Next steps'});
  await input.click(screen.getByRole('button',{name:'Not proceeding',exact:true}));assert.ok(screen.getByRole('dialog',{name:'Not proceeding'}));assert.equal(writes.length,0);
- await input.type(screen.getByRole('textbox',{name:'Reason',exact:true}),'Dates changed');await input.click(screen.getByRole('button',{name:'Mark as not proceeding'}));
- await waitFor(()=>assert.equal(screen.queryByRole('dialog',{name:'Not proceeding'}),null));assert.equal(writes[0].body.lostReason,'Dates changed');assert.ok(screen.getByRole('button',{name:'Open project brief',exact:true}));
+ await input.click(screen.getByRole('button',{name:'Mark as not proceeding'}));assert.ok(await within(screen.getByRole('dialog',{name:'Not proceeding'})).findByText('Choose a reason.'));assert.equal(writes.length,0);
+ await choose(input,'Reason not proceeding','Dates not available');await input.type(screen.getByRole('textbox',{name:'Note (optional)'}),'Moved to 2028');await input.click(screen.getByRole('button',{name:'Mark as not proceeding'}));
+ await waitFor(()=>assert.equal(screen.queryByRole('dialog',{name:'Not proceeding'}),null));assert.equal(writes[0].body.lostReason,'Dates not available: Moved to 2028');assert.ok(screen.getByRole('button',{name:'Open project brief',exact:true}));
  await input.click(screen.getByRole('button',{name:'Undo',exact:true}));await waitFor(()=>assert.equal(writes.length,2));assert.equal(writes[1].body.stage,'Discovery');
 });
 
@@ -92,6 +93,20 @@ test('new enquiry needs only a client and title, preserves optional defaults and
  const input=user(),{writes}=fixture();await screen.findByRole('button',{name:'View Wedding flowers'});await input.click(screen.getByRole('button',{name:'New enquiry',exact:true}));
  await choose(input,'Client','Amelia');await input.type(screen.getByRole('textbox',{name:'Enquiry',exact:true}),'Summer flowers');await input.click(screen.getByRole('button',{name:'Create enquiry',exact:true}));
  await screen.findByRole('heading',{name:'Next steps'});assert.equal(writes[0].body.title,'Summer flowers');assert.equal(writes[0].body.stage,'Discovery');assert.equal(writes[0].body.currency,'GBP');assert.equal(writes[0].body.amountMinor,0);
+});
+
+test('new enquiry can add a new client with the date and place, sent in one request',async()=>{
+ const input=user(),{writes}=fixture();await screen.findByRole('button',{name:'View Wedding flowers'});await input.click(screen.getByRole('button',{name:'New enquiry',exact:true}));
+ assert.equal(screen.queryByRole('textbox',{name:'Client name'}),null,'the new client fields wait until New client is chosen');
+ await choose(input,'Client','New client…');
+ await input.type(screen.getByRole('textbox',{name:'Client name'}),'Priya Shah');await input.type(screen.getByRole('textbox',{name:'Client email'}),'priya@example.test');
+ await input.type(screen.getByRole('textbox',{name:'Enquiry',exact:true}),'Garden anniversary');
+ const date=document.querySelector('.pipeline-create input[name="date"]');assert.ok(date.closest('label').textContent.trim(),'the date is labelled for the studio’s kind of work');
+ await input.type(date,'2027-06-12');await input.type(document.querySelector('.pipeline-create input[name="venue"]'),'Walled garden');
+ await input.click(screen.getByRole('button',{name:'Create enquiry',exact:true}));
+ await waitFor(()=>assert.ok(writes.length));
+ assert.deepEqual(writes[0].body.newClient,{name:'Priya Shah',email:'priya@example.test'});assert.equal(writes[0].body.clientId,undefined);
+ assert.equal(writes[0].body.date,'2027-06-12');assert.equal(writes[0].body.venue,'Walled garden');
 });
 
 test('board provides every open stage and editor keeps commercial data separate from project navigation',async()=>{
@@ -161,7 +176,7 @@ test('follow-ups can be sent early or paused, full dates offer alternatives and 
  const signal={opportunityId:'o1',projectId:'p1',eventDate:'2027-06-12',venue:'Bath',portalClient:true,followUpsSent:0,nextFollowUp:'2026-10-04',alternatives:['2027-06-05','2027-06-19'],
   estimate:{id:'e1',version:1,status:'Awaiting review',total:100000,currency:'GBP',items:1},proposal:{id:'q1',version:1,title:'Wedding flowers',status:'Awaiting response',expiresOn:'2026-10-20',sharedAt:'2026-10-01T10:00:00Z'},
   hold:{id:'h1',status:'Held',startDate:'2027-06-12',holdUntil:'2026-10-20'},fit:[],flags:[{kind:'clash',tone:'bad',label:'Date full',rank:1}]};
- const pipeline={settings:{dailyCapacity:1,followUps:true,followUpDays:[3,7,12],followUpMessages:['Hi','Hi','Hi']},dates:[],insights:null,signals:{o1:signal},planTemplate:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}],project:{id:'p1',estimates:[estimate],proposals:[{id:'q1',title:'Wedding flowers',scope:'Bouquets'}]}};
+ const pipeline={settings:{dailyCapacity:1,followUps:true,followUpDays:[3,7,12],followUpMessages:['Hi','Hi','Hi']},dates:[],insights:null,signals:{o1:signal},planTemplate:[{label:'Deposit',percent:30,due:{type:'on_issue',days:0}},{label:'Balance',percent:70,due:{type:'days_before_event',days:14}}],project:{id:'p1',estimates:[estimate],proposals:[{id:'q1',version:1,title:'Wedding flowers',scope:'Bouquets',status:'Awaiting response',expiresOn:'2026-10-20',estimate}]}};
  const input=user(),{writes}=fixture({pipeline});
  await input.click(await screen.findByRole('button',{name:'View Wedding flowers'}));
  const deal=await screen.findByRole('region',{name:'Quote and booking'});
@@ -180,7 +195,9 @@ test('follow-ups can be sent early or paused, full dates offer alternatives and 
  assert.ok(await screen.findByText('Deposit £300.00, to confirm the date'));
  await input.click(screen.getByRole('button',{name:'See it as the client'}));
  const preview=await screen.findByRole('dialog',{name:'Wedding flowers'});
- assert.match(preview.textContent,/£300.00 deposit/);assert.match(preview.textContent,/Balance £700.00 14 days before the event/);
+ assert.match(preview.textContent,/Accept scope/);assert.match(preview.textContent,/Request changes/);
+ assert.match(preview.textContent,/send the £300.00 deposit invoice from Billing/,'the deposit is shown as the studio’s next step, not a client button');
+ assert.doesNotMatch(preview.textContent,/Accept proposal/);
 });
 
 test('Today, All enquiries and Board show who opened the latest proposal, in place of the Opened chip',async()=>{
