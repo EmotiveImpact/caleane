@@ -190,3 +190,5 @@ textarea.bf-field{min-height:0;overflow:hidden}
  .bf-ch.on{flex:2.4}.bf-ch:not(.on) span{visibility:hidden}
 }
 .bf-proof-empty{margin:14px 0 4px;font-size:13px;color:var(--muted)}
+/* Brief change requests: the client's reason and the studio's reply sit under each settled request. */
+.change-history .change-reason{display:block;margin-top:4px;color:var(--studio-muted,#6e7069)}.change-decline{display:grid;gap:12px;margin-top:14px}

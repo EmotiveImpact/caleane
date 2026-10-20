@@ -137,3 +137,11 @@ export function linkCompany(db,studioId,clientId,company){
  db.prepare(`UPDATE crm_contacts SET organization_id=? WHERE studio_id=? AND organization_id IS NULL AND id IN (SELECT contact_id FROM crm_client_contacts WHERE studio_id=? AND client_id=? AND primary_contact=1)`).run(organization.id,studioId,studioId,clientId);
  return organization.id;
 }
+// A project the studio creates stays with the studio until it chooses to share it; until then the client's portal does not list it.
+// Sharing is stored as portal access on every stakeholder, so notifications and reminders follow the same rule.
+export function setProjectShared(db,studioId,projectId,shared){db.prepare('UPDATE crm_project_stakeholders SET portal_access=? WHERE studio_id=? AND project_id=?').run(shared?1:0,studioId,projectId);}
+/** clientShareState for every project in a studio at once, for the project list. */
+export function clientShareStates(db,studioId){const map=new Map();for(const row of db.prepare(`SELECT ps.project_id,ps.portal_access AS shared,${JOINED} AS joined FROM crm_project_stakeholders ps
+ JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE ps.studio_id=? AND ps.primary_contact=1`).all(studioId))if(!map.has(row.project_id))map.set(row.project_id,{shared:!!row.shared,joined:!!row.joined});return map;}
+export function clientShareState(db,studioId,projectId){const row=db.prepare(`SELECT ps.portal_access AS shared,${JOINED} AS joined FROM crm_project_stakeholders ps
+ JOIN crm_contacts ct ON ct.id=ps.contact_id AND ct.studio_id=ps.studio_id WHERE ps.studio_id=? AND ps.project_id=? AND ps.primary_contact=1`).get(studioId,projectId);return {shared:!!row?.shared,joined:!!row?.joined};}

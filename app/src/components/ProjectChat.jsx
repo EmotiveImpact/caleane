@@ -29,7 +29,7 @@ export function laterChoices(from=new Date()){
 export function fileUrl(thread,file,studio,fileHref){return fileHref?.(thread,file)||`/api/conversations/${thread.id}/files/${file.fileId}?studio=${studio.id}`;}
 
 // helper: offer the quiet helper's "Draft a reply" in the composer when it is switched on for the studio.
-export function ProjectChat({p,studio,user,owner,request,conversationId,fileHref,firstUnreadId=null,onConversation,onMarkedUnread,helper=false}){
+export function ProjectChat({p,studio,user,owner,request,conversationId,fileHref,firstUnreadId=null,onConversation,onMarkedUnread,helper=false,openTask}){
  const [thread,setThread]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[draft,setDraftState]=useState(''),[sending,setSending]=useState(false),[query,setQuery]=useState(''),[people,setPeople]=useState(false),[reply,setReply]=useState(null),[attachments,setAttachments]=useState([]),[uploading,setUploading]=useState(false),[mentionPicker,setMentionPicker]=useState(false),[mentionIds,setMentionIds]=useState([]),[unreadFrom,setUnreadFrom]=useState(firstUnreadId),[flash,setFlash]=useState(null),[picked,setPicked]=useState(null),[working,setWorking]=useState('');
  const [later,setLater]=useState(false),[customAt,setCustomAt]=useState(''),[drafting,setDrafting]=useState(false),[drafted,setDrafted]=useState(null);
  const helperOn=useHelperEnabled(studio,request,!!(helper&&owner)),moreSend=useRef(null),draftNow=useRef('');
@@ -67,13 +67,13 @@ export function ProjectChat({p,studio,user,owner,request,conversationId,fileHref
     <MessageBody text={m.text}/>
     {m.mentionIds?.length>0&&<div className="project-talk-mentions">{m.mentionIds.map(id=><span key={id}>{id===user.id?'Mentioned you':'@'+(participants.find(p=>p.id===id)?.name||'Participant')}</span>)}</div>}
     {m.attachments?.length>0&&<div className="project-talk-files">{m.attachments.map(file=>file.mime?.startsWith('image/')?<a key={file.fileId} className="project-talk-image" href={fileUrl(thread,file,studio,fileHref)} target="_blank" rel="noreferrer"><img src={fileUrl(thread,file,studio,fileHref)} alt={file.name} onLoad={()=>{if(nearBottom.current&&scroll.current)scroll.current.scrollTop=scroll.current.scrollHeight;}}/></a>:<a key={file.fileId} href={fileUrl(thread,file,studio,fileHref)} target="_blank" rel="noreferrer"><FileText size={16}/><span>{file.name}<small>{Math.max(1,Math.round(file.size/1024))} KB</small></span></a>)}</div>}
-    {ask&&<div className="project-talk-ask-mark"><span className={ask.completed?'is-done':''}>{ask.completed?<CheckCircle2 size={12}/>:<ListChecks size={12}/>}{ask.completed?'Open ask done':'In open asks'}</span></div>}
+    {ask&&<div className="project-talk-ask-mark"><span className={ask.completed?'is-done':''}>{ask.completed?<CheckCircle2 size={12}/>:<ListChecks size={12}/>}{ask.completed?'Task done':'Task added'}</span>{openTask&&<button type="button" className="project-talk-ask-open" onClick={()=>openTask(ask.taskKey)}>Open task</button>}</div>}
     {mine&&m.id===myLast?.id&&seenMine.length>0&&<p className="project-talk-seen">Seen by {seenMine.join(', ')}</p>}
    </div>
    <div className="project-talk-actions" role="group" aria-label={'Actions for '+m.by+'’s message'}>
     {canWrite&&<button type="button" aria-label={'Reply to '+m.by} title="Reply" onClick={()=>beginReply(m)}><Reply size={15}/></button>}
     {canWrite&&<button type="button" aria-label={isPinned?'Unpin message':'Pin message'} title={isPinned?'Unpin':'Pin'} disabled={!!working} onClick={()=>act('pins',{messageId:m.id,pinned:!isPinned},'pin')}>{isPinned?<PinOff size={15}/>:<Pin size={15}/>}</button>}
-    {owner&&!ask&&<button type="button" aria-label="Add to open asks" title="Add to open asks" disabled={!!working} onClick={()=>act('asks',{messageId:m.id},'ask')}><ListChecks size={15}/></button>}
+    {owner&&!ask&&<button type="button" aria-label="Make this a task" title="Make this a task" disabled={!!working} onClick={()=>act('asks',{messageId:m.id},'ask')}><ListChecks size={15}/></button>}
     {!mine&&<button type="button" aria-label="Mark unread from here" title="Mark unread" disabled={!!working} onClick={()=>markUnread(m)}><MailWarning size={15}/></button>}
    </div>
   </article>;

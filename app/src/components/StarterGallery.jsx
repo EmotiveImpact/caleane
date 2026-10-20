@@ -6,7 +6,8 @@ import {fillMergeFields} from '../lib/merge-fields';
 import '../studio-commerce.css';
 import '../starter-gallery.css';
 
-const money=minor=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(minor/100);
+// Starter prices are shown and saved in the studio's own billing currency.
+const money=(minor,currency='GBP')=>new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(minor/100);
 const units={each:'',hour:'per hour',day:'per day',person:'per person',item:'per item',set:'per set'};
 // Matched by name, ignoring case and spacing, so an item the owner already
 // has (from here or typed in by hand) is not offered twice.
@@ -18,10 +19,10 @@ const same=(a,b)=>key(a)===key(b);
 // as if the owner had typed it in.
 export function StarterGallery({studio,request,navigate,onAdded}){
  const [kind,setKind]=useState(()=>starterKindFor(studio.branding?.profession));
- const [saved,setSaved]=useState({templates:null,items:null,forms:null}),[busy,setBusy]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [saved,setSaved]=useState({templates:null,items:null,forms:null,currency:'GBP'}),[busy,setBusy]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState('');
  useEffect(()=>{let active=true;
-  Promise.all([request(`/api/message-templates?studio=${studio.id}`),request(`/api/catalogue?studio=${studio.id}`),request(`/api/forms?studio=${studio.id}`)])
-   .then(([t,c,f])=>{if(active)setSaved({templates:t.templates||[],items:c.items||[],forms:f.forms||[]});})
+  Promise.all([request(`/api/message-templates?studio=${studio.id}`),request(`/api/catalogue?studio=${studio.id}`),request(`/api/forms?studio=${studio.id}`),request(`/api/billing-defaults?studio=${studio.id}`)])
+   .then(([t,c,f,b])=>{if(active)setSaved({templates:t.templates||[],items:c.items||[],forms:f.forms||[],currency:b.defaults?.currency||'GBP'});})
    .catch(e=>{if(active)setError(e.message);});
   return()=>{active=false;};
  },[studio.id,request]);
@@ -31,8 +32,8 @@ export function StarterGallery({studio,request,navigate,onAdded}){
  const form=saved.forms?.find(f=>f.slug===starterFormSlug(kind));
  async function run(key,work){setBusy(key);setError('');setNotice('');try{await work();}catch(e){setError(e.message);}finally{setBusy('');}}
  const addTemplates=list=>run('messages',async()=>{let templates=saved.templates;for(const template of list){templates=(await request(`/api/message-templates?studio=${studio.id}`,'POST',{action:'create',template})).templates;}setSaved(s=>({...s,templates}));setNotice(list.length===1?`Added “${list[0].name}” to your message templates.`:`Added ${list.length} message templates.`);onAdded?.();});
- const addItems=list=>run('prices',async()=>{let items=saved.items;for(const item of list){items=(await request(`/api/catalogue?studio=${studio.id}`,'POST',{action:'create',item})).items;}setSaved(s=>({...s,items}));setNotice(list.length===1?`Added “${list[0].name}” to your price list.`:`Added ${list.length} items to your price list.`);});
- const createForm=()=>run('form',async()=>{const definition=starterFormDefinition(kind,{accent:''});const result=await request(`/api/forms?studio=${studio.id}`,'POST',{slug:starterFormSlug(kind),definition});setSaved(s=>({...s,forms:[...(s.forms||[]),result.form]}));setNotice(`Created “${definition.name}” as a draft in Forms.`);});
+ const addItems=list=>run('prices',async()=>{let items=saved.items;for(const item of list){items=(await request(`/api/catalogue?studio=${studio.id}`,'POST',{action:'create',item:{...item,currency:saved.currency}})).items;}setSaved(s=>({...s,items}));setNotice(list.length===1?`Added “${list[0].name}” to your price list.`:`Added ${list.length} items to your price list.`);});
+ const createForm=()=>run('form',async()=>{const definition=starterFormDefinition(kind,{accent:accentContrast(studio.accent)>=4.5?studio.accent:'#202326',logoUrl:studio.branding?.logoUrl||''});const result=await request(`/api/forms?studio=${studio.id}`,'POST',{slug:starterFormSlug(kind),definition});setSaved(s=>({...s,forms:[...(s.forms||[]),result.form]}));setNotice(`Created “${definition.name}” as a draft in Forms.`);});
  const missingTemplates=kit.messages.filter(item=>!hasTemplate(item)),missingItems=kit.prices.filter(item=>!hasItem(item));
  const added=<WorkspaceButton variant="ghost" size="small" className="starter-added" disabled><Check size={14} aria-hidden="true"/>Added</WorkspaceButton>;
 
@@ -49,8 +50,8 @@ export function StarterGallery({studio,request,navigate,onAdded}){
     <footer><WorkspaceButton variant="secondary" size="small" disabled={!ready||!!busy||!missingTemplates.length} onClick={()=>addTemplates(missingTemplates)}>{busy==='messages'?'Adding…':missingTemplates.length?`Add all ${missingTemplates.length}`:'All added'}</WorkspaceButton></footer>
    </article>
    <article className="starter-card" aria-labelledby="starter-prices">
-    <header><ReceiptText size={18}/><div><h3 id="starter-prices">Price list</h3><small>Suggested starting prices in pounds. Change them to suit your studio once added.</small></div></header>
-    <ul>{kit.prices.map(item=><li key={item.name}><details><summary><strong>{item.name}</strong><small>{money(item.unitAmount)} {units[item.unit]}</small></summary><p>{item.description}</p></details>{hasItem(item)?added:<WorkspaceButton variant="ghost" size="small" disabled={!ready||!!busy} onClick={()=>addItems([item])}>Add</WorkspaceButton>}</li>)}</ul>
+    <header><ReceiptText size={18}/><div><h3 id="starter-prices">Price list</h3><small>Suggested starting prices in {({GBP:'pounds',EUR:'euros',USD:'dollars'})[saved.currency]||saved.currency}, your billing currency. Change them to suit your studio once added.</small></div></header>
+    <ul>{kit.prices.map(item=><li key={item.name}><details><summary><strong>{item.name}</strong><small>{money(item.unitAmount,saved.currency)} {units[item.unit]}</small></summary><p>{item.description}</p></details>{hasItem(item)?added:<WorkspaceButton variant="ghost" size="small" disabled={!ready||!!busy} onClick={()=>addItems([item])}>Add</WorkspaceButton>}</li>)}</ul>
     <footer><WorkspaceButton variant="secondary" size="small" disabled={!ready||!!busy||!missingItems.length} onClick={()=>addItems(missingItems)}>{busy==='prices'?'Adding…':missingItems.length?`Add all ${missingItems.length}`:'All added'}</WorkspaceButton></footer>
    </article>
    <article className="starter-card" aria-labelledby="starter-contract">

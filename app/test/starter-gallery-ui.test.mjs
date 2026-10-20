@@ -28,3 +28,22 @@ test('starters the studio already has show a disabled Added, and Add all counts 
  assert.equal(within(prices).getAllByRole('button',{name:'Added'}).length,1,'an archived price is offered again');
  assert.ok(within(prices).getByRole('button',{name:`Add all ${kit.prices.length-1}`}));
 });
+
+test('starter prices show and save in the studio billing currency',async()=>{
+ const studio={id:'studio-test',name:'Test studio',branding:{profession:'events'}};
+ const kit=ui.starterKit('events'),posted=[];
+ const request=async(path,method,body)=>{
+  if(method==='POST'){posted.push(body);return {items:[]};}
+  if(path.startsWith('/api/message-templates'))return {templates:[]};
+  if(path.startsWith('/api/catalogue'))return {items:[]};
+  if(path.startsWith('/api/billing-defaults'))return {defaults:{currency:'EUR'}};
+  return {forms:[]};
+ };
+ render(h(ui.StarterGallery,{studio,request}));
+ const prices=await screen.findByRole('article',{name:'Price list'});
+ await within(prices).findAllByText(/€/);
+ assert.equal(within(prices).queryAllByText(/£/).length,0,'no pound prices for a euro studio');
+ within(prices).getAllByRole('button',{name:'Add'})[0].click();
+ await new Promise(resolve=>setTimeout(resolve,20));
+ assert.equal(posted[0].item.name,kit.prices[0].name);assert.equal(posted[0].item.currency,'EUR');
+});

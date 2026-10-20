@@ -7,10 +7,14 @@ test('attention identifies the right person and destination for each decision',(
  assert.equal(attentionFor({...project,enquiryReviewedAt:'2026-10-03T12:00:00Z'},true).some(i=>i.kind==='enquiry'),false,'reviewed enquiries leave the global review queue');
  assert.equal(attentionFor(project,false).length,0);
  const review={...project,status:'Design',designs:[{status:'Awaiting approval',briefRevision:2,title:'New concept'}]};
- assert.equal(attentionFor(review,false)[0].kind,'approval');
+ assert.equal(attentionFor({...review,accessRole:'Approver'},false)[0].kind,'approval');
+ assert.equal(attentionFor({...review,accessRole:'Collaborator'},false)[0].kind,'design-shared','only the Approver is asked to approve');
+ assert.equal(attentionFor({...project,status:'Design',accessRole:'Collaborator',decisions:[{id:'d',status:'Awaiting choice',briefRevision:2,title:'Pick a table'}]},false).length,0,'Collaborators are not asked to choose');
+ assert.equal(attentionFor({...project,status:'Design',accessRole:'Approver',decisions:[{id:'d',status:'Awaiting choice',briefRevision:2,title:'Pick a table'}]},false)[0].kind,'choice-d');
  assert.equal(attentionFor({...review,briefRevision:3},false).length,0);
  assert.equal(attentionFor({...review,briefRevision:3},true)[0].kind,'stale');
  assert.equal(attentionFor({...project,status:'Complete',unreadMessages:4},true).length,0);
  assert.equal(attentionFor({...project,status:'Planning',unreadMessages:2},true)[0].tab,'Conversation');
  assert.equal(attentionFor({...project,changeRequests:[{status:'Pending'}]},true)[0].kind,'brief');
+ assert.equal(attentionFor({...project,status:'Design',teamDrafts:2},true).find(i=>i.kind==='team-draft').label,'2 design drafts from your team');
 });

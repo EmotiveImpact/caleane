@@ -6,16 +6,16 @@ import {fileUrl,plainText} from './ProjectChat';
 const shortDate=at=>shortDay(at);
 
 // What a conversation still needs, what was shared and who can see it.
-export function ConversationPanel({thread,project,studio,request,owner,onConversation,openProject,onLeave,fileHref}){
+export function ConversationPanel({thread,project,studio,request,owner,onConversation,openProject,onLeave,fileHref,openTask}){
  const [busy,setBusy]=useState(''),[error,setError]=useState('');
  if(!thread)return null;
  const byId=new Map(thread.messages.map(m=>[m.id,m])),files=thread.messages.flatMap(m=>(m.attachments||[]).map(file=>({...file,by:m.by,at:m.at}))).reverse(),asks=thread.asks||[],open=asks.filter(a=>!a.completed).length,latest=project?.designs?.at(-1);
  async function toggle(ask){setBusy(ask.messageId);setError('');try{const d=await request(`/api/conversations/${thread.id}/asks?studio=${studio.id}`,'POST',{messageId:ask.messageId,completed:!ask.completed});onConversation?.(d.conversation);}catch(e){setError(e.message);}finally{setBusy('');}}
  function go(...args){onLeave?.();openProject(...args);}
  return <div className="ws-conversation-panel">
-  {owner&&<section><h4>Open asks{asks.length>0&&<span>{open} open</span>}</h4>
+  {owner&&<section><h4>Tasks from messages{asks.length>0&&<span>{open} open</span>}</h4>
    {error&&<p className="alert" role="alert">{error}</p>}
-   {asks.length?<ul className="ws-asks">{asks.map(a=><li key={a.messageId} className={a.completed?'is-done':''}><label><input type="checkbox" checked={a.completed} disabled={busy===a.messageId} onChange={()=>toggle(a)}/><span>{a.title}<small>From {byId.get(a.messageId)?.by||'a message'} · {shortDate(a.at)}{a.kind==='project'?' · in project tasks':' · in client tasks'}</small></span></label></li>)}</ul>:<p className="ws-panel-empty">Hover a message and choose the checklist icon to keep track of something you need to do.</p>}
+   {asks.length?<ul className="ws-asks">{asks.map(a=><li key={a.messageId} className={a.completed?'is-done':''}><label><input type="checkbox" checked={a.completed} disabled={busy===a.messageId} onChange={()=>toggle(a)}/><span>{a.title}<small>From {byId.get(a.messageId)?.by||'a message'} · {shortDate(a.at)}{a.kind==='project'?' · in project tasks':' · in client tasks'}</small></span></label>{openTask&&<button type="button" className="ws-ask-open" onClick={()=>{onLeave?.();openTask(a.taskKey);}}>Open task</button>}</li>)}</ul>:<p className="ws-panel-empty">Hover a message and choose the task icon to turn it into a task in Tasks.</p>}
   </section>}
   {thread.pins?.length>0&&<section><h4>Pinned</h4><ul className="ws-panel-pins">{thread.pins.map(pin=>{const m=byId.get(pin.messageId);return m?<li key={pin.messageId}><strong>{m.by}</strong><span>{plainText(m.text)||'Attached files'}</span></li>:null;})}</ul></section>}
   <section><h4>Files in this conversation{files.length>0&&<span>{files.length}</span>}</h4>

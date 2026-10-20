@@ -25,6 +25,12 @@ test('contacts, organisations and scoped project participants survive migration 
   assert.equal((await call('/api/projects'+q,'POST',{clientId:client.id,name:'Someone else',email:'wrong@example.test',occasion:'Wrong account'})).status,409);
   const separate=(await call('/api/projects'+q,'POST',{clientId:client.id,name:'Amelia Taylor',email:client.email,occasion:'Summer dinner'})).data.project;
   assert.equal(separate.clientId,client.id);
+  assert.equal((await call('/api/projects'+q,'GET',undefined,'primary')).data.projects.some(p=>p.id===separate.id),false,'a project the studio creates stays private until it is shared');
+  assert.deepEqual(separate.clientAccess,{shared:false,joined:true});
+  const shared=await call(`/api/projects/${separate.id}/invite${q}`,'POST',{});
+  assert.equal(shared.status,200,'a client with a login is shared with directly, without a link');assert.equal(shared.data.url,undefined);
+  assert.deepEqual(shared.data.project.clientAccess,{shared:true,joined:true});
+  assert.equal((await call(`/api/projects/${separate.id}${q}`,'GET',undefined,'primary')).status,200);
   const original=db.prepare('SELECT data FROM projects WHERE id=?').get(project.id).data;
   const thread=db.prepare('SELECT id FROM conversations WHERE project_id=?').get(project.id).id;
   const originalDesign=project.designs.at(-1).id;
