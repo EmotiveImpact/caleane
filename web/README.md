@@ -12,7 +12,7 @@ Open <http://127.0.0.1:4332/>. All 21 pages are retained. `index.html` is the ho
 
 With no verified app origin configured, **Log in** and **Start now** lead to the local preview entry page. Set `window.CALEANE_APP_URL` in `config.js` only when a reachable app origin is ready. The contact page prepares a local draft; sending is not connected. Set `window.CALEANE_CONTACT_EMAIL` to a verified public address to offer the user's email app as a sending route. Plans are proposals, with no purchase or checkout route.
 
-This revision is locally verified and has not been published. Public pages may be indexed by search engines; the internal pages `design-reference.html`, `pricing-research.html` and `audience-mock.html` keep `noindex`. Public accounts, business contact details and operational launch requirements are not configured by this marketing-site work.
+This revision is locally verified and has not been published. Public pages may be indexed by search engines; the internal pages `design-reference.html`, `pricing-research.html` and `audience-mock.html` keep `noindex` and are left out of the public build (`scripts/build-site.mjs`), so they only open in a local preview. Public accounts, business contact details and operational launch requirements are not configured by this marketing-site work.
 
 The industry images are concept imagery, not a claim that Caleane or its customers completed the pictured work. The UI panel on the front page is an illustrative rendering of locally implemented screens and sample data. The app and its data stay in the sibling `app/` directory.
 
