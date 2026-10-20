@@ -3,6 +3,7 @@ import {Check,FileText,MessageSquare,ReceiptText,ScrollText} from 'lucide-react'
 import {WorkspaceButton} from './workspace/WorkspaceUI';
 import {starterContract,starterFormDefinition,starterFormSlug,starterKindFor,starterKinds,starterKit} from '../lib/starter-gallery';
 import {fillMergeFields} from '../lib/merge-fields';
+import {accentContrast} from '../lib/accent-theme';
 import '../studio-commerce.css';
 import '../starter-gallery.css';
 

@@ -9,7 +9,7 @@ globalThis.fetch=async()=>({ok:true,json:async()=>({})});
 const {module:ui,remove}=await bundle(`export {DocumentBrandProvider,documentBrand,brandProps} from './src/components/DocumentBrand.jsx';
 export {Proposals} from './src/components/Proposals.jsx';
 export {agreementPrintHtml} from './src/components/AgreementDocument.jsx';
-export {AdminSidebar} from './src/components/aetheria/AdminSidebar.jsx';
+export {AdminSidebar} from './src/components/workspace/AdminSidebar.jsx';
 export {WorkspaceUIProvider} from './src/components/workspace/WorkspaceUI.jsx';
 export {normaliseBrandKit} from './src/lib/brand-kit.js';`,'document-brand-ui');
 const {render,screen,cleanup}=await import('@testing-library/react');

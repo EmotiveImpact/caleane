@@ -221,6 +221,8 @@ test('a plan on a returning client’s new project issues itself with the addres
  await call('/api/billing-defaults'+q,'POST',{...defaults,sellerAddress:issue.sellerAddress,sellerContact:issue.sellerContact,paymentInstructions:issue.paymentInstructions});
  assert.equal((await call(invoices+q,'POST',{...issue,quick:true,kind:'Full',label:'Extras',currency:'GBP',items:[{title:'Hire',quantity:1,unitAmount:5000}]})).status,201);
  const {project}=(await call('/api/projects'+q,'POST',{name:'Amelia Taylor',email:'amelia@example.test',occasion:'Anniversary dinner',date:'2027-03-14',venue:'The Garden Room',vision:'Dinner for twelve.',colours:['Ivory'],customColours:'',pinterest:'',budget:''})).data;
+ // New projects stay private until shared, so share it before the client confirms.
+ await call(`/api/projects/${project.id}/invite${q}`,'POST',{});
  const estimate=(await call(`/api/projects/${project.id}/estimates${q}`,'POST',{title:'Dinner',currency:'GBP',taxRate:20,items:[{title:'Flowers',quantity:1,unitAmount:100000}]})).data.project.estimates.at(-1);
  await call(`/api/projects/${project.id}/estimate-decision${q}`,'POST',{estimateId:estimate.id,decision:'confirm'},'client');
  const plan=`/api/projects/${project.id}/invoices/plan${q}`;
