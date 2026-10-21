@@ -1,7 +1,7 @@
 // Studio Folio shell. Navigation and account authority remain backed by the API.
 import React,{useEffect,useState} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import {WorkspacePopover,WorkspaceSelect,WorkspaceTooltip} from '../workspace/WorkspaceUI';
+import {WorkspacePopover,WorkspaceSelect,WorkspaceTooltip} from './WorkspaceUI';
 import {House,FolderClosed,Columns3,ListTodo,UserRound,Settings2,LogOut,CalendarDays,Mail,Images,Menu,X,ReceiptText,ClipboardList,FileText,CircleCheck,UsersRound,PanelLeftClose,PanelLeftOpen} from 'lucide-react';
 const ownerItems=[['overview','Overview',House],['projects','Projects',FolderClosed],['clients','Clients',UserRound],['forms','Forms',ClipboardList],['briefs','Briefs',FileText],['approvals','Approvals',CircleCheck],['pipeline','Pipeline',Columns3],['tasks','Tasks',ListTodo],['finances','Finances',ReceiptText],['inbox','Messages',Mail],['calendar','Calendar',CalendarDays],['library','Library',Images]];
 const staffItems=[['overview','Overview',House],['projects','Projects',FolderClosed]];
@@ -20,7 +20,7 @@ function useMobileNavigation(){
  },[]);
  return isMobile;
 }
-export function AdminSidebar({studio,session,owner,staffViewer=false,bookkeeper=false,view,navigate,signOut,studioId,onStudioChange,rememberPreference=true,badges={}}){
+export function AdminSidebar({studio,session,owner,staffViewer=false,bookkeeper=false,brand=null,view,navigate,signOut,studioId,onStudioChange,rememberPreference=true,badges={}}){
  const [mobile,setMobile]=useState(false),[account,setAccount]=useState(false);
  const [collapsed,setCollapsed]=useState(()=>rememberPreference?savedSidebarPreference():false);
  const isMobile=useMobileNavigation(),compact=collapsed&&!isMobile;
@@ -33,7 +33,9 @@ export function AdminSidebar({studio,session,owner,staffViewer=false,bookkeeper=
  const labelTip=(label,child)=><WorkspaceTooltip label={label} side="right" disabled={!compact}>{child}</WorkspaceTooltip>;
  const rail=<aside id="workspace-navigation" className={'folio-rail'+(isMobile?' is-open':'')} data-collapsed={compact} aria-label="Main navigation">
  {isMobile&&<><Dialog.Title className="folio-sr-only">Workspace navigation</Dialog.Title><Dialog.Close className="folio-mobile-close" aria-label="Close navigation"><X size={20}/></Dialog.Close></>}
- <a href="/" className="folio-rail-brand" aria-label="Caleane home" title={`Caleane · ${studio.name}`}><img className="caleane-symbol" src="/assets/identity/caleane-symbol-ivory.svg" alt=""/><span className="folio-brand-name">Caleane</span></a>
+ {/* A client's portal carries the studio's own logo or name rather than Caleane's. */}
+ {brand?<a href="/" className="folio-rail-brand is-studio" aria-label={`${studio.name} home`} title={studio.name}>{brand.lightLogo||brand.logo?<img className={'folio-studio-logo'+(brand.lightLogo?'':' is-inverted')} src={brand.lightLogo||brand.logo} alt=""/>:<span className="folio-brand-name">{studio.name}</span>}{brand.icon?<img className="folio-studio-icon" src={brand.icon} alt=""/>:<span className="folio-studio-initial" aria-hidden="true">{studio.name.trim().charAt(0)}</span>}</a>
+ :<a href="/" className="folio-rail-brand" aria-label="Caleane home" title={`Caleane · ${studio.name}`}><img className="caleane-symbol" src="/assets/identity/caleane-symbol-ivory.svg" alt=""/><span className="folio-brand-name">Caleane</span></a>}
  <nav aria-label="Workspace">{(owner?ownerItems:bookkeeper?bookkeeperItems:staffViewer?staffItems:clientItems).map(([key,label,NavIcon])=>{const count=badges[key]||0,spoken=count?`${label}, ${count} ${key==='inbox'?(owner?(count===1?'needs a reply':'need a reply'):'unread'):'waiting'}`:label;return <WorkspaceTooltip key={key} label={spoken} side="right" disabled={!compact}><button type="button" aria-label={spoken} aria-current={view===key?'page':undefined} className={view===key?'active':''} onClick={()=>go(key)}><NavIcon size={20} strokeWidth={1.55} aria-hidden="true"/><span className="folio-nav-label">{label}</span>{count>0&&<span className="folio-nav-badge" aria-hidden="true">{count>9?'9+':count}</span>}</button></WorkspaceTooltip>;})}</nav>
  <div className="folio-rail-bottom">{owner&&labelTip('Team',<button type="button" aria-label="Team" className={'folio-settings'+(view==='members'?' active':'')} aria-current={view==='members'?'page':undefined} onClick={()=>go('members')}><UsersRound size={22} strokeWidth={1.55} aria-hidden="true"/><span className="folio-nav-label">Team</span></button>)}{owner&&labelTip('Settings',<button type="button" aria-label="Settings" className={'folio-settings'+(view==='settings'?' active':'')} aria-current={view==='settings'?'page':undefined} onClick={()=>go('settings')}><Settings2 size={22} strokeWidth={1.55} aria-hidden="true"/><span className="folio-nav-label">Settings</span></button>)}
  {!isMobile&&labelTip(compact?'Expand sidebar':'Collapse sidebar',<button type="button" className="folio-settings folio-rail-collapse" aria-label={compact?'Expand sidebar':'Collapse sidebar'} aria-expanded={!compact} aria-controls="workspace-navigation" onClick={()=>{setCollapsed(value=>!value);setAccount(false);}}>{compact?<PanelLeftOpen size={18} aria-hidden="true"/>:<PanelLeftClose size={18} aria-hidden="true"/>}<span className="folio-nav-label">Collapse sidebar</span></button>)}

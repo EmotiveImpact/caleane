@@ -89,7 +89,8 @@
 @media(max-width:600px){.contract-workspace-v2 .contract-top,.contract-workspace-v2 .contract-document-bar{padding-left:16px;padding-right:16px}.contract-workspace-v2 .contract-document-bar{gap:8px}}
 
 .proposal-authoring-dialog{width:min(1080px,95vw);max-width:1080px}.proposal-rich-editor{margin-block:24px;min-width:0}.proposal-rich-editor .caleane-paged-document{max-height:70vh;overflow:auto}
-.project-documents{margin-top:28px;min-width:0}.document-record-list{display:flex;gap:8px;overflow-x:auto;padding:12px 0 20px}.document-record-list>button{display:grid;gap:5px;min-width:180px;max-width:260px;text-align:left;white-space:normal;background:var(--studio-surface)}.document-record-list>button[aria-pressed=true]{background:var(--studio-stone);color:#252520}.document-record-list span{font-size:12px}.project-documents .doc-actions{flex-wrap:wrap}
+.proposal-document-hint{margin:0 0 12px;padding:12px 14px;border:1px dashed var(--studio-stone,#d8d6d0);border-radius:8px;color:var(--studio-muted,#6f6c66);font-size:14px;line-height:1.5}
+.project-documents{margin-top:28px;min-width:0}.document-record-list{display:flex;gap:8px;overflow-x:auto;padding:12px 0 20px}.document-record-list>button{display:grid;gap:5px;min-width:180px;max-width:260px;text-align:left;white-space:normal;background:var(--studio-surface)}.project-documents .document-record-list>button[aria-pressed=true]{background:var(--studio-paper,#fff);color:var(--studio-ink,#202326);border-color:var(--studio-ink,#202326);box-shadow:inset 0 0 0 1px var(--studio-ink,#202326)}.document-record-list span{font-size:12px}.project-documents .doc-actions{flex-wrap:wrap}
 /* Readable text view: the document reflowed at body size for phones; A4 pages stay one tap away. */
 .caleane-paged-document.is-reflowed{overflow:visible}
 .doc-reflow{box-sizing:border-box;margin:0 0 20px;padding:22px 20px;background:#fffefa;color:#242424;border:1px solid #dfe2d7;border-radius:4px;font:16px/1.65 Arial,sans-serif;overflow-wrap:anywhere}
@@ -101,3 +102,11 @@
 .doc-gaps{display:grid;gap:6px;margin:12px 0;padding:14px 16px;border:1px solid #e3c98d;border-radius:4px;background:#fff8e8;color:#5a4317;font-size:13px;line-height:1.55}.doc-gaps p{margin:0}.doc-gaps .doc-quiet{justify-self:start}
 .doc-merge-hint{margin:0;padding:10px 22px;font-size:12px;line-height:1.6;color:#6a7365;overflow-wrap:anywhere}
 .contract-signatures{display:grid;gap:4px}.contract-signatures p{margin:0}
+/* The studio's brand kit on client documents. Each part only applies when the studio has set it. */
+.doc-brand-masthead{display:flex;align-items:center;min-height:36px;margin:0 0 22px}.doc-brand-masthead img{display:block;max-width:200px;max-height:56px;object-fit:contain}.doc-brand-masthead span{font-size:19px;font-weight:600;letter-spacing:.01em;color:#202326}
+.doc-brand-masthead.is-pages{margin:0;padding:16px 22px;background:#fffefa;border-bottom:1px solid #eceae2}
+.doc-branded.doc-brand-fonts .doc-brand-masthead span,.estimate-document.doc-brand-fonts :is(h2,h3),.agreement-preview.doc-brand-fonts :is(.pagedly-ce-content,.doc-reflow) :is(h1,h2,h3,h4){font-family:var(--brand-heading)}
+.estimate-document.doc-brand-fonts,.agreement-preview.doc-brand-fonts .doc-reflow{font-family:var(--brand-body)}.agreement-preview.doc-brand-fonts{--pagedly-font-family:var(--brand-body)}
+.doc-branded.doc-brand-colour .doc-brand-masthead span,.estimate-document.doc-brand-colour :is(h2,h3),.agreement-preview.doc-brand-colour :is(.pagedly-ce-content,.doc-reflow) :is(h1,h2,h3,h4){color:var(--brand-primary)}
+.estimate-document.doc-brand-colour>header{border-bottom-color:var(--brand-primary)}.estimate-document.doc-brand-colour .estimate-totals>div:last-child{border-top-color:var(--brand-primary)}
+.estimate-document.doc-brand-ink{color:var(--brand-ink)}.estimate-document.doc-brand-paper{background:var(--brand-paper)}

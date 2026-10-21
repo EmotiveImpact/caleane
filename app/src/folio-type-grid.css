@@ -8,7 +8,6 @@
 }
 
 .folio-workspace,
-.folio-workspace .folio-work-index,
 .folio-workspace .folio-settings-page,
 .folio-workspace .folio-client-layout {
   font-family: var(--folio-content-font);
@@ -29,9 +28,6 @@
 .topbar-crumb { border:0; background:none; padding:0; color:#666b73; font-size:12px; white-space:nowrap; cursor:pointer; }
 .topbar-crumb:hover { color:#1b1d22; }
 .topbar-crumb:focus-visible { outline:2px solid #454951; outline-offset:4px; }
-.topbar-create .button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:35px; border:1px solid #222529; border-radius:4px; background:#222529; color:#fff; padding:7px 13px; font-size:11px; font-weight:560; white-space:nowrap; box-shadow:none; }
-.topbar-create .button:hover { background:#393d42; }
-.topbar-create .button svg { width:15px; height:15px; }
 
 /* Every full page begins directly below the bar, at the same grid line. */
 .folio-workspace > .workspace-body {
@@ -76,7 +72,6 @@
   margin:0;
 }
 .folio-workspace > .workspace-body .folio-screen-heading { margin-bottom:23px; }
-.folio-workspace > .workspace-body .folio-work-index .page-heading { margin:0 0 22px; padding:0 0 22px; }
 .folio-workspace > .workspace-body .crm-page-heading { padding-top:0; }
 .folio-workspace > .workspace-body .studio-billing { max-width:none; margin:0; padding:0; }
 .folio-workspace > .workspace-body .studio-billing-head { padding-bottom:23px; margin-bottom:0; }
@@ -90,37 +85,11 @@
 .folio-workspace > .workspace-body .project-tabs button { flex:0 0 auto; min-height:48px; padding:13px 0; font-size:13px; scroll-snap-align:start; }
 
 /* Lists and boards keep usable card widths rather than compressing them. */
-.folio-work-index .table-heading,
-.folio-work-index .project-row { grid-template-columns:minmax(240px,2.2fr) minmax(110px,1fr) minmax(110px,.9fr) minmax(90px,.8fr); }
-.folio-work-index .project-list { min-width:0; }
 .crm-stat-strip > div { padding-block:17px; }
 
 /* Settings follows the same full-width heading and aligned two-column work area. */
 .folio-settings-page { display:block; color:var(--folio-content-ink); }
 .folio-workspace > .workspace-body .folio-settings-page > .page-heading { margin:0 0 23px; }
-.folio-settings-page > .settings-layout {
-  display:grid;
-  grid-template-columns:minmax(0,1.22fr) minmax(330px,.78fr);
-  gap:22px;
-  align-items:start;
-  max-width:none;
-  padding:0;
-}
-.folio-settings-page .settings-layout > form,
-.folio-settings-page .settings-layout > .connection {
-  box-sizing:border-box;
-  min-width:0;
-  max-width:none;
-  position:static;
-  grid-column:auto;
-  grid-row:auto;
-  border:1px solid var(--folio-content-rule);
-  border-radius:5px;
-  background:#fff;
-  box-shadow:none;
-  padding:28px;
-}
-.folio-settings-page .settings-layout > form h2 { font-size:20px; font-weight:510; letter-spacing:-.025em; color:var(--folio-content-ink); }
 .folio-settings-page .connection .eyebrow { display:none; }
 .folio-settings-page .connection h2 { margin:0 0 15px; font-size:24px; line-height:1.2; font-weight:510; letter-spacing:-.03em; }
 .folio-settings-page .connection p { color:var(--folio-content-muted); font-size:13px; line-height:1.6; }
@@ -140,26 +109,16 @@
 .folio-client-layout .folio-primary { min-width:0; }
 
 @media(max-width:1250px) {
-  .folio-work-index .table-heading,
-  .folio-work-index .project-row { grid-template-columns:minmax(220px,2fr) minmax(105px,1fr) minmax(110px,.9fr) minmax(90px,.8fr); }
   .folio-client-layout .folio-detail-grid { grid-template-columns:minmax(0,1fr); }
   .folio-client-layout .folio-context { margin-top:0; }
 }
 @media(max-width:1160px) {
-  .folio-settings-page > .settings-layout { grid-template-columns:minmax(0,1fr); }
-  .folio-settings-page .settings-layout > form,
-  .folio-settings-page .settings-layout > .connection { grid-column:1; }
-  .folio-work-index .table-heading,
-  .folio-work-index .project-row { grid-template-columns:minmax(220px,2fr) minmax(110px,.9fr) minmax(90px,.8fr); }
-  .folio-work-index .table-heading > span:nth-child(2),
-  .folio-work-index .project-row > span:nth-child(2) { display:none; }
   .crm-stat-strip { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .crm-stat-strip > div:nth-child(2) { border-right:0; }
   .crm-stat-strip > div:nth-child(-n+2) { border-bottom:1px solid var(--folio-content-rule); }
 }
 @media(max-width:900px) {
   .folio-workspace > .topbar > .topbar-actions { gap:11px; }
-  .folio-workspace > .topbar .demo-switch { display:none; }
   .folio-workspace > .workspace-body { padding:20px 24px 48px; }
   .folio-workspace > .workspace-body :is(.page-heading,.folio-screen-heading,.crm-page-heading) { align-items:start; }
 }
@@ -167,8 +126,6 @@
   .folio-workspace > .topbar { padding-left:60px; padding-right:17px; }
   .topbar-studio,.topbar-studio + .topbar-separator { display:none; }
   .folio-workspace > .topbar > .topbar-actions { gap:8px; }
-  .topbar-create .button { width:34px; min-height:34px; padding:0; font-size:0; gap:0; }
-  .topbar-create .button svg { width:17px; height:17px; }
   .folio-workspace > .workspace-body { padding:20px 17px 40px; }
   .folio-workspace > .workspace-body :is(.page-heading,.folio-screen-heading,.crm-page-heading),
   .folio-workspace > .workspace-body .studio-billing-head { flex-wrap:wrap; gap:13px; padding-bottom:18px; margin-bottom:18px; }
@@ -178,10 +135,6 @@
   .folio-workspace > .workspace-body :is(.page-heading,.folio-screen-heading,.crm-page-heading) p:last-child { font-size:13px; }
   .folio-workspace > .workspace-body .project-title { align-items:flex-start; flex-wrap:wrap; }
   .folio-workspace > .workspace-body .project-tabs { gap:22px; }
-  .folio-work-index .project-row { grid-template-columns:minmax(0,1fr) auto; }
-  .folio-work-index .project-row > span:nth-child(2),
-  .folio-work-index .project-row > span:nth-child(3) { display:none; }
-  .folio-work-index .project-row > span:nth-child(4) { display:block; }
   .folio-client-layout .folio-directory > header { margin-top:18px; }
   .folio-client-layout .folio-client-header { padding-top:18px; }
   .folio-client-layout .folio-tabs { gap:22px; }
@@ -189,18 +142,14 @@
   .crm-stat-strip > div { padding:14px; }
 }
 @media(max-width:540px) {
-  .folio-settings-page .settings-layout > form,
-  .folio-settings-page .settings-layout > .connection { padding:20px; }
   .folio-workspace > .topbar .text-button:not(.demo-switch) { display:none; }
   .folio-workspace > .workspace-body .project-title > div:first-child > p:last-child { font-size:12px; }
 }
 @media print {
   .folio-workspace > .workspace-body { max-width:none; padding:0; }
-  .topbar-create { display:none; }
 }
 
 /* A page header supplies the rule above its first metric row. */
-.folio-workspace > .workspace-body .folio-metric-strip,
 .folio-workspace > .workspace-body .crm-stat-strip { border-top:0; }
 
 /* Pipeline: stage position is compact; the relationships remain the main surface. */
@@ -294,25 +243,6 @@
 .folio-attention-trigger:hover { background:#eceeef; color:#1f2329; }
 .folio-attention-trigger:focus-visible { outline:2px solid #3c4149; outline-offset:2px; }
 .folio-attention-count { position:absolute; top:-4px; right:-6px; display:grid; place-items:center; min-width:17px; height:17px; padding:0 3px; border:2px solid #f8f9f9; border-radius:10px; background:#252932; color:#fff; font-size:9px; font-weight:620; line-height:1; }
-.folio-attention-overlay { position:fixed; inset:0; z-index:60; background:transparent; }
-.folio-attention-panel { box-sizing:border-box; position:fixed; top:calc(var(--folio-topbar-height) + 5px); right:var(--folio-page-gutter); z-index:61; width:min(390px,calc(100vw - 28px)); max-height:min(610px,calc(100dvh - var(--folio-topbar-height) - 20px)); overflow-y:auto; border:1px solid #dfe2e5; border-radius:5px; background:#fff; box-shadow:0 18px 50px #10151c20; color:#252932; font-family:var(--folio-content-font); }
-.folio-attention-head { display:flex; align-items:start; justify-content:space-between; gap:16px; padding:20px 20px 17px; border-bottom:1px solid #e6e8ea; }
-.folio-attention-head h2 { margin:0 0 4px; font-size:18px; font-weight:550; letter-spacing:-.025em; }
-.folio-attention-head p { margin:0; font-size:11px; color:#7c838b; }
-.folio-attention-head button { display:grid; place-items:center; width:27px; height:27px; border:0; border-radius:3px; background:none; color:#777e86; cursor:pointer; }
-.folio-attention-head button:hover { background:#f0f1f2; color:#252932; }
-.folio-attention-list { max-height:430px; overflow-y:auto; }
-.folio-attention-list > button { display:block; width:100%; padding:14px 20px; border:0; border-bottom:1px solid #eceef0; border-radius:0; background:#fff; text-align:left; cursor:pointer; }
-.folio-attention-list > button:hover,.folio-attention-list > button:focus-visible { background:#f5f6f7; }
-.folio-attention-list > button:focus-visible { outline:2px solid #454b54; outline-offset:-2px; }
-.folio-attention-item-kind { display:block; margin-bottom:5px; color:#8a9097; font-size:10px; }
-.folio-attention-list strong { display:block; color:#292e34; font-size:12px; font-weight:570; line-height:1.4; }
-.folio-attention-list small { display:block; margin-top:3px; color:#7d848d; font-size:10px; line-height:1.5; }
-.folio-attention-empty,.folio-attention-more,.folio-attention-error { margin:0; padding:20px; color:#777e86; font-size:11px; line-height:1.6; }
-.folio-attention-more,.folio-attention-error { padding-block:11px; border-top:1px solid #eceef0; }
-.folio-attention-view-all { width:100%; padding:13px 20px; border:0; border-top:1px solid #e4e6e8; border-radius:0; background:#fff; color:#313740; font-size:11px; font-weight:570; text-align:left; cursor:pointer; }
-.folio-attention-view-all:hover { background:#f5f6f7; }
-@media(max-width:760px) { .folio-attention-panel { right:13px; top:calc(var(--folio-topbar-height) + 5px); } }
 @media(max-width:540px) { .folio-workspace > .workspace-body .crm-page-heading { padding-bottom:16px; margin-bottom:16px; } .crm-stat-strip > div { padding-block:10px; } .crm-stage-summary { min-height:65px; } }
 
 .crm-stage-hint { margin:0 0 13px; padding:10px 12px; border:1px solid #d7dadf; background:#f6f7f8; color:#4a525b; font-size:11px; line-height:1.5; }

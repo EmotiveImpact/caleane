@@ -1,6 +1,7 @@
 import {randomBytes,createHash,createCipheriv,createDecipheriv} from 'node:crypto';
 import {now} from './store.mjs';
 import {readSetting,writeSetting} from './studio-commerce.mjs';
+import {vatGroupLabel} from './src/lib/vat.js';
 
 // Xero: copy issued invoices and recorded payments into the studio's Xero
 // organisation, so the books match without typing them twice. Caleane stays
@@ -11,7 +12,7 @@ const AUTH='https://login.xero.com/identity/connect/authorize',TOKEN='https://id
 // Apps created since March 2026 use granular scopes. Older apps can set XERO_SCOPES to use accounting.transactions instead.
 const DEFAULT_SCOPES='offline_access accounting.invoices accounting.payments accounting.contacts accounting.settings.read';
 const MAX_ATTEMPTS=5;
-export const defaultXeroSettings={salesAccountCode:'200',taxType:'OUTPUT2',noTaxType:'NONE',bankAccountCode:'',invoiceStatus:'AUTHORISED',sendFrom:''};
+export const defaultXeroSettings={salesAccountCode:'200',taxType:'OUTPUT2',noTaxType:'NONE',reducedTaxType:'RROUTPUT',zeroTaxType:'ZERORATEDOUTPUT',exemptTaxType:'EXEMPTOUTPUT',bankAccountCode:'',invoiceStatus:'AUTHORISED',sendFrom:''};
 const locks=new Set();
 
 export function xeroConfigured(env=process.env){return !!(env.XERO_CLIENT_ID&&env.XERO_CLIENT_SECRET&&xeroKey(env));}
@@ -31,7 +32,7 @@ export function installXero(db){db.exec(`
 export function xeroSettings(db,studioId){return {...defaultXeroSettings,...readSetting(db,studioId,'xero',{})};}
 const code=(value,label)=>{const result=String(value??'').trim();if(result.length>20||!/^[A-Za-z0-9_.-]*$/.test(result))fail(400,`Check the ${label}.`);return result;};
 export function saveXeroSettings(db,studioId,input){
- const result={salesAccountCode:code(input.salesAccountCode,'sales account code'),taxType:code(input.taxType,'tax rate code'),noTaxType:code(input.noTaxType,'no-VAT rate code'),bankAccountCode:code(input.bankAccountCode,'bank account code'),invoiceStatus:input.invoiceStatus==='DRAFT'?'DRAFT':'AUTHORISED',sendFrom:input.sendFrom||''};
+ const result={salesAccountCode:code(input.salesAccountCode,'sales account code'),taxType:code(input.taxType,'tax rate code'),noTaxType:code(input.noTaxType,'no-VAT rate code'),reducedTaxType:code(input.reducedTaxType??defaultXeroSettings.reducedTaxType,'reduced rate code'),zeroTaxType:code(input.zeroTaxType??defaultXeroSettings.zeroTaxType,'zero rate code'),exemptTaxType:code(input.exemptTaxType??defaultXeroSettings.exemptTaxType,'exempt rate code'),bankAccountCode:code(input.bankAccountCode,'bank account code'),invoiceStatus:input.invoiceStatus==='DRAFT'?'DRAFT':'AUTHORISED',sendFrom:input.sendFrom||''};
  if(!result.salesAccountCode)fail(400,'Add the sales account code invoices should go to.');
  if(result.sendFrom&&!/^\d{4}-\d{2}-\d{2}$/.test(result.sendFrom))fail(400,'Choose a valid start date.');
  return writeSetting(db,studioId,'xero',result);
@@ -64,11 +65,15 @@ async function api(transport,{token,tenantId},path,{method='GET',body,idempotenc
 }
 
 const amount=minor=>Math.round(minor)/100;
+// An invoice at more than one VAT rate goes to Xero as one line per rate, each with its own rate code.
+const rateCode=(group,settings)=>group.exempt?settings.exemptTaxType||defaultXeroSettings.exemptTaxType:group.rate===0?settings.zeroTaxType||defaultXeroSettings.zeroTaxType:group.rate===5?settings.reducedTaxType||defaultXeroSettings.reducedTaxType:settings.taxType;
 function invoicePayload(row,settings){
  const snapshot=JSON.parse(row.snapshot||'{}'),reference=[snapshot.projectTitle,row.label||row.kind].filter(Boolean).join(' · ');
+ const description=`${row.kind} invoice${snapshot.projectTitle?' for '+snapshot.projectTitle:''}`+(row.label?` (${row.label})`:'');
+ const rates=Array.isArray(snapshot.vatBreakdown)?snapshot.vatBreakdown.filter(group=>group.netMinor||group.taxMinor):[];
  return {Type:'ACCREC',InvoiceNumber:row.number,Reference:reference.slice(0,255),Date:row.issued_at.slice(0,10),DueDate:row.due_date,CurrencyCode:row.currency,Status:settings.invoiceStatus,LineAmountTypes:'Exclusive',
   Contact:{Name:(snapshot.billToName||snapshot.billToEmail||'Client').slice(0,255),...(snapshot.billToEmail?{EmailAddress:snapshot.billToEmail}:{})},
-  LineItems:[{Description:(`${row.kind} invoice${snapshot.projectTitle?' for '+snapshot.projectTitle:''}`+(row.label?` (${row.label})`:'')).slice(0,4000),Quantity:1,UnitAmount:amount(row.net_minor),TaxAmount:amount(row.tax_minor),AccountCode:settings.salesAccountCode,TaxType:row.tax_minor>0?settings.taxType:settings.noTaxType}].map(line=>Object.fromEntries(Object.entries(line).filter(([,value])=>value!=='')))};
+  LineItems:(rates.length?rates.map(group=>({Description:`${description} · ${vatGroupLabel(group)}`.slice(0,4000),Quantity:1,UnitAmount:amount(group.netMinor),TaxAmount:amount(group.taxMinor),AccountCode:settings.salesAccountCode,TaxType:rateCode(group,settings)})):[{Description:description.slice(0,4000),Quantity:1,UnitAmount:amount(row.net_minor),TaxAmount:amount(row.tax_minor),AccountCode:settings.salesAccountCode,TaxType:row.tax_minor>0?settings.taxType:settings.noTaxType}]).map(line=>Object.fromEntries(Object.entries(line).filter(([,value])=>value!=='')))};
 }
 const link=(db,studioId,kind,localId)=>db.prepare('SELECT * FROM xero_links WHERE studio_id=? AND kind=? AND local_id=?').get(studioId,kind,localId);
 function saveLink(db,studioId,kind,localId,patch){

@@ -7,7 +7,7 @@ import { flushSync } from 'react-dom';
 // React owns only each enhanced island; subsequent sample text/form changes persist.
 const names = { class: 'className', for: 'htmlFor', tabindex: 'tabIndex', readonly: 'readOnly',
   colspan: 'colSpan', rowspan: 'rowSpan', maxlength: 'maxLength', autocomplete: 'autoComplete',
-  playsinline: 'playsInline', fetchpriority: 'fetchPriority', autofocus: 'autoFocus' };
+  playsinline: 'playsInline', fetchpriority: 'fetchPriority', autofocus: 'autoFocus', srcset: 'srcSet' };
 const booleans = new Set(['hidden', 'disabled', 'required', 'multiple', 'controls', 'playsinline', 'readonly', 'autofocus']);
 export function capture(node) {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent;

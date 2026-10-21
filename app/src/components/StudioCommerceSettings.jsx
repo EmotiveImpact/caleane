@@ -4,8 +4,10 @@ import {WorkspaceButton,WorkspaceField,WorkspaceSelect,WorkspaceStatus,Workspace
 import {InvoicePreview,printInvoice} from './InvoiceDocument';
 import {invoiceFonts,invoiceLayouts,invoicePageHtml,sampleInvoice} from '../lib/invoice-design';
 import {lateFeeTerms} from '../lib/invoice-charges';
-import {DEFAULT_VAT_RATE} from '../lib/vat';
+import {DEFAULT_VAT_RATE,LINE_VAT,lineVatChoice,lineVatLabel,withLineVat} from '../lib/vat';
 import '../studio-commerce.css';
+import {CURRENCIES} from '../lib/currencies.js';
+import {invoiceNumber} from '../lib/invoice-numbers.js';
 
 const money=(minor,currency='GBP')=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format((Number(minor)||0)/100);}catch{return `${((Number(minor)||0)/100).toFixed(2)} ${currency}`;}};
 const shortDate=value=>value?new Date(value.length===10?value+'T12:00:00':value).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
@@ -38,10 +40,10 @@ function PlanTemplateEditor({plan,onChange}){
 
 function PriceList({studio,request}){
  const {data,error,busy,send}=useStudioData(`/api/catalogue?studio=${studio.id}`,request);
- const blank={name:'',description:'',category:'',unitAmount:'',currency:'GBP',unit:'each'};
+ const blank={name:'',description:'',category:'',unitAmount:'',currency:'GBP',unit:'each',vat:'usual'};
  const [draft,setDraft]=useState(blank),[editing,setEditing]=useState(''),[showArchived,setShowArchived]=useState(false);
  const items=(data?.items||[]).filter(item=>showArchived||!item.archived);
- async function save(event){event.preventDefault();const item={...draft,unitAmount:Math.round(Number(draft.unitAmount)*100)};const result=await send(editing?{action:'update',id:editing,item}:{action:'create',item});if(result){setDraft(blank);setEditing('');}}
+ async function save(event){event.preventDefault();const {vat,...rest}=draft,item=withLineVat({...rest,unitAmount:Math.round(Number(draft.unitAmount)*100)},vat==='usual'?'':vat);const result=await send(editing?{action:'update',id:editing,item}:{action:'create',item});if(result){setDraft(blank);setEditing('');}}
  return <section className="commerce-section" aria-labelledby="price-list-title">
   <header className="settings-pane-heading"><h2 id="price-list-title">Price list</h2><p>Services, add-ons and hire items you can add to an estimate in one click. Changing a price here never changes an estimate you have already shared.</p></header>
   {error&&<p className="commerce-error" role="alert">{error}</p>}
@@ -49,18 +51,19 @@ function PriceList({studio,request}){
    <WorkspaceField className="commerce-span-2" label="Item name" value={draft.name} maxLength={120} required onChange={e=>setDraft({...draft,name:e.target.value})} placeholder="For example, organic balloon garland"/>
    <WorkspaceField label="Category (optional)" value={draft.category} maxLength={60} onChange={e=>setDraft({...draft,category:e.target.value})} placeholder="Installations"/>
    <WorkspaceField label="Price" type="number" min="0" step="0.01" value={draft.unitAmount} required onChange={e=>setDraft({...draft,unitAmount:e.target.value})}/>
-   <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={draft.currency} onValueChange={currency=>setDraft({...draft,currency})} options={['GBP','EUR','USD']}/></WorkspaceField>
+   <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={draft.currency} onValueChange={currency=>setDraft({...draft,currency})} options={CURRENCIES}/></WorkspaceField>
    <WorkspaceField label="Charged"><WorkspaceSelect label="Charged" value={draft.unit} onValueChange={unit=>setDraft({...draft,unit})} options={Object.entries(units).map(([value,label])=>({value,label}))}/></WorkspaceField>
-   <WorkspaceField className="commerce-span-3" label="Description (optional)" value={draft.description} maxLength={500} onChange={e=>setDraft({...draft,description:e.target.value})}/>
+   <WorkspaceField label="VAT"><WorkspaceSelect label="VAT" value={draft.vat} onValueChange={vat=>setDraft({...draft,vat})} options={LINE_VAT.map(([value,label])=>({value:value||'usual',label}))}/></WorkspaceField>
+   <WorkspaceField className="commerce-span-2" label="Description (optional)" value={draft.description} maxLength={500} onChange={e=>setDraft({...draft,description:e.target.value})}/>
    <div className="commerce-form-actions"><WorkspaceButton type="submit" disabled={busy}>{editing?'Save item':'Add to price list'}</WorkspaceButton>{editing&&<WorkspaceButton variant="ghost" onClick={()=>{setEditing('');setDraft(blank);}}>Cancel</WorkspaceButton>}</div>
   </form>
   {!data&&!error?<p className="commerce-muted">Loading your price list…</p>:items.length?<ul className="commerce-list">{items.map((item,index)=><li key={item.id} className={item.archived?'is-archived':''}>
    <div><strong>{item.name}</strong><small>{[item.category,item.description].filter(Boolean).join(' · ')||'No description'}</small></div>
-   <span className="commerce-price">{money(item.unitAmount,item.currency)}<small>{units[item.unit]}</small></span>
+   <span className="commerce-price">{money(item.unitAmount,item.currency)}<small>{units[item.unit]}</small>{lineVatChoice(item)&&<small>{lineVatLabel(item,0)}</small>}</span>
    <div className="commerce-row-actions">{item.archived?<WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={()=>send({action:'restore',id:item.id})}>Restore</WorkspaceButton>:<>
     <WorkspaceButton variant="ghost" iconOnly aria-label={`Move ${item.name} up`} disabled={busy||index===0} onClick={()=>send({action:'move',id:item.id,direction:'up'})}><ArrowUp size={15}/></WorkspaceButton>
     <WorkspaceButton variant="ghost" iconOnly aria-label={`Move ${item.name} down`} disabled={busy||index===items.filter(x=>!x.archived).length-1} onClick={()=>send({action:'move',id:item.id,direction:'down'})}><ArrowDown size={15}/></WorkspaceButton>
-    <WorkspaceButton variant="ghost" size="small" onClick={()=>{setEditing(item.id);setDraft({name:item.name,description:item.description,category:item.category,unitAmount:(item.unitAmount/100).toFixed(2),currency:item.currency,unit:item.unit});}}>Edit</WorkspaceButton>
+    <WorkspaceButton variant="ghost" size="small" onClick={()=>{setEditing(item.id);setDraft({name:item.name,description:item.description,category:item.category,unitAmount:(item.unitAmount/100).toFixed(2),currency:item.currency,unit:item.unit,vat:lineVatChoice(item)||'usual'});}}>Edit</WorkspaceButton>
     <WorkspaceButton variant="ghost" size="small" disabled={busy} onClick={()=>send({action:'archive',id:item.id})}>Archive</WorkspaceButton></>}</div>
   </li>)}</ul>:<p className="commerce-muted">Nothing on your price list yet. Add the services you quote most often.</p>}
   {data?.items?.some(item=>item.archived)&&<WorkspaceButton variant="ghost" size="small" onClick={()=>setShowArchived(!showArchived)}>{showArchived?'Hide archived items':'Show archived items'}</WorkspaceButton>}
@@ -70,7 +73,7 @@ function PriceList({studio,request}){
 // Invoice details, the default plan, late fees and tips share one billing record.
 // Each settings section edits only its own fields and saves them on top of the
 // latest saved record, so saving one section never overwrites another.
-const invoiceKeys=['currency','vatRegistered','taxRate','sellerAddress','paymentInstructions','sellerContact','taxRegistration','paymentTermsDays','plan'],extraKeys=['lateFee','tips'];
+const invoiceKeys=['invoicePrefix','invoiceYear','nextInvoiceNumber','currency','vatRegistered','taxRate','sellerAddress','paymentInstructions','sellerContact','taxRegistration','paymentTermsDays','plan'],extraKeys=['lateFee','tips'];
 function useBillingDefaults(studio,request,keys){
  const url=`/api/billing-defaults?studio=${studio.id}`;
  const {data,error,busy,send,setError}=useStudioData(url,request);
@@ -80,7 +83,9 @@ function useBillingDefaults(studio,request,keys){
  async function save(event){
   event.preventDefault();
   let latest;try{latest=(await request(url)).defaults;}catch(e){setError(e.message);return;}
-  if(await send({...latest,...Object.fromEntries(keys.map(key=>[key,form[key]]))}))setSaved(true);
+  // The invoice counter only moves when this pane edits it, never as a side effect of saving another one.
+  const {nextInvoiceNumber:_counter,...rest}=latest;
+  if(await send({...rest,...Object.fromEntries(keys.map(key=>[key,form[key]]))}))setSaved(true);
  }
  return {form,set,save,saved,busy,error};
 }
@@ -96,9 +101,15 @@ export function InvoiceDefaultsSettings({studio,request}){
     <WorkspaceField label="Studio address"><textarea rows={3} maxLength={500} value={form.sellerAddress} onChange={e=>set({sellerAddress:e.target.value})}/></WorkspaceField>
     <WorkspaceField label="Payment instructions"><textarea rows={3} maxLength={1000} value={form.paymentInstructions} onChange={e=>set({paymentInstructions:e.target.value})} placeholder="Bank name, sort code, account number and the reference to use"/></WorkspaceField>
     <WorkspaceField label="Studio contact" value={form.sellerContact} maxLength={300} onChange={e=>set({sellerContact:e.target.value})} placeholder="Email or phone"/>
-    <WorkspaceField label="Usual currency"><select value={form.currency||'GBP'} onChange={e=>set({currency:e.target.value})}>{['GBP','EUR','USD'].map(code=><option key={code}>{code}</option>)}</select></WorkspaceField>
+    <WorkspaceField label="Usual currency"><select value={form.currency||'GBP'} onChange={e=>set({currency:e.target.value})}>{CURRENCIES.map(code=><option key={code}>{code}</option>)}</select></WorkspaceField>
     <WorkspaceField label="Payment terms (days)" type="number" min="0" max="120" value={form.paymentTermsDays} onChange={e=>set({paymentTermsDays:Number(e.target.value)})}/>
    </div>
+   <header className="settings-pane-heading commerce-subheading"><h2>Invoice numbers</h2><p>Your next invoice will be <strong>{invoiceNumber(form,new Date().getFullYear(),form.nextInvoiceNumber||1)}</strong>. Credit notes keep their own CN numbers.</p></header>
+   <div className="settings-fields">
+    <WorkspaceField label="Prefix" value={form.invoicePrefix??'INV'} maxLength={12} onChange={e=>set({invoicePrefix:e.target.value.trim()})} hint="Letters or numbers, for example INV or your studio initials."/>
+    <WorkspaceField label="Next number" type="number" min="1" max="999999" step="1" value={form.nextInvoiceNumber??1} onChange={e=>set({nextInvoiceNumber:Number(e.target.value)})} hint="Carry on from your old bookkeeping. A number already used is skipped."/>
+   </div>
+   <WorkspaceSwitch label="Include the year" description={form.invoiceYear!==false?'Numbers start again at 1 each January.':'One run of numbers that carries on from year to year.'} checked={form.invoiceYear!==false} onCheckedChange={on=>set({invoiceYear:on})}/>
    <header className="settings-pane-heading commerce-subheading"><h2>VAT</h2><p>Estimates and invoices show VAT only when you are registered. If you are not, there is no tax line at all.</p></header>
    <WorkspaceSwitch label="VAT registered" description={form.vatRegistered?'Invoices show your VAT number and a VAT line, for example VAT (20%).':'Turn this on once you are registered with HMRC for VAT.'} checked={!!form.vatRegistered} onCheckedChange={on=>set(on?{vatRegistered:true,taxRate:form.taxRate>0?form.taxRate:DEFAULT_VAT_RATE}:{vatRegistered:false,taxRate:0})}/>
    {form.vatRegistered&&<div className="settings-fields">
@@ -126,10 +137,10 @@ export function LateFeeSettings({studio,request}){
    <WorkspaceSwitch label="Add a late fee to overdue invoices" description="Applies once, after the grace period, to invoices issued while this is on. Caleane adds it to the invoice and notes it on the project. It does not message, email or charge the client." checked={fee.enabled} onCheckedChange={enabled=>update({enabled})}/>
    {fee.enabled&&<div className="settings-fields commerce-late-fee">
     <WorkspaceField label="Fee"><WorkspaceSelect label="Fee" value={fee.type} onValueChange={type=>update({type})} options={[{value:'fixed',label:'Fixed amount'},{value:'percent',label:'Percentage of the unpaid balance'}]}/></WorkspaceField>
-    {fee.type==='fixed'?<WorkspaceField label="Amount" type="number" min="0.01" max="1000" step="0.01" value={(fee.amountMinor/100).toFixed(2)} onChange={e=>update({amountMinor:Math.round(Number(e.target.value)*100)})}/>
+    {fee.type==='fixed'?<><WorkspaceField label="Amount" type="number" min="0.01" max="1000" step="0.01" value={(fee.amountMinor/100).toFixed(2)} onChange={e=>update({amountMinor:Math.round(Number(e.target.value)*100)})}/><WorkspaceField label="Currency" hint="A fixed fee only goes on invoices in this currency. Choose a percentage to cover every currency."><WorkspaceSelect label="Late fee currency" value={fee.currency||form.currency||'GBP'} onValueChange={currency=>update({currency})} options={CURRENCIES}/></WorkspaceField></>
     :<WorkspaceField label="Percentage" type="number" min="0.1" max="25" step="0.1" value={fee.percent} onChange={e=>update({percent:Number(e.target.value)})}/>}
     <WorkspaceField label="Days after the due date" type="number" min="1" max="90" value={fee.afterDays} onChange={e=>update({afterDays:Number(e.target.value)})}/>
-    <p className="commerce-muted commerce-late-fee-preview">Clients will read: “{lateFeeTerms(fee,'GBP')}”</p>
+    <p className="commerce-muted commerce-late-fee-preview">Clients will read: “{lateFeeTerms(fee,fee.currency||form.currency||'GBP')}”</p>
    </div>}
    <WorkspaceSwitch label="Let clients add a tip to final invoices" description="Adds an optional tip choice to balance and full invoices. Deposits never ask for a tip. Tips carry no tax." checked={form.tips.enabled} onCheckedChange={enabled=>set({tips:{enabled}})}/>
    {error&&<p className="commerce-error" role="alert">{error}</p>}
@@ -273,7 +284,7 @@ export function BookingSettings({studio,request}){
    {(form.payment.required||data.paymentsAvailable)&&<div className="settings-fields commerce-payment-fields">
     <WorkspaceField label="What the payment is called" value={form.payment.label} maxLength={60} required onChange={e=>set({payment:{...form.payment,label:e.target.value}})} placeholder="Booking fee or deposit"/>
     <WorkspaceField label={`Amount (${form.payment.currency})`} type="number" min="1" max="10000" step="0.01" value={(form.payment.amountMinor/100).toFixed(2)} onChange={e=>set({payment:{...form.payment,amountMinor:Math.round(Number(e.target.value)*100)}})}/>
-    <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={form.payment.currency} onValueChange={currency=>set({payment:{...form.payment,currency}})} options={['GBP','EUR','USD']}/></WorkspaceField>
+    <WorkspaceField label="Currency"><WorkspaceSelect label="Currency" value={form.payment.currency} onValueChange={currency=>set({payment:{...form.payment,currency}})} options={CURRENCIES}/></WorkspaceField>
    </div>}
    <h3 className="commerce-small-heading">Weekly hours</h3>
    <div className="commerce-week">{weekdays.map(([day,label])=>{const windows=form.weekly[day]||[];return <div key={day} className="commerce-week-row"><span>{label}</span>{windows.length?<div className="commerce-week-windows">{windows.map((window,index)=><div key={index}><input aria-label={`${label} start`} type="time" value={window.start} onChange={e=>setDay(day,windows.map((w,i)=>i===index?{...w,start:e.target.value}:w))}/><span>to</span><input aria-label={`${label} end`} type="time" value={window.end} onChange={e=>setDay(day,windows.map((w,i)=>i===index?{...w,end:e.target.value}:w))}/><WorkspaceButton variant="ghost" iconOnly aria-label={`Remove ${label} hours`} onClick={()=>setDay(day,windows.filter((_,i)=>i!==index))}><Trash2 size={15}/></WorkspaceButton></div>)}{windows.length<3&&<WorkspaceButton variant="ghost" size="small" onClick={()=>setDay(day,[...windows,{start:'14:00',end:'17:00'}])}>Add hours</WorkspaceButton>}</div>:<div className="commerce-week-windows"><small>Unavailable</small><WorkspaceButton variant="ghost" size="small" onClick={()=>setDay(day,[{start:'10:00',end:'17:00'}])}>Add hours</WorkspaceButton></div>}</div>;})}</div>

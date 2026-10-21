@@ -2,7 +2,7 @@ import {briefFieldsFor,workflowFor} from './workflows.js';
 import {questionIsVisible} from './intake-visibility.js';
 
 export const OPERATORS={eq:'is',neq:'is not',contains:'contains',notContains:'does not contain',gt:'is greater than',gte:'is at least',lt:'is less than',lte:'is at most',before:'is before',after:'is after',onOrBefore:'is on or before',onOrAfter:'is on or after',answered:'has an answer',empty:'is empty'};
-export function operatorsFor(field){return field?.type==='number'?['eq','neq','gt','gte','lt','lte','answered','empty']:field?.type==='date'?['eq','neq','before','after','onOrBefore','onOrAfter','answered','empty']:field?.type==='multi'?['contains','notContains','answered','empty']:field?.type==='choice'?['eq','neq','answered','empty']:['eq','neq','contains','notContains','answered','empty'];}
+export function operatorsFor(field){return field?.type==='number'?['eq','neq','gt','gte','lt','lte','answered','empty']:field?.type==='date'?['eq','neq','before','after','onOrBefore','onOrAfter','answered','empty']:field?.type==='file'?['answered','empty']:field?.type==='multi'?['contains','notContains','answered','empty']:field?.type==='choice'?['eq','neq','answered','empty']:['eq','neq','contains','notContains','answered','empty'];}
 export function conditionMatches(condition,answers,catalog=new Map()){
  if(!condition)return true;
  const evaluate=rule=>{

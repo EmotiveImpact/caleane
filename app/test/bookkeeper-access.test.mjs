@@ -35,7 +35,10 @@ test('a bookkeeper reads studio finances and nothing else, and cannot change any
   assert.equal(invite.status,201);
   assert.equal(invite.data.access,'bookkeeper');
   assert.equal((await call('/api/staff'+q,'GET',undefined,'owner')).data.pending[0].access,'bookkeeper');
+  const preview=await call('/api/staff-invitations/inspect','POST',{token:new URL(invite.data.url).hash.slice(1)},'books');
+  assert.equal(preview.status,200);assert.equal(preview.data.access,'bookkeeper','the join page can say this invitation opens the books');
   assert.equal((await call('/api/staff-invitations/claim','POST',{token:new URL(invite.data.url).hash.slice(1),name:'Bea Books',password:'BeaBooks2026!Ledger'},'books')).status,200);
+  assert.equal((await call('/api/staff-invitations/inspect','POST',{token:new URL(invite.data.url).hash.slice(1)},'books')).status,400,'a used invitation tells nothing');
   const me=(await call('/api/me','GET',undefined,'books')).data;
   assert.equal(me.studios[0].role,'staff_bookkeeper');
   const member=(await call('/api/staff'+q,'GET',undefined,'owner')).data.members.find(m=>m.email==='books@example.test');
@@ -57,6 +60,18 @@ test('a bookkeeper reads studio finances and nothing else, and cannot change any
   assert.equal(costs.status,200);
   assert.equal(costs.data.expenses[0].description,'Paper stock');
   assert.equal((await call('/api/finance-report'+q,'GET',undefined,'books')).status,200);
+  // Archived invoices can be listed and downloaded; letters and other records stay private.
+  const docs=`/api/projects/${project.id}/documents${q}`;
+  const letter=(await call(docs,'POST',{action:'save',title:'Thank you note',html:'<p>Thank you.</p>'},'owner')).data.documents.find(d=>d.kind==='Letter');
+  await call(docs,'POST',{id:letter.id,revision:letter.revision,action:'issue'},'owner');
+  const archived=await call(docs,'GET',undefined,'books');
+  assert.equal(archived.status,200);
+  assert.ok(archived.data.documents.length>0);
+  assert.deepEqual([...new Set(archived.data.documents.map(d=>d.kind))],['Invoice']);
+  const pdf=await call(`/api/projects/${project.id}/documents/${archived.data.documents[0].id}/pdf${q}`,'GET',undefined,'books');
+  assert.equal(pdf.status,200);
+  assert.equal((await call(`/api/projects/${project.id}/documents/${letter.id}/pdf${q}`,'GET',undefined,'books')).status,404);
+  assert.equal((await call(docs,'POST',{action:'save',title:'Not allowed',html:'<p>No</p>'},'books')).status,403);
   assert.equal((await call('/api/expenses'+q,'POST',{action:'create',amountMinor:100,currency:'GBP',spentOn:today,category:'Materials',description:'Not allowed'},'books')).status,403);
 
   // Projects come back as a finance summary only: no brief detail, messages, designs, tasks or activity.

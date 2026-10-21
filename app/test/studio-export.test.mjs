@@ -22,6 +22,9 @@ test('the studio export streams records and file content that match the in-memor
  const streamed=await response.json(),direct=exportStudio(ws.db,{studioId:studio.id,userId:me.user.id},{includeFiles:true});
  assert.equal(streamed.includesFileContent,true);assert.equal(streamed.files.find(f=>f.id===uploaded.fileId).contentBase64,content);
  assert.deepEqual({...streamed,exportedAt:null},JSON.parse(JSON.stringify({...direct,exportedAt:null})));
+ ws.db.prepare('INSERT INTO consultations VALUES(?,?,?,?,?,?,?)').run('export-booking',studio.id,'2027-01-05T10:00:00Z','2027-01-05T10:30:00Z','confirmed',JSON.stringify({name:'Booked Client',manageDigests:['secret-digest']}),'2026-10-01T09:00:00Z');
  const metadata=await (await call('/api/studio-export'+q)).json();
+ for(const table of ['expenses','payment_plans','invoice_refunds','invoice_credit_notes','invoice_charges','service_catalogue','message_templates','consultations'])assert.ok(Array.isArray(metadata.records[table]),table+' is exported');
+ const booking=metadata.records.consultations.find(row=>row.id==='export-booking');assert.equal(JSON.parse(booking.data).name,'Booked Client');assert.ok(!booking.data.includes('secret-digest'),'manage links stay private');
  assert.equal(metadata.includesFileContent,false);assert.ok(metadata.files.length);assert.ok(metadata.files.every(f=>!('contentBase64' in f)));
 });

@@ -50,7 +50,8 @@ test('open requests can be accepted or declined; settled and outdated ones are n
  assert.match(screen.getByRole('list').textContent,/Declined · requested by Amelia Taylor/);
  const input=userEvent.setup({document:dom.window.document,pointerEventsCheck:0});
  await input.click(within(current).getByRole('button',{name:'Accept update'}));await input.click(within(outdated).getByRole('button',{name:'Decline'}));
- assert.deepEqual(calls,[['changes',{changeId:'c1',decision:'accept'}],['changes',{changeId:'c2',decision:'decline'}]]);
+ await input.type(within(outdated).getByRole('textbox'),'The venue is already booked.');await input.click(within(outdated).getByRole('button',{name:'Decline request'}));
+ assert.deepEqual(calls,[['changes',{changeId:'c1',decision:'accept'}],['changes',{changeId:'c2',decision:'decline',note:'The venue is already booked.'}]]);
  cleanup();render(h(ui.BriefChangeRequests,{p,workflow,owner:false,busy:false,mutate}));
  assert.equal(screen.queryAllByRole('button').length,0);assert.equal(screen.getAllByText('Waiting for the studio to review.').length,2);
 });
@@ -77,9 +78,10 @@ test('declined requests stay settled and an accepted request credits the client 
   let p=(await call('/api/projects'+q,'GET',null,'client')).data.projects[0];const route='/api/projects/'+p.id;
   p=(await call(route+'/approval'+q,'POST',{designId:p.designs.at(-1).id,decision:'approve'},'client')).data.project;assert.equal(p.briefLocked,true);
   p=(await call(route+'/brief'+q,'POST',{revision:p.briefRevision,brief:{...p.brief,details:{guestCount:'80',styledAreas:'Tables and entrance'}}},'client')).data.project;
-  p=(await call(route+'/brief'+q,'POST',{revision:p.briefRevision,brief:{...p.brief,venue:'Kew Gardens'}},'client')).data.project;
-  const [venue,guests]=p.changeRequests;
-  p=(await call(route+'/changes'+q,'POST',{changeId:venue.id,decision:'decline'},'owner')).data.project;
+  p=(await call(route+'/brief'+q,'POST',{revision:p.briefRevision,note:'My aunt offered her garden.',brief:{...p.brief,venue:'Kew Gardens'}},'client')).data.project;
+  const [venue,guests]=p.changeRequests;assert.equal(venue.note,'My aunt offered her garden.','the client can say why');
+  p=(await call(route+'/changes'+q,'POST',{changeId:venue.id,decision:'decline',note:'The townhouse deposit is already paid.'},'owner')).data.project;
+  assert.equal(p.changeRequests.find(c=>c.id===venue.id).response,'The townhouse deposit is already paid.','the studio can say why not');
   assert.deepEqual(openChangeRequests(p.changeRequests).map(c=>c.id),[guests.id]);
   assert.equal((await call(route+'/changes'+q,'POST',{changeId:venue.id,decision:'accept'},'owner')).status,409);
   p=(await call(route+'/changes'+q,'POST',{changeId:guests.id,decision:'accept'},'owner')).data.project;

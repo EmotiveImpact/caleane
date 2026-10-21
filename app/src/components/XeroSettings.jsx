@@ -29,7 +29,7 @@ export function XeroSettings({studio,request}){
  return <section className="integration-card xero-settings" aria-labelledby="xero-title">
   <header className="integration-card-head">
    <div><h3 id="xero-title">Xero</h3><p>Send each invoice you issue, and each payment you record, to Xero, so your books match without typing anything twice.</p>{data.connected&&<small>{data.organisation} · connected {when(data.connectedAt)}{data.lastSyncAt?` · last sync ${when(data.lastSyncAt)}`:''}</small>}</div>
-   <WorkspaceStatus value={data.connected?'Connected':data.configured?'Not connected':'Setup required'} tone={data.connected?'success':'neutral'}/>
+   <WorkspaceStatus value={data.connected?'Connected':data.configured?'Not connected':'Coming soon'} tone={data.connected?'success':'neutral'}/>
   </header>
   {!data.configured?<p className="xero-note">Xero needs to be switched on for this workspace before you can connect. Once it is, you sign in to Xero here and choose your organisation.</p>
   :!data.connected?<div className="integration-card-actions"><WorkspaceButton disabled={busy} onClick={()=>send({action:'connect'})}>Connect Xero</WorkspaceButton></div>
@@ -47,6 +47,9 @@ export function XeroSettings({studio,request}){
     <WorkspaceField label="Send invoices as"><WorkspaceSelect label="Send invoices as" value={form.invoiceStatus} onValueChange={invoiceStatus=>set({invoiceStatus})} options={[{value:'AUTHORISED',label:'Approved'},{value:'DRAFT',label:'Drafts to review in Xero'}]}/></WorkspaceField>
     <WorkspaceField label="VAT rate code" value={form.taxType} maxLength={20} onChange={e=>set({taxType:e.target.value})} hint="OUTPUT2 is 20% VAT on income."/>
     <WorkspaceField label="Rate code when there is no VAT" value={form.noTaxType} maxLength={20} onChange={e=>set({noTaxType:e.target.value})} hint="NONE, or ZERORATEDOUTPUT."/>
+    <WorkspaceField label="Reduced rate code" value={form.reducedTaxType??''} maxLength={20} onChange={e=>set({reducedTaxType:e.target.value})} hint="RROUTPUT is 5% VAT, for lines at the reduced rate."/>
+    <WorkspaceField label="Zero rate code" value={form.zeroTaxType??''} maxLength={20} onChange={e=>set({zeroTaxType:e.target.value})} hint="ZERORATEDOUTPUT, for zero-rated lines."/>
+    <WorkspaceField label="Exempt code" value={form.exemptTaxType??''} maxLength={20} onChange={e=>set({exemptTaxType:e.target.value})} hint="EXEMPTOUTPUT, for lines exempt from VAT."/>
     <WorkspaceField label="Bank account code for payments" value={form.bankAccountCode} maxLength={20} onChange={e=>set({bankAccountCode:e.target.value})} hint="Leave empty to send invoices only. Payments need approved invoices."/>
     <WorkspaceField label="Send invoices issued from" type="date" value={form.sendFrom} onChange={e=>set({sendFrom:e.target.value})} hint="Empty means from the day you connected."/>
    </div>

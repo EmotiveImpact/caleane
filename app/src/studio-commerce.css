@@ -78,7 +78,12 @@
 .billing-plan-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .billing-plan-issue { margin-top: 14px; padding: 16px; background: var(--studio-surface, #f4f1ea); border-radius: 4px; display: grid; gap: 12px; }
 .billing-plan-issue label { display: grid; gap: 6px; font-size: 13px; }
-.billing-plan-issue textarea,.billing-plan-issue input { width: 100%; padding: 8px 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
+.billing-plan-issue textarea,.billing-plan-issue input,.billing-plan-issue select { width: 100%; padding: 8px 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
+.billing-plan-discount { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.billing-plan-issue .billing-clarifier { margin: 0; }
+.billing-plan-steps small.billing-plan-blocked { color: #8a5a12; }
+.billing-plan-auto { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--studio-rule, #e4e0d8); }
+@media(max-width:640px){ .billing-plan-discount { grid-template-columns: minmax(0,1fr); } }
 .billing-refund-form { margin-top: 18px; padding: 18px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 6px; display: grid; gap: 14px; }
 .billing-refund-form h4 { margin: 0; font-size: 16px; }
 .billing-refund-form p { margin: 0; font-size: 13px; color: var(--studio-muted, #6b6b6b); line-height: 1.6; }
@@ -99,6 +104,7 @@
 /* Estimate: add from price list */
 .estimate-price-picker { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 4px 0 12px; font-size: 13px; }
 .estimate-price-picker select { min-height: 38px; max-width: 100%; padding: 0 10px; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; font: inherit; background: #fff; }
+.estimate-price-picker small { flex-basis: 100%; color: var(--studio-muted, #80858d); font-size: 12px; }
 
 /* Conversation: insert a template */
 .template-picker { position: relative; }
@@ -147,6 +153,12 @@
 .invoice-preview { position: relative; width: 100%; overflow: hidden; border: 1px solid var(--studio-rule, #e4e0d8); border-radius: 4px; background: #fff; box-shadow: 0 10px 28px rgba(20,20,20,.08); }
 .invoice-preview iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; pointer-events: none; background: #fff; }
 .billing-document .invoice-preview { margin: 18px 0 8px; }
+.invoice-preview.is-readable { box-shadow: none; }
+.invoice-preview-view { display: flex; align-items: center; gap: 4px; margin: 16px 0 0; font-size: 12px; color: var(--studio-muted, #6b6b6b); }
+.invoice-preview-view > span { margin-right: auto; }
+.invoice-preview-view button { min-height: 32px; padding: 4px 10px; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.invoice-preview-view button[aria-pressed=true] { color: var(--studio-ink, #202326); box-shadow: inset 0 0 0 1px currentColor; }
+.billing-document .invoice-preview-view + .invoice-preview { margin-top: 8px; }
 .commerce-invoice-design { border-top: 1px solid var(--studio-rule, #e4e0d8); padding-top: 32px; }
 .commerce-choice-group { border: 0; margin: 0 0 22px; padding: 0; min-width: 0; }
 .commerce-choice-group legend { padding: 0; margin-bottom: 10px; font-size: 12px; font-weight: 600; color: var(--studio-ink, #202326); }
@@ -244,16 +256,11 @@
 .commerce-payment-fields { margin-top: 18px; }
 
 /* Discounts, late fees and tips */
-.billing-extras { border: 1px solid #e0e2e5; border-radius: 6px; background: #fff; padding: 16px 18px 4px; margin: 0 0 18px; min-width: 0; }
-.billing-extras legend { padding: 0 6px; margin-left: -6px; font-size: 11px; font-weight: 600; color: #535a62; }
 .billing-discount-row { display: grid; grid-template-columns: minmax(0,160px) minmax(0,1fr) minmax(0,1fr); gap: 0 14px; }
 .billing-extras-note { font-size: 12px; line-height: 1.55; color: #5f656d; margin: -6px 0 14px; }
 .billing-extras-note.is-error { color: #a03a32; }
-.billing-extras .billing-refund-choice { margin: 0 0 14px; }
-.billing-extras .billing-refund-choice small { display: block; margin-top: 3px; font-size: 11.5px; color: #6f757d; }
 .billing-totals .billing-discount dt, .billing-totals .billing-discount dd { color: #2f6b4f; }
 .billing-totals s { color: #9a9fa6; }
-.billing-late-terms { font-size: 12px; line-height: 1.55; color: #5f656d; background: #f6f6f4; border: 1px solid #e6e6e1; border-radius: 6px; padding: 11px 14px; margin: -14px 0 24px; }
 .billing-tip { background: #fff; border: 1px solid #e0e2e5; border-radius: 6px; padding: 18px 20px; margin: 0 0 24px; }
 .billing-tip h4 { margin: 0 0 4px; font-size: 14px; font-weight: 560; }
 .billing-tip p { margin: 0 0 14px; font-size: 12px; line-height: 1.55; color: #6f757d; }
@@ -278,3 +285,70 @@
 .billing-issue-form .billing-extras label.billing-refund-choice { display: flex; }
 .billing-issue-form .billing-extras .billing-refund-choice input { width: auto; min-height: 0; padding: 0; flex: none; }
 .billing-issue-form .billing-extras .billing-refund-choice strong { font-size: 13px; font-weight: 560; color: #25292e; }
+/* Quick invoice lines: description, quantity, unit price and a remove button, like estimate lines. */
+/* Issue an invoice: boxed sections with a running summary beside them */
+.billing-issue-shell { container-type: inline-size; }
+.billing-issue-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.billing-issue-main { display: grid; gap: 8px; min-width: 0; }
+.billing-issue-section { container-type: inline-size; box-sizing: border-box; min-width: 0; padding: 18px 20px 4px; background: var(--studio-paper, #fff); border: 1px solid var(--box-rule, #e2e2df); border-radius: var(--box-radius, 8px); }
+.billing-issue-section > header { margin: 0 0 16px; }
+.billing-issue-section h4 { margin: 0; font-size: 14px; font-weight: 550; color: var(--studio-ink, #202326); }
+.billing-issue-section > header p { margin: 4px 0 0; font-size: 12px; line-height: 1.55; color: var(--studio-muted, #6c7079); }
+.billing-issue-section .billing-scope-line { margin: -4px 0 14px; padding: 0 0 14px; }
+.billing-issue-section .billing-scope-line:last-child { border-bottom: 0; margin-bottom: 4px; }
+.billing-issue-section .ws-switch-row { padding: 0 0 16px; }
+.billing-issue-section .ws-switch-row + .ws-switch-row { padding-top: 16px; border-top: 1px solid var(--box-rule, #e2e2df); }
+.billing-issue-form .ws-switch-row > label { margin: 0; }
+.billing-issue-summary { box-sizing: border-box; min-width: 0; align-self: start; padding: 18px 20px; background: var(--studio-paper, #fff); border: 1px solid var(--box-rule, #e2e2df); border-radius: var(--box-radius, 8px); }
+.billing-issue-summary h4 { margin: 0 0 12px; font-size: 14px; font-weight: 550; color: var(--studio-ink, #202326); }
+.billing-issue-summary dl { margin: 0; }
+.billing-issue-summary dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 5px 0; font-size: 12px; line-height: 1.45; }
+.billing-issue-summary dt { color: var(--studio-muted, #6c7079); min-width: 0; overflow-wrap: anywhere; }
+.billing-issue-summary dd { margin: 0; color: var(--studio-ink, #202326); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.billing-issue-summary .is-discount dt, .billing-issue-summary .is-discount dd { color: #2f6b4f; }
+.billing-issue-summary .is-amount { margin-top: 4px; padding-top: 9px; border-top: 1px solid var(--box-rule, #e2e2df); }
+.billing-issue-summary .is-amount dt, .billing-issue-summary .is-amount dd { color: var(--studio-ink, #202326); }
+.billing-issue-summary-extras { margin-top: 10px !important; padding-top: 7px; border-top: 1px solid var(--box-rule, #e2e2df); }
+.billing-issue-summary-extras > div { display: block !important; }
+.billing-issue-summary-extras dd { margin-top: 2px; white-space: normal; }
+.billing-issue-summary-total { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--studio-ink, #202326); }
+.billing-issue-summary-total span { font-size: 13px; font-weight: 550; }
+.billing-issue-summary-total strong { font-size: 20px; font-weight: 550; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.billing-issue-summary-note, .billing-issue-summary-empty { margin: 10px 0 0; font-size: 11px; line-height: 1.55; color: var(--studio-muted, #6c7079); }
+.billing-issue-summary-empty { margin: 0; font-size: 12px; }
+.billing-issue-form .billing-form-foot { margin-top: 16px; }
+@container (min-width: 620px) {
+ .billing-issue-layout { grid-template-columns: minmax(0, 1fr) minmax(220px, 34%); gap: 8px 12px; }
+ .billing-issue-summary { position: sticky; top: 88px; }
+}
+@container (max-width: 460px) {
+ .billing-issue-section .billing-issue-choose { grid-template-columns: 1fr; }
+}
+@container (min-width: 340px) and (max-width: 460px) {
+ .billing-issue-section .billing-discount-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+ .billing-issue-section .billing-discount-row > label:nth-child(3) { grid-column: 1 / -1; }
+}
+@media (max-width: 620px) {
+ .billing-issue-section, .billing-issue-summary { padding-left: 14px; padding-right: 14px; }
+}
+
+/* Client invoice: late fee terms beside the due date */
+.billing-due-terms { display: block; margin-top: 6px; font-size: 11px; line-height: 1.5; color: #6f757d; }
+
+.billing-quick-lines { display: grid; gap: 4px; margin-top: 4px; }
+.billing-quick-line { display: grid; grid-template-columns: minmax(0,1fr) 90px 130px 32px; gap: 0 12px; align-items: end; }
+.billing-quick-line > button { min-height: 40px; justify-content: center; margin-bottom: 14px; }
+@media (max-width: 760px) { .billing-quick-line { grid-template-columns: minmax(0,1fr) 64px 92px 28px; gap: 0 6px; } }
+/* A VAT-registered studio picks each line's rate in a fifth column, or on a row of its own when the form is narrow. */
+.billing-quick-line.has-vat { grid-template-columns: minmax(0,1fr) 72px 112px 136px 32px; }
+@container (max-width: 640px) {
+ .billing-quick-line.has-vat { grid-template-columns: minmax(0,1fr) 72px 104px 32px; padding-bottom: 6px; border-bottom: 1px solid var(--box-rule, #e2e2df); }
+ .billing-quick-line.has-vat .billing-quick-vat { grid-column: 1/4; grid-row: 2; }
+}
+@media (max-width: 760px) { .billing-quick-line.has-vat { grid-template-columns: minmax(0,1fr) 64px 92px 28px; } }
+/* In a narrow form each line's description takes a row of its own, so it stays readable on a phone. */
+@container (max-width: 460px) {
+ .billing-quick-line, .billing-quick-line.has-vat { grid-template-columns: 72px minmax(0,1fr) 32px; }
+ .billing-quick-line > label:first-child { grid-column: 1 / -1; }
+ .billing-quick-line.has-vat .billing-quick-vat { grid-column: 1 / 3; grid-row: 3; }
+}

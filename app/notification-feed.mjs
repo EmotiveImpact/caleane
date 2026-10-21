@@ -93,6 +93,11 @@ export function recordDocumentOpened(db,{studioId,projectId,kind,itemId,actorNam
  return deliver(db,owners(db,studioId),null,{studioId,kind:'project_update',sourceKey:`opened:${kind}:${itemId}`,actorName,title,detail,projectId,clientId,opportunityId,createdAt});
 }
 
+/** Something only the studio needs to act on in a project, such as a scheduled payment that could not be issued. */
+export function recordStudioNotice(db,{studioId,projectId,sourceKey,title,detail}){
+ return deliver(db,owners(db,studioId),null,{studioId,kind:'project_update',sourceKey,actorName:'Caleane',title,detail,projectId});
+}
+
 /** A public enquiry or form submission. Only studio owners can see enquiries. */
 export function recordEnquiry(db,{studioId,projectId}){
  const row=db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(projectId,studioId);
@@ -121,6 +126,12 @@ export function recordTaskAssignment(db,{studioId,taskKind,taskId,projectId=null
  const project=projectId?JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(projectId,studioId)?.data||'null'):null;
  return deliver(db,[assigneeId],actor.id,{studioId,kind:'task_assigned',sourceKey:`task:${taskKind}:${taskId}:${id()}`,actorName:actor.name,
   title:`${actor.name} assigned you: ${title}`,detail:project?.title||'Private follow-up',projectId,taskId:taskKind==='project'?`project:${projectId}:${taskId}`:taskId});
+}
+
+/** A team member saved a private design draft. Only owners hear of it, since only they can share it with the client. */
+export function recordTeamDraft(db,{studioId,projectId,draftId,title,actor}){
+ const project=JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(projectId,studioId)?.data||'null');
+ return deliver(db,owners(db,studioId),actor.id,{studioId,kind:'project_update',sourceKey:'design-draft:'+draftId,actorName:actor.name,title:`${actor.name} saved a design draft: ${title}`,detail:project?.title||'',projectId});
 }
 
 /** A private nudge for the studio about a conversation that has gone quiet. Only owners see these. */

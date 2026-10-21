@@ -1,7 +1,7 @@
 /* The brief look for client forms: one question at a time, chapters across the top, the brief filling in beside it.
    Everything is scoped to .bf so the workspace styles never reach it, and its buttons use their own classes. */
-.bf{--accent:#202326;--bg:#f4f1eb;--q:#17221d;--line:rgba(23,34,29,.16);--muted:rgba(23,34,29,.64);--paper:#fbf9f5;--a:var(--accent);--btn:var(--accent);--btn-fg:#fff;--soft:color-mix(in srgb,var(--accent) 7%,transparent);--radius:6px;--rc:8px;--brief-w:0px;--rise:10px;
- position:relative;min-height:100svh;background:var(--bg);color:var(--q);font-family:'Instrument Sans',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Arial,sans-serif;font-size:16px;line-height:1.45;overflow:hidden;isolation:isolate}
+.bf{--accent:#202326;--bg:#f4f1eb;--q:#17221d;--line:rgba(23,34,29,.16);--muted:rgba(23,34,29,.64);--paper:#fbf9f5;--a:var(--accent);--btn:var(--accent);--btn-fg:var(--on-accent,#fff);--soft:color-mix(in srgb,var(--accent) 7%,transparent);--radius:6px;--rc:8px;--brief-w:0px;--rise:10px;
+ position:relative;min-height:100svh;background:var(--bg);color:var(--q);font-family:var(--bf-body,'Instrument Sans',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Arial,sans-serif);font-size:16px;line-height:1.45;overflow:hidden;overflow:clip;isolation:isolate}
 .form-render-surface.bf-frame{container:bf form-canvas/inline-size}
 .bf *,.bf *::before,.bf *::after{box-sizing:border-box}
 .bf.palette-linen{--bg:#ebe3d6;--q:#2b2119;--line:rgba(43,33,25,.16);--muted:rgba(43,33,25,.64);--paper:#f5efe5}
@@ -45,7 +45,7 @@
 .layout-image-left .bf-content,.layout-image-right .bf-content{padding-inline:9%}
 .bf-slide{width:min(600px,100%);margin:0}
 .bf-eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--a);margin:0 0 14px;font-weight:500;font-variant-numeric:tabular-nums}
-.bf-title{font-size:clamp(26px,3.6cqi,38px);line-height:1.16;font-weight:500;margin:0 0 12px;letter-spacing:-.028em;text-wrap:balance;outline:none}
+.bf-title{font-family:var(--bf-heading,inherit);font-size:clamp(26px,3.6cqi,38px);line-height:1.16;font-weight:500;margin:0 0 12px;letter-spacing:-.028em;text-wrap:balance;outline:none}
 .bf-help{font-size:clamp(15px,1.7cqi,17px);color:var(--muted);margin:0 0 30px;max-width:52ch;line-height:1.5}
 .bf-inbrand{margin:0 0 40px}
 .bf-welcome .bf-title{font-size:clamp(34px,4.8cqi,52px);line-height:1.06;letter-spacing:-.035em}
@@ -114,7 +114,7 @@
 .bf-brief dt{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .bf-brief dd{margin:0;font-size:14px;overflow-wrap:anywhere}
 .bf-brief dd.is-empty{color:var(--muted);opacity:.65}
-.bf-brief dl>div.on{background:var(--soft);margin-inline:-10px;padding-inline:10px}
+.bf-brief dl>div.on dt{color:var(--a);font-weight:600}.bf-brief dl>div.on dt::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--a);margin-right:7px;vertical-align:1px}
 .bf-brief dl>div.fresh{animation:bf-fresh 1.2s ease}
 @keyframes bf-fresh{0%{background:color-mix(in srgb,var(--a) 18%,transparent)}100%{background:transparent}}
 .bf-close{display:none;position:absolute;top:16px;right:16px;border:0;background:none;color:var(--q);cursor:pointer;place-items:center;width:36px;height:36px}
@@ -190,3 +190,5 @@ textarea.bf-field{min-height:0;overflow:hidden}
  .bf-ch.on{flex:2.4}.bf-ch:not(.on) span{visibility:hidden}
 }
 .bf-proof-empty{margin:14px 0 4px;font-size:13px;color:var(--muted)}
+/* Brief change requests: the client's reason and the studio's reply sit under each settled request. */
+.change-history .change-reason{display:block;margin-top:4px;color:var(--studio-muted,#6e7069)}.change-decline{display:grid;gap:12px;margin-top:14px}

@@ -4,16 +4,18 @@ const fail=(status,message)=>{throw Object.assign(new Error(message),{status});}
 const money=(minor,currency)=>{try{return new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(minor/100);}catch{return `${(minor/100).toFixed(2)} ${currency}`;}};
 
 // The words a client reads on the invoice before any fee is added.
+// A percentage fee suits any invoice; a fixed fee only one in its own currency.
+export const lateFeeFits=(rule,currency)=>!!rule&&(rule.type==='percent'||!rule.currency||rule.currency===currency);
 export function lateFeeTerms(rule,currency){
  if(!rule)return '';
- const fee=rule.type==='percent'?`${rule.percent}% of the unpaid balance`:money(rule.amountMinor,currency);
+ const fee=rule.type==='percent'?`${rule.percent}% of the unpaid balance`:money(rule.amountMinor,rule.currency||currency);
  return `A late fee of ${fee} is added once, if this invoice is still unpaid ${rule.afterDays} ${rule.afterDays===1?'day':'days'} after the due date.`;
 }
 
 // The same terms in a few words, for the issue form's summary.
 export function lateFeeShort(rule,currency){
  if(!rule)return '';
- const fee=rule.type==='percent'?`${rule.percent}% of the unpaid balance`:money(rule.amountMinor,currency);
+ const fee=rule.type==='percent'?`${rule.percent}% of the unpaid balance`:money(rule.amountMinor,rule.currency||currency);
  return `${fee}, ${rule.afterDays} ${rule.afterDays===1?'day':'days'} after the due date`;
 }
 
@@ -47,6 +49,14 @@ export function invoiceFigures({shareMinor,shareNetMinor,discount=null}){
  const discountMinor=discount?.grossMinor||0,discountNetMinor=discount?.netMinor||0;
  const amountMinor=shareMinor-discountMinor,netMinor=shareNetMinor-discountNetMinor;
  return {priceMinor:shareMinor,priceNetMinor:shareNetMinor,discountMinor,discountNetMinor,netMinor,taxMinor:amountMinor-netMinor,amountMinor};
+}
+
+// A discount only covers the invoice it is on. A percentage taken off an earlier invoice for the same estimate
+// starts the next one too, so 10% off the deposit carries on to the balance unless the studio changes it.
+// `invoices` are the active estimate invoices, each with number, issuedAt and discountLabel.
+export function carriedDiscount(invoices){
+ for(const item of [...invoices].sort((a,b)=>String(b.issuedAt).localeCompare(String(a.issuedAt)))){const match=/^(?:(.+) · )?([\d.]+)% off$/.exec(item.discountLabel||'');if(match)return {number:item.number,reason:match[1]||'',percent:match[2]};}
+ return null;
 }
 
 // Tip suggestions are a share of the invoice amount, rounded to whole units.

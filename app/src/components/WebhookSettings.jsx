@@ -35,7 +35,8 @@ function Endpoint({endpoint,events,busy,send,deliveries}){
 const isZapier=url=>{try{return /(^|\.)zapier\.com$/i.test(new URL(url).hostname);}catch{return false;}};
 
 function NewEndpoint({kind,events,busy,send,onDone}){
- const [draft,setDraft]=useState({url:'',description:'',events:['enquiry.received','booking.created']});
+ // Every event starts ticked; untick the ones this endpoint doesn't need.
+ const [draft,setDraft]=useState({url:'',description:'',events:events.map(event=>event.type)});
  return <form className="webhook-endpoint webhook-new" onSubmit={async e=>{e.preventDefault();if(await send({action:'create',...draft,description:draft.description.trim()}))onDone();}}>
   <h4>{kind==='zapier'?'Add a Zapier catch hook':'Add an endpoint'}</h4>
   <WorkspaceField label={kind==='zapier'?'Catch hook address':'Endpoint address'} type="url" required placeholder={kind==='zapier'?'https://hooks.zapier.com/hooks/catch/…':'https://example.com/caleane-events'} value={draft.url} onChange={e=>setDraft({...draft,url:e.target.value})} hint={kind==='zapier'?'Copy it from the Catch Hook step in your Zap.':'Must start with https://.'}/>

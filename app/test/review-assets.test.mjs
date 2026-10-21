@@ -56,6 +56,9 @@ test('multi-file review isolates roots and replies across assets and versions an
   ])assert.equal((await call(route,body)).status,400,body.text);
   assert.equal((await call(route,{designId:next.id,resolve:true,commentId:first.id})).status,404,'resolution cannot reach a comment in another version');
   assert.deepEqual((await read()).project.designs,before,'rejected writes leave both version records unchanged');
+  r=await call(route,{designId:d.id,text:'Tighten the margins here',assetId:document,page:3});assert.equal(r.status,200,'a PDF comment can point at a page');
+  assert.equal(comments(r).at(-1).page,3);
+  for(const body of [{designId:d.id,text:'Page on an image',assetId:primary,page:2},{designId:d.id,text:'Page zero',assetId:document,page:0},{designId:d.id,text:'Page reply',assetId:document,parentId:comments(r).at(-1).id,page:2}])assert.equal((await call(route,body)).status,400,body.text);
   r=await call(route,{designId:next.id,text:'New version own root',assetId:'primary'});assert.equal(r.status,200);
   const latestRoot=r.project.designs.find(v=>v.id===next.id).comments.at(-1);assert.equal(latestRoot.assetId,primary);
   const saved=(await read()).project.designs,previous=saved.find(v=>v.id===d.id).comments,current=saved.find(v=>v.id===next.id).comments;

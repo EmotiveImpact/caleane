@@ -32,12 +32,12 @@ export function conversationExtras(db,c,user,rows,messages,seen,participants){
   mentionsMe:messages.filter((m,i)=>rows[i].seq>myLast&&m.mentionIds.includes(user.id)).length,
   seenBy,pins,asks,scheduled:scheduledDTO(db,c,user)};
 }
-// Open asks are real tasks: project tasks for project conversations, CRM tasks for direct ones.
+// Messages turned into tasks are real tasks: project tasks for project conversations, CRM tasks for direct ones.
 export function conversationAsks(db,c){
  const project=c.project_id?JSON.parse(db.prepare('SELECT data FROM projects WHERE id=? AND studio_id=?').get(c.project_id,c.studio_id)?.data||'{}'):null;
  return db.prepare('SELECT * FROM conversation_asks WHERE conversation_id=? ORDER BY created_at').all(c.id).map(a=>{
   const task=a.task_kind==='project'?(project?.tasks||[]).find(t=>t.id===a.task_id):db.prepare('SELECT title,completed,due_date AS due FROM crm_tasks WHERE id=? AND studio_id=?').get(a.task_id,c.studio_id);
-  return task?{messageId:a.message_id,taskId:a.task_id,kind:a.task_kind,title:task.title,due:task.due||'',completed:!!task.completed,at:a.created_at}:null;
+  return task?{messageId:a.message_id,taskId:a.task_id,taskKey:a.task_kind==='project'?`project:${c.project_id}:${a.task_id}`:'crm:'+a.task_id,kind:a.task_kind,title:task.title,due:task.due||'',completed:!!task.completed,at:a.created_at}:null;
  }).filter(Boolean);
 }
 export function messageDetails(db,messageId){const row=db.prepare('SELECT * FROM conversation_message_details WHERE message_id=?').get(messageId);return {parentId:row?.parent_id||null,attachmentIds:JSON.parse(row?.attachment_ids||'[]'),mentionIds:JSON.parse(row?.mention_ids||'[]')};}

@@ -15,8 +15,8 @@ export function BookingIntegrations({studio,request,navigate}){
  if(!data||!form)return error?<p className="commerce-error" role="alert">{error}</p>:null;
  const set=patch=>{setSaved(false);setForm({...form,...patch});};
  const anyCalendar=data.calendars.google.connected||data.calendars.outlook.connected;
- const calendarOptions=[{value:'none',label:'Don’t add bookings to a calendar'},...['google','outlook'].map(id=>({value:id,label:calendarName[id]+(data.calendars[id].connected?'':data.calendars[id].configured?' (connect first)':' (not set up)'),disabled:!data.calendars[id].connected}))];
- const videoOptions=[{value:'fixed',label:'Use the link typed above'},{value:'google_meet',label:'Make a Google Meet link for each booking'+(form.calendar==='google'?'':' (needs Google Calendar)'),disabled:form.calendar!=='google'},{value:'zoom',label:'Make a Zoom meeting for each booking'+(data.zoom.configured?'':' (not set up)'),disabled:!data.zoom.configured}];
+ const calendarOptions=[{value:'none',label:'Don’t add bookings to a calendar'},...['google','outlook'].map(id=>({value:id,label:calendarName[id]+(data.calendars[id].connected?'':data.calendars[id].configured?' (connect first)':' (coming soon)'),disabled:!data.calendars[id].connected}))];
+ const videoOptions=[{value:'fixed',label:'Use the link typed above'},{value:'google_meet',label:'Make a Google Meet link for each booking'+(form.calendar==='google'?'':' (needs Google Calendar)'),disabled:form.calendar!=='google'},{value:'zoom',label:'Make a Zoom meeting for each booking'+(data.zoom.configured?'':' (coming soon)'),disabled:!data.zoom.configured}];
  return <section className="booking-integrations">
   <form className="booking-integrations-card" onSubmit={async e=>{e.preventDefault();if(await send({action:'save',settings:form}))setSaved(true);}}>
    <header><h3>Calendar and video</h3><p>Add each booking to your calendar, keep your busy times off the booking page, and give every video call its own link.</p></header>

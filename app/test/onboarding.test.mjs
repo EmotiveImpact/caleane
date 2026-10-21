@@ -21,7 +21,7 @@ test('owners get a self-ticking setup checklist and clients see a one-time welco
   assert.equal((await call('/api/signup','POST',{name:'New Owner',email:'new-owner@example.test',studio:'Fresh Studio',slug:'fresh-studio',password:'FreshStudio2026!'},'fresh')).status,201);
   const fresh=(await call('/api/me','GET',undefined,'fresh')).data.studios[0].id,q=`?studio=${fresh}`;
   let state=(await call('/api/onboarding'+q,'GET',undefined,'fresh')).data;
-  assert.equal(state.role,'owner');assert.deepEqual(done(state.studioSetup),[],'a new studio starts with nothing done');
+  assert.equal(state.role,'owner');assert.deepEqual(done(state.studioSetup),['form'],'a new studio starts with its website enquiry form live');
   assert.deepEqual(state.studioSetup.steps.map(step=>step.id),['brand','form','project','invite','team','calendar']);
   assert.equal(state.studioSetup.complete,false);assert.equal(state.studioSetup.dismissed,false);
 
@@ -32,7 +32,19 @@ test('owners get a self-ticking setup checklist and clients see a one-time welco
   assert.ok([200,201].includes(project.status),JSON.stringify(project.data));
   assert.equal((await call(`/api/clients/${client.id}/invite${q}`,'POST',{},'fresh')).status,201);
   state=(await call('/api/onboarding'+q,'GET',undefined,'fresh')).data;
-  assert.deepEqual(done(state.studioSetup),['project','invite']);
+  assert.deepEqual(done(state.studioSetup),['form','project','invite']);
+
+  // Opening Forms writes the built-in form down; it still counts, and pausing it unticks the step.
+  const form=(await call('/api/forms'+q,'GET',undefined,'fresh')).data.forms[0];
+  assert.deepEqual(done((await call('/api/onboarding'+q,'GET',undefined,'fresh')).data.studioSetup),['form','project','invite']);
+  assert.equal((await call(`/api/forms/${form.id}${q}`,'POST',{action:'pause',revision:form.revision},'fresh')).status,200);
+  assert.deepEqual(done((await call('/api/onboarding'+q,'GET',undefined,'fresh')).data.studioSetup),['project','invite']);
+
+  // A logo uploaded to the Brand kit ticks "Add your brand".
+  const png=Buffer.concat([Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]),Buffer.alloc(24)]).toString('base64');
+  assert.equal((await call('/api/brand-kit'+q,'POST',{action:'upload',kind:'logo',name:'logo.png',content:png},'fresh')).status,201);
+  state=(await call('/api/onboarding'+q,'GET',undefined,'fresh')).data;
+  assert.deepEqual(done(state.studioSetup),['brand','project','invite']);
 
   assert.equal((await call('/api/onboarding'+q,'POST',{action:'welcome-seen'},'fresh')).status,403,'owners have no client welcome');
   assert.equal((await call('/api/onboarding'+q,'POST',{action:'nonsense'},'fresh')).status,400);

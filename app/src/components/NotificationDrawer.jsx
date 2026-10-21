@@ -11,7 +11,6 @@ const attentionIcon=item=>item.kind==='message'?MessageSquare:item.kind==='enqui
 const attentionKind=item=>item.kind==='message'?'Message':item.kind==='task'||item.kind.startsWith('task-')?'Next step':'Project';
 // The project or client, then the detail, skipping a detail the project title already says ("Brand launch · Noah Williams").
 const attentionContext=item=>[item.context,item.detail&&!String(item.context||'').includes(item.detail)?item.detail:''].filter(Boolean).join(' · ');
-const isDay=value=>/^\d{4}-\d{2}-\d{2}$/.test(value||'');
 
 // One boxed card per item. Its own button says what it does; clicking anywhere else on the card does the same.
 // Only the button takes keyboard focus, so each card is a single stop.
@@ -73,7 +72,7 @@ export function NotificationDrawer({studio,request,onOpen,attention=null,onEmail
  </>;
  const listed=attention?attention.items.slice(0,12):[];
  const waitingList=attention&&<>
-   {listed.length?<Grouped groups={groupByDay(listed,item=>item.at,clock)} render={item=><NotificationCard key={item.id} icon={attentionIcon(item)} kind={attentionKind(item)} title={item.label} context={attentionContext(item)} time={item.at&&!isDay(item.at)?notificationAge(item.at,clock):''} action={attentionAction(item)} onOpen={()=>chooseAttention(item)}/>}/>
+   {listed.length?<Grouped groups={groupByDay(listed,item=>item.at,clock)} render={item=><NotificationCard key={item.id} icon={attentionIcon(item)} kind={attentionKind(item)} title={item.label} context={attentionContext(item)} time={item.at?notificationAge(item.at,clock):''} action={attentionAction(item)} onOpen={()=>chooseAttention(item)}/>}/>
    :<WorkspaceEmpty icon={Bell} title="You’re up to date" description="New messages and decisions will appear here."/>}
    {attention.items.length>12&&attention.onOverview&&<p className="notification-drawer-note"><button type="button" className="notification-drawer-link" onClick={()=>leave(attention.onOverview)}>{attention.items.length-12} more on Overview</button></p>}
    {attention.loadError&&<p className="notification-drawer-error" role="status">Some items could not be refreshed. They will retry automatically.</p>}

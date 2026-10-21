@@ -30,6 +30,26 @@ test('credit notes have their own document in every design, naming the original 
  }
 });
 
+test('payment details only show while the client still owes money',()=>{
+ const {invoice}=sampleInvoice({name:'Studio'});
+ for(const [layout] of invoiceLayouts){
+  assert.match(invoicePageHtml(invoice,{design:{layout}}),/How to pay/,layout);
+  assert.match(invoicePageHtml({...invoice,status:'Partially paid',paidMinor:10000,balanceMinor:invoice.amountMinor-10000},{design:{layout}}),/How to pay/,layout);
+  for(const settled of [{status:'Paid',paidMinor:invoice.amountMinor,balanceMinor:0},{status:'Partially refunded',paidMinor:invoice.amountMinor,refundedMinor:5000,balanceMinor:0},{status:'Credited',creditedMinor:invoice.amountMinor,balanceMinor:0},{status:'Issued',paidMinor:invoice.amountMinor+5000,balanceMinor:0,refundDueMinor:5000}])
+   assert.doesNotMatch(invoicePageHtml({...invoice,...settled},{design:{layout}}),/How to pay/,`${layout} ${settled.status}`);
+ }
+});
+
+test('a quick invoice lists its own lines, with how each is priced, in every design',()=>{
+ const {invoice}=sampleInvoice({name:'Studio'});
+ const quick={...invoice,kind:'Full',label:'Rush fee',estimateId:'',estimateVersion:0,snapshot:{...invoice.snapshot,lines:{items:[{title:'Styling hours',quantity:3,unitAmount:8000,unit:'hour'},{title:'Courier',quantity:1,unitAmount:4000,unit:'each'}],taxRate:20,subtotal:28000,tax:5600,total:33600}}};
+ for(const [layout] of invoiceLayouts){
+  const html=invoicePageHtml(quick,{design:{layout,showItems:false}});
+  assert.match(html,/Styling hours<small class="unit">per hour<\/small><small class="each">3 × £80\.00 per hour<\/small>/,layout);assert.match(html,/<td>Courier<small class="each">1 × £40\.00<\/small><\/td>/,layout);
+  assert.doesNotMatch(html,/towards project scope|of the project total/,layout);
+ }
+});
+
 test('invoice and credit note PDFs are real one-page files',async()=>{
  const {invoice,estimate}=sampleInvoice({name:'NAY DÉCOR'},{vatRegistered:true,taxRate:20,taxRegistration:'GB1'});
  const file=await invoicePdf({...invoice,note:'Deposit − thank you'},{studio:{name:'NAY DÉCOR',accent:'#7a3b2e'},estimate});

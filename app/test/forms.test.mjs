@@ -36,7 +36,7 @@ test('published forms preserve versions, private drafts, tenant boundaries and c
   const changed={...form.definition,title:'A private draft title',questions:form.definition.questions.map(v=>v.id==='q-guests'?{...v,label:'Guest count'}:v)};
   form=(await call('/api/forms/'+form.id+q,'POST',{action:'save',revision:form.revision,definition:changed})).data.form;assert.equal(form.hasUnpublishedChanges,true);
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry','GET',null,'')).data.form.definition.title,definition.title);
-  const body={formVersion:1,name:'=QA Client',email:'forms-qa@example.test',occasion:definition.projectTypes[0],vision:'An intimate day',budget:'Should be cleared',consent:true,intakeAnswers:{'q-setting':'Inside','q-weather':'Hidden stale value','q-support':['Tables','Flowers'],'q-guests':'75'}},headers={'Idempotency-Key':'forms-test-1'};
+  const body={formVersion:1,name:'=QA Client',email:'forms-qa@example.test',occasion:definition.projectTypes[0],vision:'An intimate day',budget:'Should be cleared',consent:true,details:{guestCount:'80'},intakeAnswers:{'q-setting':'Inside','q-weather':'Hidden stale value','q-support':['Tables','Flowers'],'q-guests':'75'}},headers={'Idempotency-Key':'forms-test-1'};
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,consent:false},'',headers)).status,400);
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,formVersion:0},'',headers)).status,409);
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,intakeAnswers:{...body.intakeAnswers,'q-setting':'Outside','q-weather':''}},'',headers)).status,400);
@@ -70,7 +70,11 @@ test('published forms preserve versions, private drafts, tenant boundaries and c
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',body,'',headers)).status,200);
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,name:'Changed'},'',headers)).status,409);
   assert.equal((await call('/api/public/nay-decor/forms/wedding-enquiry/enquiries','POST',{...body,formVersion:2},'',{'Idempotency-Key':'paused-new'})).status,410);
+  const paused=await call('/api/public/nay-decor/forms/wedding-enquiry','GET',null,'');assert.equal(paused.status,410);assert.equal(paused.data.contact.email,'studio@example.test','a paused form still says how to reach the studio');assert.ok(paused.data.contact.name);
   const csv=await call('/api/forms/'+form.id+'/export'+q);assert.equal(csv.status,200);assert.match(csv.data,/"'=QA Client"/);assert.match(csv.data,/How many guests/);assert.doesNotMatch(csv.data,/Guest count/);
+  const [header,first]=csv.data.replace(/^\uFEFF/,'').split('\r\n').map(line=>line.match(/"(?:[^"]|"")*"/g).map(cell=>cell.slice(1,-1)));
+  assert.ok(!header.includes('Answers'),'every question has its own column');assert.ok(!csv.data.includes('{'),'practice details are not raw code');assert.equal(first[header.indexOf('Approximate guest count')],'80');
+  assert.equal(first[header.indexOf('What setting?')],'Inside');assert.equal(first[header.indexOf('How many guests?')]??first[header.findIndex(h=>/How many guests/.test(h))],'75');
   assert.equal((await call('/api/forms/'+form.id+'/responses'+q,'GET',null,'client')).status,403);
   const exported=(await call('/api/studio-export'+q)).data;assert.equal(exported.records.enquiry_form_responses.length,2);
   await call('/api/signup','POST',{name:'Other Owner',studio:'Other Studio',slug:'other-forms',email:'other-forms@example.test',password:'OtherStudio2026!'},'other');

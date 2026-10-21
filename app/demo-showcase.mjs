@@ -73,6 +73,9 @@ export async function seedShowcase({ server, db, origin }) {
   await call('/api/forms' + q);
   await call('/api/public/nay-decor/forms/enquiry/enquiries', 'POST', { name: 'Sophie Clarke', email: 'sophie@example.test', occasion: 'Private celebration', formVersion: 1, date: '2027-09-04', venue: 'A walled garden in Kent', vision: 'A long lunch for our parents’ fortieth anniversary. Garden flowers, soft colour and a table that feels generous.' }, 'visitor', { 'idempotency-key': 'showcase-sophie' });
 
+  // A project template saved from Amelia's wedding, so Create project has one to start from.
+  await call('/api/project-templates' + q, 'POST', { action: 'create', projectId: amelia.id, name: 'Wedding styling package', description: 'Florals, candles and a styling team on the day.' });
+
   // The sample visitor signs in with the demo buttons, so the seeding sessions are not kept.
   db.prepare('DELETE FROM sessions').run();
 }

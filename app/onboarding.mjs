@@ -17,12 +17,16 @@ export function installOnboarding(db){
 
 const flag=(db,userId,studioId,key)=>exists(db,'SELECT 1 FROM onboarding_state WHERE user_id=? AND studio_id=? AND key=?',userId,studioId,key);
 
+// Every studio starts with a published website enquiry form. It is only written to the table the first time
+// Forms opens, so until then it counts as live.
+const builtInFormLive=(db,studioId)=>!hasTable(db,'enquiry_forms')||!exists(db,"SELECT 1 FROM enquiry_forms WHERE studio_id=? AND slug='enquiry'",studioId);
+
 export function studioSetupSteps(db,studioId){
  const studio=db.prepare('SELECT accent FROM studios WHERE id=?').get(studioId);
  const brand=JSON.parse(db.prepare('SELECT data FROM studio_branding WHERE studio_id=?').get(studioId)?.data||'{}');
  const steps=[
-  {id:'brand',title:'Add your brand',detail:'Your logo, colour and the welcome your clients see.',done:!!brand.logoUrl||(studio?.accent||DEFAULT_ACCENT).toLowerCase()!==DEFAULT_ACCENT||(!!brand.welcome&&brand.welcome!==DEFAULT_WELCOME)},
-  {id:'form',title:'Publish your enquiry form',detail:'Share it or add it to your website so new enquiries arrive here.',done:(hasTable(db,'enquiry_forms')&&exists(db,"SELECT 1 FROM enquiry_forms WHERE studio_id=? AND published_version>0",studioId))||exists(db,'SELECT 1 FROM receipts WHERE studio_id=?',studioId)},
+  {id:'brand',title:'Add your brand',detail:'Your logo, colours and fonts in the Brand kit.',done:!!brand.logoUrl||(hasTable(db,'brand_assets')&&exists(db,"SELECT 1 FROM brand_assets WHERE studio_id=? AND kind='logo'",studioId))||(studio?.accent||DEFAULT_ACCENT).toLowerCase()!==DEFAULT_ACCENT||(!!brand.welcome&&brand.welcome!==DEFAULT_WELCOME)},
+  {id:'form',title:'Publish your enquiry form',detail:'Share it or add it to your website so new enquiries arrive here.',done:builtInFormLive(db,studioId)||(hasTable(db,'enquiry_forms')&&exists(db,"SELECT 1 FROM enquiry_forms WHERE studio_id=? AND status='published'",studioId))||exists(db,'SELECT 1 FROM receipts WHERE studio_id=?',studioId)},
   {id:'project',title:'Add your first client and project',detail:'Start from an enquiry or add someone you already work with.',done:exists(db,'SELECT 1 FROM projects WHERE studio_id=?',studioId)},
   {id:'invite',title:'Invite a client to their project',detail:'They get one place for the brief, designs, decisions and messages.',done:exists(db,"SELECT 1 FROM memberships WHERE studio_id=? AND role='client'",studioId)||exists(db,'SELECT 1 FROM invitations WHERE studio_id=?',studioId)},
   {id:'team',title:'Invite your team',detail:'Give a teammate access to the projects they work on.',optional:true,done:exists(db,'SELECT 1 FROM studio_staff WHERE studio_id=?',studioId)||exists(db,'SELECT 1 FROM staff_invitations WHERE studio_id=?',studioId)},

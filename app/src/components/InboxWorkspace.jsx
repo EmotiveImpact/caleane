@@ -23,14 +23,14 @@ function MoreFilters({value,onChange,count}){
   <DropdownMenu.Portal><DropdownMenu.Content className="ws-menu ws-inbox-more-menu" align="end" sideOffset={6} collisionPadding={12}><DropdownMenu.RadioGroup value={value} onValueChange={onChange}>{MORE_FILTERS.map(name=><DropdownMenu.RadioItem key={name} value={name} className="ws-menu-item"><span className="ws-inbox-more-check"><DropdownMenu.ItemIndicator><Check size={14}/></DropdownMenu.ItemIndicator></span><span>{name}</span><small>{count(name)}</small></DropdownMenu.RadioItem>)}</DropdownMenu.RadioGroup></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>;
 }
 
-export function InboxWorkspace({openId=null,studio,user,clients,conversations,projects,thread,loading,error,busy,request,openProject,onChoose,onNew,onAdd,onStatus,onConversation,onMarkedUnread,fileHref}){
+export function InboxWorkspace({openId=null,studio,user,clients,conversations,projects,thread,loading,error,busy,request,openProject,onChoose,onNew,onAdd,onStatus,onConversation,onMarkedUnread,fileHref,openTask}){
  const [query,setQuery]=useState(''),[filter,setFilter]=useState('All'),[mobileOpen,setMobileOpen]=useState(false),[context,setContext]=useState(false),[wide,setWide]=useState(()=>matchMedia(WIDE).matches),[narrow,setNarrow]=useState(()=>matchMedia(NARROW).matches);
  useEffect(()=>{const wideMedia=matchMedia(WIDE),narrowMedia=matchMedia(NARROW),update=()=>{setWide(wideMedia.matches);setNarrow(narrowMedia.matches);};wideMedia.addEventListener('change',update);narrowMedia.addEventListener('change',update);return()=>{wideMedia.removeEventListener('change',update);narrowMedia.removeEventListener('change',update);};},[]);
  useEffect(()=>{if(openId)setMobileOpen(true);},[openId]);
  const project=projects.find(p=>p.id===thread?.projectId),label=thread&&triageLabel(thread);
  const count=name=>conversations.filter(FILTERS[name]).length,resolved=count('Resolved');
  const visible=conversations.filter(t=>FILTERS[filter](t)&&[t.subject,clients.find(c=>c.id===t.clientId)?.name,...(t.messages||[]).map(messageSearchText)].join(' ').toLowerCase().includes(query.toLowerCase())).sort((a,b)=>(b.messages?.at(-1)?.at||b.updatedAt).localeCompare(a.messages?.at(-1)?.at||a.updatedAt));
- const panel=<ConversationPanel thread={thread} project={project} studio={studio} request={request} owner onConversation={onConversation} openProject={openProject} onLeave={()=>setContext(false)} fileHref={fileHref}/>;
+ const panel=<ConversationPanel thread={thread} project={project} studio={studio} request={request} owner onConversation={onConversation} openProject={openProject} openTask={openTask} onLeave={()=>setContext(false)} fileHref={fileHref}/>;
  return <section className={'relationship-inbox ws-inbox'+(mobileOpen?' conversation-open':'')+(wide&&thread?' has-panel':'')}>
   <WorkspaceHeading title="Messages" description="Every client conversation, with what still needs an answer." action={<WorkspaceButton onClick={clients.length?onNew:onAdd}><Plus size={16}/>{clients.length?'New conversation':'Add client'}</WorkspaceButton>}/>
   {error&&<p role="alert" className="alert">{error}</p>}
@@ -57,11 +57,11 @@ export function InboxWorkspace({openId=null,studio,user,clients,conversations,pr
       <div className="ws-conversation-actions"><div className="ws-status-switch" role="radiogroup" aria-label="Conversation status">{['Open','Waiting','Resolved'].map(s=><button type="button" role="radio" key={s} aria-checked={thread.status===s} disabled={busy} onClick={()=>thread.status!==s&&onStatus(s)}>{s}</button>)}</div>{!wide&&<WorkspaceButton variant="ghost" iconOnly tooltip="Open asks, files and people" onClick={()=>setContext(true)} aria-label="View conversation details"><PanelRight size={18}/></WorkspaceButton>}</div>
      </header>
      {/* On phones the conversation stays closed until chosen, so nothing is marked read unseen. */}
-     {(!narrow||mobileOpen)&&<ProjectChat key={thread.id} helper p={project} conversationId={thread.id} firstUnreadId={thread.firstUnreadId} studio={studio} user={user} owner={true} request={request} fileHref={fileHref} onConversation={onConversation} onMarkedUnread={c=>{onMarkedUnread?.(c);setMobileOpen(false);}}/>}
+     {(!narrow||mobileOpen)&&<ProjectChat key={thread.id} helper openTask={openTask} p={project} conversationId={thread.id} firstUnreadId={thread.firstUnreadId} studio={studio} user={user} owner={true} request={request} fileHref={fileHref} onConversation={onConversation} onMarkedUnread={c=>{onMarkedUnread?.(c);setMobileOpen(false);}}/>}
     </>:<WorkspaceEmpty icon={MessageSquare} title="Your conversations, together" description="Select a conversation to see its messages and project context."/>}
    </div>
    {wide&&thread&&<aside className="relationship-context ws-inbox-panel" aria-label="Conversation details">{panel}</aside>}
   </div>
-  <WorkspaceDialog drawer open={context&&!!thread&&!wide} onOpenChange={setContext} title="Conversation details" description="Open asks, files and the people in this conversation.">{panel}</WorkspaceDialog>
+  <WorkspaceDialog drawer open={context&&!!thread&&!wide} onOpenChange={setContext} title="Conversation details" description="Tasks, files and the people in this conversation.">{panel}</WorkspaceDialog>
  </section>;
 }

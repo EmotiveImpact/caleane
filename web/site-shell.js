@@ -2,7 +2,7 @@ document.documentElement.classList.add('has-site-js');
 // Account destinations are opt-in configuration; offline previews have working local entry pages.
 let configuredApp = null;
 try {
-  const candidate = window.CALENNE_APP_URL && new URL(window.CALENNE_APP_URL);
+  const candidate = window.CALEANE_APP_URL && new URL(window.CALEANE_APP_URL);
   if (candidate && ['http:', 'https:'].includes(candidate.protocol)) configuredApp = candidate;
 } catch {}
 document.querySelectorAll('[data-app-link]').forEach(link => {

@@ -32,8 +32,9 @@ export function imageFiles(dockerfile=readFileSync(path.join(root,'Dockerfile'),
  return files;
 }
 
+// A route such as '/api/clients/import' is a word in a string, not an import.
 function importsOf(source){
- const found=[],pattern=/\bimport\s*(?:[\w*{}\s,$]+\s*from\s*)?['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)|\bexport\s+(?:\*|\{[^}]*\})\s*from\s*['"]([^'"]+)['"]/g;
+ const found=[],pattern=/(?<![/.-])\bimport\s*(?:[\w*{}\s,$]+\s*from\s*)?['"]([^'"]+)['"]|(?<![/.-])\bimport\(\s*['"]([^'"]+)['"]\s*\)|\bexport\s+(?:\*|\{[^}]*\})\s*from\s*['"]([^'"]+)['"]/g;
  for(const m of source.matchAll(pattern))found.push({specifier:m[1]||m[2]||m[3],dynamic:!!m[2]});
  return found;
 }
